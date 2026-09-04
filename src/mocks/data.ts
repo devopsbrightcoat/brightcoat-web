@@ -1,69 +1,13 @@
 // ---------------------------------------------------------------------------
-// Datos mockeados — SOLO para construir la interfaz visualmente.
-// No viene de Supabase todavía. La forma de estos objetos sigue el esquema
-// definido en el blueprint (properties, service_types, services, expenses,
-// income, employees) para que conectar la base de datos real después sea
-// un cambio de "fuente de datos", no de estructura.
+// Datos mockeados — SOLO para construir la interfaz visualmente / como
+// respaldo si Supabase no responde. Los tipos viven en src/types.ts y son
+// compartidos con las queries reales (src/lib/api.ts), para que las páginas
+// no cambien al pasar de una fuente a otra.
 // ---------------------------------------------------------------------------
 
-export type ClientType = 'residential' | 'multifamily' | 'property_manager'
-export type PropertyStatus = 'active' | 'inactive'
-export type ServiceStatus = 'pending' | 'in_progress' | 'completed'
-export type IncomeStatus = 'paid' | 'pending'
-export type ExpenseCategory = 'materials' | 'labor' | 'transport' | 'tools' | 'other'
+import type { Employee, Expense, Property, Service, ServiceType } from '../types'
 
-export type Property = {
-  id: string
-  name: string
-  address: string
-  clientType: ClientType
-  managerContact?: string
-  status: PropertyStatus
-}
-
-export type ServiceType = {
-  id: string
-  name: string
-  category: 'painting' | 'cleaning' | 'repair'
-}
-
-export type Service = {
-  id: string
-  propertyId: string
-  serviceTypeId: string
-  employeeId?: string
-  status: ServiceStatus
-  scheduledDate: string
-  completedDate?: string
-  cost: number
-  notes?: string
-}
-
-export type Expense = {
-  id: string
-  propertyId?: string
-  category: ExpenseCategory
-  amount: number
-  date: string
-  description: string
-}
-
-export type Income = {
-  id: string
-  propertyId: string
-  amount: number
-  date: string
-  status: IncomeStatus
-  clientReference: string
-}
-
-export type Employee = {
-  id: string
-  name: string
-  role: string
-  status: 'active' | 'inactive'
-  hourlyRate?: number
-}
+export type { ClientType, ExpenseCategory, PaymentStatus, PropertyStatus, ServiceStatus } from '../types'
 
 export const properties: Property[] = [
   { id: 'p1', name: 'Riverside Apartments', address: '1200 Riverside Dr, Austin, TX', clientType: 'multifamily', managerContact: 'Laura Given', status: 'active' },
@@ -89,13 +33,13 @@ export const employees: Employee[] = [
 ]
 
 export const services: Service[] = [
-  { id: 's1', propertyId: 'p1', serviceTypeId: 'st1', employeeId: 'e2', status: 'completed', scheduledDate: '2026-08-04', completedDate: '2026-08-06', cost: 1450 },
-  { id: 's2', propertyId: 'p3', serviceTypeId: 'st2', employeeId: 'e3', status: 'completed', scheduledDate: '2026-08-10', completedDate: '2026-08-10', cost: 320 },
-  { id: 's3', propertyId: 'p2', serviceTypeId: 'st4', employeeId: 'e4', status: 'in_progress', scheduledDate: '2026-08-28', cost: 680 },
-  { id: 's4', propertyId: 'p5', serviceTypeId: 'st1', employeeId: 'e2', status: 'pending', scheduledDate: '2026-09-05', cost: 2100 },
-  { id: 's5', propertyId: 'p4', serviceTypeId: 'st3', employeeId: 'e4', status: 'pending', scheduledDate: '2026-09-08', cost: 940 },
-  { id: 's6', propertyId: 'p1', serviceTypeId: 'st2', employeeId: 'e3', status: 'completed', scheduledDate: '2026-08-18', completedDate: '2026-08-18', cost: 280 },
-  { id: 's7', propertyId: 'p3', serviceTypeId: 'st1', employeeId: 'e2', status: 'in_progress', scheduledDate: '2026-08-30', cost: 1780 },
+  { id: 's1', propertyId: 'p1', serviceTypeId: 'st1', employeeId: 'e2', unitLabel: '4102', unitSize: '2x2', status: 'completed', scheduledDate: '2026-08-04', completedDate: '2026-08-06', cost: 1450, paymentStatus: 'paid', paidDate: '2026-08-06' },
+  { id: 's2', propertyId: 'p3', serviceTypeId: 'st2', employeeId: 'e3', unitLabel: 'Pasillos', status: 'completed', scheduledDate: '2026-08-10', completedDate: '2026-08-10', cost: 320, paymentStatus: 'paid', paidDate: '2026-08-10' },
+  { id: 's3', propertyId: 'p2', serviceTypeId: 'st4', employeeId: 'e4', status: 'in_progress', scheduledDate: '2026-08-28', cost: 680, paymentStatus: 'pending' },
+  { id: 's4', propertyId: 'p5', serviceTypeId: 'st1', employeeId: 'e2', unitLabel: 'L303', unitSize: '1x1', status: 'pending', scheduledDate: '2026-09-05', cost: 2100, paymentStatus: 'pending' },
+  { id: 's5', propertyId: 'p4', serviceTypeId: 'st3', employeeId: 'e4', status: 'pending', scheduledDate: '2026-09-08', cost: 940, paymentStatus: 'pending' },
+  { id: 's6', propertyId: 'p1', serviceTypeId: 'st2', employeeId: 'e3', unitLabel: 'Oficina', status: 'completed', scheduledDate: '2026-08-18', completedDate: '2026-08-18', cost: 280, paymentStatus: 'paid', paidDate: '2026-08-18' },
+  { id: 's7', propertyId: 'p3', serviceTypeId: 'st1', employeeId: 'e2', unitLabel: '3105', unitSize: '3x3 TH', status: 'in_progress', scheduledDate: '2026-08-30', cost: 1780, paymentStatus: 'pending' },
 ]
 
 export const expenses: Expense[] = [
@@ -105,14 +49,6 @@ export const expenses: Expense[] = [
   { id: 'x4', propertyId: 'p3', category: 'materials', amount: 95, date: '2026-08-10', description: 'Insumos de limpieza' },
   { id: 'x5', propertyId: 'p2', category: 'transport', amount: 60, date: '2026-08-27', description: 'Combustible — visita a propiedad' },
   { id: 'x6', propertyId: 'p5', category: 'materials', amount: 890, date: '2026-08-22', description: 'Pintura para 6 unidades' },
-]
-
-export const income: Income[] = [
-  { id: 'i1', propertyId: 'p1', amount: 1450, date: '2026-08-06', status: 'paid', clientReference: 'Riverside Apartments — Invoice 1042' },
-  { id: 'i2', propertyId: 'p3', amount: 320, date: '2026-08-10', status: 'paid', clientReference: 'Congress Ave Lofts — Invoice 1043' },
-  { id: 'i3', propertyId: 'p5', amount: 2100, date: '2026-09-05', status: 'pending', clientReference: 'Pecan Grove — Invoice 1044' },
-  { id: 'i4', propertyId: 'p4', amount: 940, date: '2026-09-08', status: 'pending', clientReference: 'Sunset Valley — Invoice 1045' },
-  { id: 'i5', propertyId: 'p1', amount: 280, date: '2026-08-18', status: 'paid', clientReference: 'Riverside Apartments — Invoice 1046' },
 ]
 
 // Serie mensual para el gráfico de ingresos vs. gastos del dashboard/reportes

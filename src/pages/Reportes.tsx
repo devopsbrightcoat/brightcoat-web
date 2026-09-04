@@ -1,11 +1,11 @@
 import { useMemo, useState } from 'react'
 import { Download, TrendingDown, TrendingUp, Wallet } from 'lucide-react'
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
-import { MockBanner } from '../components/MockBanner'
 import { PageHeader } from '../components/PageHeader'
 import { StatCard } from '../components/StatCard'
 import { StatusPill } from '../components/StatusPill'
-import { expenses, income, properties, serviceTypes, services } from '../mocks/data'
+import { fetchExpenses, fetchProperties, fetchServiceTypes, fetchServices } from '../lib/api'
+import { useSupabaseQuery } from '../lib/useSupabaseQuery'
 
 const currency = (value: number) =>
   value.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 })
@@ -22,30 +22,30 @@ export const Reportes = () => {
   const [propertyId, setPropertyId] = useState('all')
   const [serviceTypeId, setServiceTypeId] = useState('all')
 
-  const propertyName = (id: string) => properties.find((p) => p.id === id)?.name ?? '—'
-  const serviceTypeName = (id: string) => serviceTypes.find((s) => s.id === id)?.name ?? '—'
+  const { data: services, loading: loadingServices, error: errorServices } = useSupabaseQuery(fetchServices, [])
+  const { data: expenses } = useSupabaseQuery(fetchExpenses, [])
+  const { data: properties } = useSupabaseQuery(fetchProperties, [])
+  const { data: serviceTypes } = useSupabaseQuery(fetchServiceTypes, [])
+
+  const propertyName = (id: string) => properties?.find((p) => p.id === id)?.name ?? '—'
+  const serviceTypeName = (id: string) => serviceTypes?.find((s) => s.id === id)?.name ?? '—'
 
   const filteredServices = useMemo(
     () =>
-      services.filter(
+      (services ?? []).filter(
         (s) =>
           (propertyId === 'all' || s.propertyId === propertyId) &&
           (serviceTypeId === 'all' || s.serviceTypeId === serviceTypeId),
       ),
-    [propertyId, serviceTypeId],
-  )
-
-  const filteredIncome = useMemo(
-    () => income.filter((i) => propertyId === 'all' || i.propertyId === propertyId),
-    [propertyId],
+    [services, propertyId, serviceTypeId],
   )
 
   const filteredExpenses = useMemo(
-    () => expenses.filter((e) => propertyId === 'all' || e.propertyId === propertyId),
-    [propertyId],
+    () => (expenses ?? []).filter((e) => propertyId === 'all' || e.propertyId === propertyId),
+    [expenses, propertyId],
   )
 
-  const totalIncome = filteredIncome.reduce((sum, i) => sum + i.amount, 0)
+  const totalIncome = filteredServices.reduce((sum, s) => sum + s.cost, 0)
   const totalExpenses = filteredExpenses.reduce((sum, e) => sum + e.amount, 0)
 
   const expensesByCategory = useMemo(() => {
@@ -73,7 +73,6 @@ export const Reportes = () => {
           </button>
         }
       />
-      <MockBanner />
 
       <div className="mx-8 mt-6 flex flex-wrap gap-3">
         <select
@@ -82,7 +81,7 @@ export const Reportes = () => {
           className="rounded-lg border border-white/10 bg-surface-alt px-3 py-2 text-sm text-ink-200"
         >
           <option value="all">Todas las propiedades</option>
-          {properties.map((p) => (
+          {(properties ?? []).map((p) => (
             <option key={p.id} value={p.id}>
               {p.name}
             </option>
@@ -95,7 +94,7 @@ export const Reportes = () => {
           className="rounded-lg border border-white/10 bg-surface-alt px-3 py-2 text-sm text-ink-200"
         >
           <option value="all">Todos los tipos de servicio</option>
-          {serviceTypes.map((s) => (
+          {(serviceTypes ?? []).map((s) => (
             <option key={s.id} value={s.id}>
               {s.name}
             </option>
@@ -151,7 +150,19 @@ export const Reportes = () => {
               </tr>
             </thead>
             <tbody>
-              {filteredServices.length === 0 ? (
+              {loadingServices ? (
+                <tr>
+                  <td colSpan={4} className="px-5 py-6 text-center text-sm text-ink-500">
+                    Cargando servicios…
+                  </td>
+                </tr>
+              ) : errorServices ? (
+                <tr>
+                  <td colSpan={4} className="px-5 py-6 text-center text-sm text-red-400">
+                    No se pudieron cargar los servicios: {errorServices}
+                  </td>
+                </tr>
+              ) : filteredServices.length === 0 ? (
                 <tr>
                   <td colSpan={4} className="px-5 py-6 text-center text-sm text-ink-500">
                     No hay servicios con estos filtros.
