@@ -1,10 +1,13 @@
 import { Route, Routes } from 'react-router-dom'
+import { ProtectedRoute } from './auth/ProtectedRoute'
 import { AppLayout } from './layout/AppLayout'
 import { Configuracion } from './pages/Configuracion'
 import { Dashboard } from './pages/Dashboard'
 import { Empleados } from './pages/Empleados'
 import { Finanzas } from './pages/Finanzas'
 import { Importar } from './pages/Importar'
+import { Login } from './pages/Login'
+import { NotFound } from './pages/NotFound'
 import { Propiedades } from './pages/Propiedades'
 import { Reportes } from './pages/Reportes'
 import { Trabajos } from './pages/Trabajos'
@@ -12,7 +15,15 @@ import { Trabajos } from './pages/Trabajos'
 const App = () => {
   return (
     <Routes>
-      <Route element={<AppLayout />}>
+      <Route path="login" element={<Login />} />
+
+      <Route
+        element={
+          <ProtectedRoute>
+            <AppLayout />
+          </ProtectedRoute>
+        }
+      >
         <Route index element={<Dashboard />} />
         <Route path="propiedades" element={<Propiedades />} />
         <Route path="trabajos" element={<Trabajos />} />
@@ -21,6 +32,7 @@ const App = () => {
         <Route path="importar" element={<Importar />} />
         <Route path="reportes" element={<Reportes />} />
         <Route path="configuracion" element={<Configuracion />} />
+        <Route path="*" element={<NotFound />} />
       </Route>
     </Routes>
   )

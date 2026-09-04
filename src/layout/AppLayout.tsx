@@ -1,15 +1,16 @@
 import {
   Building2,
   ClipboardList,
-  FileSpreadsheet,
   LayoutDashboard,
   LineChart,
+  LogOut,
   Settings,
   Upload,
   Users,
   Wallet,
 } from 'lucide-react'
 import { NavLink, Outlet } from 'react-router-dom'
+import { useAuth } from '../auth/AuthProvider'
 
 const navItems = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard, end: true },
@@ -22,7 +23,15 @@ const navItems = [
   { to: '/configuracion', label: 'Configuración', icon: Settings },
 ]
 
+const roleLabel: Record<string, string> = {
+  owner: 'Dueño',
+  admin: 'Administrador',
+  staff: 'Staff',
+}
+
 export const AppLayout = () => {
+  const { profile, signOut } = useAuth()
+
   return (
     <div className="flex min-h-screen bg-surface">
       <aside className="flex w-64 shrink-0 flex-col bg-brand-900">
@@ -57,11 +66,22 @@ export const AppLayout = () => {
 
         <div className="border-t border-white/10 px-3 py-4">
           <div className="flex items-center gap-2 rounded-lg bg-white/5 px-3 py-2.5">
-            <FileSpreadsheet className="h-4 w-4 text-brand-300" />
-            <div className="min-w-0">
-              <p className="truncate text-xs font-medium text-brand-100">Datos de ejemplo</p>
-              <p className="truncate text-[11px] text-brand-400">Aún sin conectar a Supabase</p>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-xs font-medium text-brand-100">
+                {profile?.fullName || profile?.username || 'Usuario'}
+              </p>
+              <p className="truncate text-[11px] text-brand-400">
+                {profile ? roleLabel[profile.role] ?? profile.role : ''}
+              </p>
             </div>
+            <button
+              type="button"
+              onClick={() => signOut()}
+              title="Cerrar sesión"
+              className="rounded-md p-1.5 text-brand-300 transition hover:bg-white/10 hover:text-white"
+            >
+              <LogOut className="h-4 w-4" />
+            </button>
           </div>
         </div>
       </aside>
