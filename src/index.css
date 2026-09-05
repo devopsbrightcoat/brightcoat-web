@@ -43,6 +43,21 @@
   /* Surface — dark, near-black background tones (same as client-landing) */
   --color-surface: #17181d;
   --color-surface-alt: #1e1f25;
+
+  /*
+   * Breakpoints — puntos de quiebre responsive para distintos tamaños de pantalla.
+   * Tailwind v4 se configura en CSS (no hay tailwind.config.js): estas variables
+   * `--breakpoint-*` son las que generan los prefijos `xs:` `sm:` `md:` etc.
+   * Se listan todas explícitamente (aunque sm–2xl coinciden con los valores por
+   * defecto de Tailwind) para tener en un solo lugar toda la escala responsive.
+   */
+  --breakpoint-xs: 30rem;   /* 480px  — celulares en vertical */
+  --breakpoint-sm: 40rem;   /* 640px  — celulares en horizontal / tablets chicas */
+  --breakpoint-md: 48rem;   /* 768px  — tablets en vertical (iPad, etc.) */
+  --breakpoint-lg: 64rem;   /* 1024px — tablets en horizontal / laptops chicas */
+  --breakpoint-xl: 80rem;   /* 1280px — laptops / monitores estándar */
+  --breakpoint-2xl: 96rem;  /* 1536px — monitores grandes */
+  --breakpoint-3xl: 120rem; /* 1920px — monitores ultra-wide / 4K */
 }
 
 body {
