@@ -2,9 +2,11 @@ import { useMemo, useState } from 'react'
 import { Download, TrendingDown, TrendingUp, Wallet } from 'lucide-react'
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { PageHeader } from '../components/PageHeader'
+import { Pagination } from '../components/Pagination'
 import { StatCard } from '../components/StatCard'
 import { StatusPill } from '../components/StatusPill'
 import { fetchExpenses, fetchProperties, fetchServiceTypes, fetchServices } from '../lib/api'
+import { usePagination } from '../lib/usePagination'
 import { useSupabaseQuery } from '../lib/useSupabaseQuery'
 
 const currency = (value: number) =>
@@ -47,6 +49,8 @@ export const Reportes = () => {
 
   const totalIncome = filteredServices.reduce((sum, s) => sum + s.cost, 0)
   const totalExpenses = filteredExpenses.reduce((sum, e) => sum + e.amount, 0)
+
+  const { page, setPage, totalPages, pageItems } = usePagination(filteredServices)
 
   const expensesByCategory = useMemo(() => {
     const categories = ['materials', 'labor', 'transport', 'tools', 'other'] as const
@@ -136,52 +140,55 @@ export const Reportes = () => {
           </div>
         </div>
 
-        <div className="overflow-hidden rounded-xl border border-white/10 bg-surface-alt lg:col-span-2">
+        <div className="flex max-h-[calc(100vh-460px)] flex-col overflow-hidden rounded-xl border border-white/10 bg-surface-alt lg:col-span-2">
           <div className="border-b border-white/10 px-5 py-3.5">
             <p className="text-sm font-semibold text-white">Servicios en el filtro actual</p>
           </div>
-          <table className="w-full text-left text-sm">
-            <thead>
-              <tr className="border-b border-white/5 text-xs uppercase tracking-wide text-ink-500">
-                <th className="px-5 py-2.5 font-medium">Propiedad</th>
-                <th className="px-5 py-2.5 font-medium">Servicio</th>
-                <th className="px-5 py-2.5 font-medium">Costo</th>
-                <th className="px-5 py-2.5 font-medium">Estado</th>
-              </tr>
-            </thead>
-            <tbody>
-              {loadingServices ? (
-                <tr>
-                  <td colSpan={4} className="px-5 py-6 text-center text-sm text-ink-500">
-                    Cargando servicios…
-                  </td>
+          <div className="overflow-auto">
+            <table className="w-full text-left text-sm">
+              <thead className="sticky top-0 z-10 bg-surface-alt">
+                <tr className="border-b border-white/5 text-xs uppercase tracking-wide text-ink-500">
+                  <th className="px-5 py-2.5 font-medium">Propiedad</th>
+                  <th className="px-5 py-2.5 font-medium">Servicio</th>
+                  <th className="px-5 py-2.5 font-medium">Costo</th>
+                  <th className="px-5 py-2.5 font-medium">Estado</th>
                 </tr>
-              ) : errorServices ? (
-                <tr>
-                  <td colSpan={4} className="px-5 py-6 text-center text-sm text-red-400">
-                    No se pudieron cargar los servicios: {errorServices}
-                  </td>
-                </tr>
-              ) : filteredServices.length === 0 ? (
-                <tr>
-                  <td colSpan={4} className="px-5 py-6 text-center text-sm text-ink-500">
-                    No hay servicios con estos filtros.
-                  </td>
-                </tr>
-              ) : (
-                filteredServices.map((s) => (
-                  <tr key={s.id} className="border-b border-white/5 last:border-0 hover:bg-white/5">
-                    <td className="px-5 py-3 text-ink-200">{propertyName(s.propertyId)}</td>
-                    <td className="px-5 py-3 text-ink-400">{serviceTypeName(s.serviceTypeId)}</td>
-                    <td className="px-5 py-3 tabular-nums text-ink-400">{currency(s.cost)}</td>
-                    <td className="px-5 py-3">
-                      <StatusPill status={s.status} />
+              </thead>
+              <tbody>
+                {loadingServices ? (
+                  <tr>
+                    <td colSpan={4} className="px-5 py-6 text-center text-sm text-ink-500">
+                      Cargando servicios…
                     </td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+                ) : errorServices ? (
+                  <tr>
+                    <td colSpan={4} className="px-5 py-6 text-center text-sm text-red-400">
+                      No se pudieron cargar los servicios: {errorServices}
+                    </td>
+                  </tr>
+                ) : filteredServices.length === 0 ? (
+                  <tr>
+                    <td colSpan={4} className="px-5 py-6 text-center text-sm text-ink-500">
+                      No hay servicios con estos filtros.
+                    </td>
+                  </tr>
+                ) : (
+                  pageItems.map((s) => (
+                    <tr key={s.id} className="border-b border-white/5 last:border-0 hover:bg-white/5">
+                      <td className="px-5 py-3 text-ink-200">{propertyName(s.propertyId)}</td>
+                      <td className="px-5 py-3 text-ink-400">{serviceTypeName(s.serviceTypeId)}</td>
+                      <td className="px-5 py-3 tabular-nums text-ink-400">{currency(s.cost)}</td>
+                      <td className="px-5 py-3">
+                        <StatusPill status={s.status} />
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+          <Pagination page={page} totalPages={totalPages} onChange={setPage} />
         </div>
       </div>
     </div>

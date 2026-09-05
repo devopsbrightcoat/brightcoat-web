@@ -1,5 +1,7 @@
 import { PageHeader } from '../components/PageHeader'
+import { Pagination } from '../components/Pagination'
 import { fetchServiceTypes } from '../lib/api'
+import { usePagination } from '../lib/usePagination'
 import { useSupabaseQuery } from '../lib/useSupabaseQuery'
 
 const categoryLabels: Record<string, string> = {
@@ -12,12 +14,13 @@ const categoryLabels: Record<string, string> = {
 
 export const Configuracion = () => {
   const { data: serviceTypes, loading, error } = useSupabaseQuery(fetchServiceTypes, [])
+  const { page, setPage, totalPages, pageItems } = usePagination(serviceTypes ?? [])
 
   return (
     <div className="pb-10">
       <PageHeader title="Configuración" subtitle="Catálogo de tipos de servicio" />
 
-      <div className="mx-8 mt-6 max-w-xl overflow-hidden rounded-xl border border-white/10 bg-surface-alt">
+      <div className="mx-8 mt-6 flex max-h-[calc(100vh-260px)] max-w-xl flex-col overflow-hidden rounded-xl border border-white/10 bg-surface-alt">
         {loading ? (
           <p className="px-5 py-6 text-sm text-ink-500">Cargando…</p>
         ) : error ? (
@@ -25,22 +28,27 @@ export const Configuracion = () => {
         ) : !serviceTypes || serviceTypes.length === 0 ? (
           <p className="px-5 py-6 text-sm text-ink-500">Todavía no hay tipos de servicio.</p>
         ) : (
-          <table className="w-full text-left text-sm">
-            <thead>
-              <tr className="border-b border-white/5 text-xs uppercase tracking-wide text-ink-500">
-                <th className="px-5 py-2.5 font-medium">Tipo de servicio</th>
-                <th className="px-5 py-2.5 font-medium">Categoría</th>
-              </tr>
-            </thead>
-            <tbody>
-              {serviceTypes.map((type) => (
-                <tr key={type.id} className="border-b border-white/5 last:border-0">
-                  <td className="px-5 py-3 text-ink-200">{type.name}</td>
-                  <td className="px-5 py-3 text-ink-400">{categoryLabels[type.category] ?? type.category}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <>
+            <div className="overflow-auto">
+              <table className="w-full text-left text-sm">
+                <thead className="sticky top-0 z-10 bg-surface-alt">
+                  <tr className="border-b border-white/5 text-xs uppercase tracking-wide text-ink-500">
+                    <th className="px-5 py-2.5 font-medium">Tipo de servicio</th>
+                    <th className="px-5 py-2.5 font-medium">Categoría</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {pageItems.map((type) => (
+                    <tr key={type.id} className="border-b border-white/5 last:border-0">
+                      <td className="px-5 py-3 text-ink-200">{type.name}</td>
+                      <td className="px-5 py-3 text-ink-400">{categoryLabels[type.category] ?? type.category}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <Pagination page={page} totalPages={totalPages} onChange={setPage} />
+          </>
         )}
       </div>
     </div>

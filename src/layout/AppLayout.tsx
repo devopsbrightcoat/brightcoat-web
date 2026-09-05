@@ -33,8 +33,8 @@ export const AppLayout = () => {
   const { profile, signOut } = useAuth()
 
   return (
-    <div className="flex min-h-screen bg-surface">
-      <aside className="flex w-64 shrink-0 flex-col bg-brand-900">
+    <div className="flex h-screen bg-surface">
+      <aside className="flex h-screen w-64 shrink-0 flex-col bg-brand-900">
         <div className="flex items-center gap-2.5 border-b border-white/10 px-5 py-5">
           <img src="/favicon.png" alt="BrightCoat" className="h-9 w-9 shrink-0" />
           <div>
@@ -43,7 +43,7 @@ export const AppLayout = () => {
           </div>
         </div>
 
-        <nav className="flex-1 space-y-1 px-3 py-4">
+        <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4">
           {navItems.map(({ to, label, icon: Icon, end }) => (
             <NavLink
               key={to}
@@ -86,7 +86,7 @@ export const AppLayout = () => {
         </div>
       </aside>
 
-      <main className="flex-1 overflow-x-hidden">
+      <main className="flex-1 overflow-y-auto overflow-x-hidden">
         <Outlet />
       </main>
     </div>
