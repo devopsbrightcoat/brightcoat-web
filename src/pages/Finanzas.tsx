@@ -33,11 +33,11 @@ export const Finanzas = () => {
   }
 
   return (
-    <div className="pb-10">
+    <div className="h-screen overflow-hidden flex flex-col">
       <PageHeader title="Finanzas" subtitle="Gastos e ingresos por propiedad" />
 
-      <div className="grid grid-cols-1 gap-6 px-8 pt-6 xl:grid-cols-2">
-        <div className="flex max-h-[calc(100vh-320px)] flex-col overflow-hidden rounded-xl border border-white/10 bg-surface-alt">
+      <div className="grid flex-1 min-h-0 auto-rows-fr grid-cols-1 gap-6 px-8 pt-6 pb-6 xl:grid-cols-2">
+        <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-xl border border-white/10 bg-surface-alt">
           <div className="border-b border-white/10 px-5 py-3.5">
             <p className="text-sm font-semibold text-white">Gastos</p>
           </div>
@@ -49,7 +49,7 @@ export const Finanzas = () => {
             <p className="px-5 py-6 text-sm text-ink-500">Todavía no hay gastos registrados.</p>
           ) : (
             <>
-              <div className="overflow-auto">
+              <div className="min-h-0 flex-1 overflow-auto">
                 <table className="w-full text-left text-sm">
                   <thead className="sticky top-0 z-10 bg-surface-alt">
                     <tr className="border-b border-white/5 text-xs uppercase tracking-wide text-ink-500">
@@ -80,7 +80,7 @@ export const Finanzas = () => {
           )}
         </div>
 
-        <div className="flex max-h-[calc(100vh-320px)] flex-col overflow-hidden rounded-xl border border-white/10 bg-surface-alt">
+        <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-xl border border-white/10 bg-surface-alt">
           <div className="border-b border-white/10 px-5 py-3.5">
             <p className="text-sm font-semibold text-white">Cobros</p>
           </div>
@@ -92,7 +92,7 @@ export const Finanzas = () => {
             <p className="px-5 py-6 text-sm text-ink-500">Todavía no hay cobros registrados.</p>
           ) : (
             <>
-              <div className="overflow-auto">
+              <div className="min-h-0 flex-1 overflow-auto">
                 <table className="w-full text-left text-sm">
                   <thead className="sticky top-0 z-10 bg-surface-alt">
                     <tr className="border-b border-white/5 text-xs uppercase tracking-wide text-ink-500">

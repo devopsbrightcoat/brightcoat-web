@@ -13,7 +13,7 @@ export const Empleados = () => {
   const jobCount = (employeeId: string) => (services ?? []).filter((s) => s.employeeId === employeeId).length
 
   return (
-    <div className="pb-10">
+    <div className="h-screen overflow-hidden flex flex-col">
       <PageHeader
         title="Empleados"
         subtitle={employees ? `${employees.length} empleados registrados` : 'Cargando…'}
@@ -27,7 +27,7 @@ export const Empleados = () => {
         <p className="mx-8 mt-6 text-sm text-ink-500">Todavía no hay empleados registrados.</p>
       ) : (
         <>
-          <div className="mx-8 mt-6 max-h-[calc(100vh-260px)] overflow-auto">
+          <div className="mx-8 mt-6 flex-1 min-h-0 overflow-auto">
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {pageItems.map((employee) => (
                 <div key={employee.id} className="rounded-xl border border-white/10 bg-surface-alt p-5">
@@ -46,7 +46,7 @@ export const Empleados = () => {
               ))}
             </div>
           </div>
-          <div className="mx-8 mt-4 overflow-hidden rounded-xl border border-white/10 bg-surface-alt">
+          <div className="mx-8 my-4 overflow-hidden rounded-xl border border-white/10 bg-surface-alt">
             <Pagination page={page} totalPages={totalPages} onChange={setPage} />
           </div>
         </>

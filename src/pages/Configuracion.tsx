@@ -17,10 +17,10 @@ export const Configuracion = () => {
   const { page, setPage, totalPages, pageItems } = usePagination(serviceTypes ?? [])
 
   return (
-    <div className="pb-10">
+    <div className="h-screen overflow-hidden flex flex-col">
       <PageHeader title="Configuración" subtitle="Catálogo de tipos de servicio" />
 
-      <div className="mx-8 mt-6 flex max-h-[calc(100vh-260px)] max-w-xl flex-col overflow-hidden rounded-xl border border-white/10 bg-surface-alt">
+      <div className="mx-8 mt-6 mb-6 flex flex-1 min-h-0 max-w-xl flex-col overflow-hidden rounded-xl border border-white/10 bg-surface-alt">
         {loading ? (
           <p className="px-5 py-6 text-sm text-ink-500">Cargando…</p>
         ) : error ? (
@@ -29,7 +29,7 @@ export const Configuracion = () => {
           <p className="px-5 py-6 text-sm text-ink-500">Todavía no hay tipos de servicio.</p>
         ) : (
           <>
-            <div className="overflow-auto">
+            <div className="min-h-0 flex-1 overflow-auto">
               <table className="w-full text-left text-sm">
                 <thead className="sticky top-0 z-10 bg-surface-alt">
                   <tr className="border-b border-white/5 text-xs uppercase tracking-wide text-ink-500">

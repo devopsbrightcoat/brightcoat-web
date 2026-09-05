@@ -200,7 +200,7 @@ export const Trabajos = () => {
   const hasActiveFilters = chips.length > 0 || searchText.trim() !== ''
 
   return (
-    <div className="h-screen overflow-hidden">
+    <div className="h-screen overflow-hidden flex flex-col">
       <PageHeader
         title="Trabajos / Servicios"
         subtitle={
@@ -284,7 +284,7 @@ export const Trabajos = () => {
         </div>
       )}
 
-      <div className="mx-8 mt-6 flex xl:max-3xl:h-95 xs:max-xl:h-90 flex-col overflow-hidden rounded-xl border border-white/10 bg-surface-alt">
+      <div className="mx-8 mt-6 mb-6 flex flex-1 min-h-0 flex-col overflow-hidden rounded-xl border border-white/10 bg-surface-alt">
         {loading ? (
           <p className="px-5 py-6 text-sm text-ink-500">Cargando trabajos…</p>
         ) : error ? (
@@ -300,7 +300,7 @@ export const Trabajos = () => {
           </div>
         ) : (
           <div className="h-full flex flex-col overflow-hidden">
-            <div className="overflow-auto h-full  ">
+            <div className="min-h-0 flex-1 overflow-auto">
               <table className="w-full text-left text-sm h-full">
                 <thead className="sticky top-0 z-10 bg-surface-alt">
                   {table.getHeaderGroups().map((headerGroup) => (

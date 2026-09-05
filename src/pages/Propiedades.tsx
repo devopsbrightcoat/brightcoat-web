@@ -16,13 +16,13 @@ export const Propiedades = () => {
   const { page, setPage, totalPages, pageItems } = usePagination(properties ?? [])
 
   return (
-    <div className="pb-10">
+    <div className="h-screen overflow-hidden flex flex-col">
       <PageHeader
         title="Propiedades"
         subtitle={properties ? `${properties.length} propiedades registradas` : 'Cargando…'}
       />
 
-      <div className="mx-8 mt-6 flex max-h-[calc(100vh-260px)] flex-col overflow-hidden rounded-xl border border-white/10 bg-surface-alt">
+      <div className="mx-8 mt-6 mb-6 flex flex-1 min-h-0 flex-col overflow-hidden rounded-xl border border-white/10 bg-surface-alt">
         {loading ? (
           <p className="px-5 py-6 text-sm text-ink-500">Cargando propiedades…</p>
         ) : error ? (
@@ -31,7 +31,7 @@ export const Propiedades = () => {
           <p className="px-5 py-6 text-sm text-ink-500">Todavía no hay propiedades registradas.</p>
         ) : (
           <>
-            <div className="overflow-auto">
+            <div className="min-h-0 flex-1 overflow-auto">
               <table className="w-full text-left text-sm">
                 <thead className="sticky top-0 z-10 bg-surface-alt">
                   <tr className="border-b border-white/10 bg-white/5 text-xs uppercase tracking-wide text-ink-500">

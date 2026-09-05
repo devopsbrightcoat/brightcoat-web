@@ -140,7 +140,7 @@ export const Reportes = () => {
           </div>
         </div>
 
-        <div className="flex max-h-[calc(100vh-460px)] flex-col overflow-hidden rounded-xl border border-white/10 bg-surface-alt lg:col-span-2">
+        <div className="flex h-80 xs:max-xl:h-90 xl:max-3xl:h-95 3xl:h-100 flex-col overflow-hidden rounded-xl border border-white/10 bg-surface-alt lg:col-span-2">
           <div className="border-b border-white/10 px-5 py-3.5">
             <p className="text-sm font-semibold text-white">Servicios en el filtro actual</p>
           </div>
