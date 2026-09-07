@@ -1,14 +1,20 @@
+import { useState } from 'react'
+import { Pencil } from 'lucide-react'
+import { EditEmployeeModal } from '../components/EditEmployeeModal'
 import { PageHeader } from '../components/PageHeader'
 import { Pagination } from '../components/Pagination'
 import { StatusPill } from '../components/StatusPill'
 import { fetchEmployees, fetchServices } from '../lib/api'
 import { usePagination } from '../lib/usePagination'
 import { useSupabaseQuery } from '../lib/useSupabaseQuery'
+import type { Employee } from '../types'
 
 export const Empleados = () => {
-  const { data: employees, loading: loadingEmployees, error: errorEmployees } = useSupabaseQuery(fetchEmployees, [])
+  const [refreshKey, setRefreshKey] = useState(0)
+  const { data: employees, loading: loadingEmployees, error: errorEmployees } = useSupabaseQuery(fetchEmployees, [refreshKey])
   const { data: services } = useSupabaseQuery(fetchServices, [])
   const { page, setPage, totalPages, pageItems } = usePagination(employees ?? [], 12)
+  const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null)
 
   const jobCount = (employeeId: string) => (services ?? []).filter((s) => s.employeeId === employeeId).length
 
@@ -42,6 +48,14 @@ export const Empleados = () => {
                     <span>{jobCount(employee.id)} trabajos asignados</span>
                     {employee.hourlyRate && <span className="tabular-nums">${employee.hourlyRate}/hr</span>}
                   </div>
+                  <button
+                    type="button"
+                    onClick={() => setEditingEmployee(employee)}
+                    className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-lg border border-white/10 px-2.5 py-1.5 text-xs font-medium text-ink-300 hover:bg-white/5"
+                  >
+                    <Pencil className="h-3.5 w-3.5" />
+                    Editar
+                  </button>
                 </div>
               ))}
             </div>
@@ -51,6 +65,12 @@ export const Empleados = () => {
           </div>
         </>
       )}
+
+      <EditEmployeeModal
+        employee={editingEmployee}
+        onClose={() => setEditingEmployee(null)}
+        onSaved={() => setRefreshKey((k) => k + 1)}
+      />
     </div>
   )
 }

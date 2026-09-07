@@ -47,6 +47,8 @@ export type Service = {
 export type Expense = {
   id: string
   propertyId?: string
+  serviceId?: string
+  employeeId?: string
   category: ExpenseCategory
   amount: number
   date: string

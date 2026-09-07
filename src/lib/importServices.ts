@@ -8,7 +8,7 @@
 // ---------------------------------------------------------------------------
 
 import ExcelJS from 'exceljs'
-import { fetchEmployees, fetchProperties, fetchServiceTypes } from './api'
+import { fetchEmployees, fetchProperties, fetchServiceTypes, fetchServices } from './api'
 import { supabase } from './supabase'
 import type { PaymentStatus, ServiceCategory, ServiceStatus } from '../types'
 
@@ -66,6 +66,10 @@ export type ImportOutcome = {
   rowNumber: number
   propertyName: string
   success: boolean
+  // true cuando la fila no se insertó porque ya existía un servicio
+  // idéntico (mismo tipo, costo, fecha, etc.) — evita duplicar datos si
+  // Blanca sube el mismo archivo más de una vez.
+  skipped?: boolean
   message: string
 }
 
@@ -224,19 +228,52 @@ export const validateRow = (row: ParsedRow): ValidatedRow => {
   }
 }
 
+// Firma única de un servicio (propiedad + tipo + unidad + costo + fecha +
+// estado de cobro). Se usa para detectar si una fila del Excel ya se había
+// importado antes, de modo que subir el mismo archivo dos veces no duplique
+// los trabajos — algo que puede pasar fácilmente con el flujo de "cortar y
+// pegar" entre las tablas SUBIDO A OPS / PENDIENTE.
+const serviceSignature = (
+  propertyId: string,
+  serviceTypeId: string,
+  unitLabel: string | null,
+  cost: number,
+  scheduledDate: string | null,
+  paymentStatus: PaymentStatus,
+  paidDate: string | null,
+): string =>
+  [propertyId, serviceTypeId, unitLabel ?? '', cost.toFixed(2), scheduledDate ?? '', paymentStatus, paidDate ?? ''].join(
+    '|',
+  )
+
 export const importValidatedRows = async (
   rows: ValidatedRow[],
   onProgress?: (done: number, total: number) => void,
 ): Promise<ImportOutcome[]> => {
-  const [properties, serviceTypes, employees] = await Promise.all([
+  const [properties, serviceTypes, employees, existingServices] = await Promise.all([
     fetchProperties(),
     fetchServiceTypes(),
     fetchEmployees(),
+    fetchServices(),
   ])
 
   const propertyCache = new Map(properties.map((p) => [p.name.trim().toLowerCase(), p.id]))
   const serviceTypeCache = new Map(serviceTypes.map((s) => [s.name.trim().toLowerCase(), s.id]))
   const employeeCache = new Map(employees.map((e) => [e.name.trim().toLowerCase(), e.id]))
+
+  const seenSignatures = new Set(
+    existingServices.map((s) =>
+      serviceSignature(
+        s.propertyId,
+        s.serviceTypeId,
+        s.unitLabel ?? null,
+        s.cost,
+        s.scheduledDate || null,
+        s.paymentStatus,
+        s.paidDate ?? null,
+      ),
+    ),
+  )
 
   const findOrCreateProperty = async (name: string): Promise<string> => {
     const key = name.toLowerCase()
@@ -281,6 +318,29 @@ export const importValidatedRows = async (
       const serviceTypeId = await findOrCreateServiceType(row.serviceTypeName, row.serviceCategory)
       const employeeId = row.employeeName ? await findOrCreateEmployee(row.employeeName) : null
 
+      const paidDateForSignature = row.paymentStatus === 'paid' ? (row.paidDate ?? null) : null
+      const signature = serviceSignature(
+        propertyId,
+        serviceTypeId,
+        row.unitLabel ?? null,
+        row.cost,
+        row.scheduledDate ?? null,
+        row.paymentStatus,
+        paidDateForSignature,
+      )
+      if (seenSignatures.has(signature)) {
+        outcomes.push({
+          sheetName: row.sheetName,
+          rowNumber: row.rowNumber,
+          propertyName: row.propertyName,
+          success: true,
+          skipped: true,
+          message: 'Ya se había importado antes (fila omitida para evitar duplicado).',
+        })
+        onProgress?.(i + 1, rows.length)
+        continue
+      }
+
       // No hay columna de "fecha de completado" en la plantilla — si el
       // trabajo ya quedó como Completado, se asume la fecha programada.
       const completedDate = row.status === 'completed' ? (row.scheduledDate ?? null) : null
@@ -301,6 +361,7 @@ export const importValidatedRows = async (
       })
       if (error) throw error
 
+      seenSignatures.add(signature)
       outcomes.push({
         sheetName: row.sheetName,
         rowNumber: row.rowNumber,

@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { ArrowDown, ArrowUp, ArrowUpDown, Search, X } from 'lucide-react'
+import { ArrowDown, ArrowUp, ArrowUpDown, Pencil, Search, X } from 'lucide-react'
 import {
   createColumnHelper,
   flexRender,
@@ -10,10 +10,13 @@ import {
   type SortingState,
 } from '@tanstack/react-table'
 import { PageHeader } from '../components/PageHeader'
+import { EditServiceModal } from '../components/EditServiceModal'
+import { DateRangeSelect } from '../components/DateRangeSelect'
 import { Pagination } from '../components/Pagination'
 import { StatusPill } from '../components/StatusPill'
 import { fetchEmployees, fetchProperties, fetchServiceTypes, fetchServices } from '../lib/api'
 import { useSupabaseQuery } from '../lib/useSupabaseQuery'
+import { isWithinDateRange, type DateRangeKey } from '../lib/dateRange'
 import type { Service, ServiceStatus } from '../types'
 
 const currency = (value: number) =>
@@ -47,7 +50,8 @@ const selectClass =
 const columnHelper = createColumnHelper<Service>()
 
 export const Trabajos = () => {
-  const { data: services, loading, error } = useSupabaseQuery(fetchServices, [])
+  const [refreshKey, setRefreshKey] = useState(0)
+  const { data: services, loading, error } = useSupabaseQuery(fetchServices, [refreshKey])
   const { data: properties } = useSupabaseQuery(fetchProperties, [])
   const { data: serviceTypes } = useSupabaseQuery(fetchServiceTypes, [])
   const { data: employees } = useSupabaseQuery(fetchEmployees, [])
@@ -56,6 +60,8 @@ export const Trabajos = () => {
   const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS)
   const [sorting, setSorting] = useState<SortingState>([])
   const [pageIndex, setPageIndex] = useState(0)
+  const [editingService, setEditingService] = useState<Service | null>(null)
+  const [dateRange, setDateRange] = useState<DateRangeKey>('all')
 
   const propertyName = (id: string) => properties?.find((p) => p.id === id)?.name ?? '—'
   const serviceTypeName = (id: string) => serviceTypes?.find((s) => s.id === id)?.name ?? '—'
@@ -76,6 +82,7 @@ export const Trabajos = () => {
   const clearAll = () => {
     setFilters(EMPTY_FILTERS)
     setSearchText('')
+    setDateRange('all')
   }
 
   const availableUnits = useMemo(() => {
@@ -97,13 +104,14 @@ export const Trabajos = () => {
       if (filters.units.length > 0 && (!s.unitLabel || !filters.units.includes(s.unitLabel))) return false
       if (filters.serviceTypeIds.length > 0 && !filters.serviceTypeIds.includes(s.serviceTypeId)) return false
       if (filters.statuses.length > 0 && !filters.statuses.includes(s.status)) return false
+      if (!isWithinDateRange(s.scheduledDate, dateRange)) return false
       if (!q) return true
       const propName = properties?.find((p) => p.id === s.propertyId)?.name ?? ''
       const typeName = serviceTypes?.find((t) => t.id === s.serviceTypeId)?.name ?? ''
       const haystack = [propName, s.unitLabel, typeName, s.notes].filter(Boolean).join(' ').toLowerCase()
       return haystack.includes(q)
     })
-  }, [services, filters, searchText, properties, serviceTypes])
+  }, [services, filters, searchText, properties, serviceTypes, dateRange])
 
   const columns = useMemo(
     () => [
@@ -155,6 +163,20 @@ export const Trabajos = () => {
           </span>
         ),
       }),
+      columnHelper.display({
+        id: 'actions',
+        header: '',
+        cell: (info) => (
+          <button
+            type="button"
+            onClick={() => setEditingService(info.row.original)}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 px-2.5 py-1.5 text-xs font-medium text-ink-300 hover:bg-white/5"
+          >
+            <Pencil className="h-3.5 w-3.5" />
+            Editar
+          </button>
+        ),
+      }),
     ],
     [properties, serviceTypes, employees],
   )
@@ -197,7 +219,7 @@ export const Trabajos = () => {
       label: `Estado: ${STATUS_LABELS[st]}`,
     })),
   ]
-  const hasActiveFilters = chips.length > 0 || searchText.trim() !== ''
+  const hasActiveFilters = chips.length > 0 || searchText.trim() !== '' || dateRange !== 'all'
 
   return (
     <div className="h-screen overflow-hidden flex flex-col">
@@ -259,6 +281,8 @@ export const Trabajos = () => {
             </option>
           ))}
         </select>
+
+        <DateRangeSelect value={dateRange} onChange={setDateRange} className={selectClass} />
       </div>
 
       {chips.length > 0 && (
@@ -358,6 +382,15 @@ export const Trabajos = () => {
           </div>
         )}
       </div>
+
+      <EditServiceModal
+        service={editingService}
+        properties={properties ?? []}
+        serviceTypes={serviceTypes ?? []}
+        employees={employees ?? []}
+        onClose={() => setEditingService(null)}
+        onSaved={() => setRefreshKey((k) => k + 1)}
+      />
     </div>
   )
 }
