@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { ArrowDown, ArrowUp, ArrowUpDown, Download, TrendingDown, TrendingUp, Wallet } from 'lucide-react'
+import { ArrowDown, ArrowUp, ArrowUpDown, Download, Receipt, TrendingDown } from 'lucide-react'
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import {
   createColumnHelper,
@@ -13,12 +13,11 @@ import {
 import { PageHeader } from '../components/PageHeader'
 import { Pagination } from '../components/Pagination'
 import { StatCard } from '../components/StatCard'
-import { StatusPill } from '../components/StatusPill'
 import { DateRangeSelect } from '../components/DateRangeSelect'
-import { fetchExpenses, fetchProperties, fetchServiceTypes, fetchServices } from '../lib/api'
+import { fetchExpenses, fetchProperties } from '../lib/api'
 import { useSupabaseQuery } from '../lib/useSupabaseQuery'
 import { isWithinDateRange, type DateRangeKey } from '../lib/dateRange'
-import type { Service } from '../types'
+import type { Expense } from '../types'
 
 const currency = (value: number) =>
   value.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 })
@@ -33,7 +32,7 @@ const categoryLabels: Record<string, string> = {
   other: 'Otro',
 }
 
-const columnHelper = createColumnHelper<Service>()
+const columnHelper = createColumnHelper<Expense>()
 
 const SortIcon = ({ direction }: { direction: false | 'asc' | 'desc' }) =>
   direction === 'asc' ? (
@@ -46,27 +45,13 @@ const SortIcon = ({ direction }: { direction: false | 'asc' | 'desc' }) =>
 
 export const Reportes = () => {
   const [propertyId, setPropertyId] = useState('all')
-  const [serviceTypeId, setServiceTypeId] = useState('all')
   const [dateRange, setDateRange] = useState<DateRangeKey>('all')
 
-  const { data: services, loading: loadingServices, error: errorServices } = useSupabaseQuery(fetchServices, [])
-  const { data: expenses } = useSupabaseQuery(fetchExpenses, [])
+  const { data: expenses, loading: loadingExpenses, error: errorExpenses } = useSupabaseQuery(fetchExpenses, [])
   const { data: properties } = useSupabaseQuery(fetchProperties, [])
-  const { data: serviceTypes } = useSupabaseQuery(fetchServiceTypes, [])
 
   const [sorting, setSorting] = useState<SortingState>([])
   const [pageIndex, setPageIndex] = useState(0)
-
-  const filteredServices = useMemo(
-    () =>
-      (services ?? []).filter(
-        (s) =>
-          (propertyId === 'all' || s.propertyId === propertyId) &&
-          (serviceTypeId === 'all' || s.serviceTypeId === serviceTypeId) &&
-          isWithinDateRange(s.scheduledDate, dateRange),
-      ),
-    [services, propertyId, serviceTypeId, dateRange],
-  )
 
   const filteredExpenses = useMemo(
     () =>
@@ -76,7 +61,6 @@ export const Reportes = () => {
     [expenses, propertyId, dateRange],
   )
 
-  const totalIncome = filteredServices.reduce((sum, s) => sum + s.cost, 0)
   const totalExpenses = filteredExpenses.reduce((sum, e) => sum + e.amount, 0)
 
   const expensesByCategory = useMemo(() => {
@@ -91,33 +75,35 @@ export const Reportes = () => {
 
   const columns = useMemo(
     () => [
-      columnHelper.accessor((row) => properties?.find((p) => p.id === row.propertyId)?.name ?? '—', {
-        id: 'property',
-        header: 'Propiedad',
+      columnHelper.accessor(
+        (row) => (row.propertyId ? properties?.find((p) => p.id === row.propertyId)?.name : 'Gasto general') ?? '—',
+        {
+          id: 'property',
+          header: 'Propiedad',
+        },
+      ),
+      columnHelper.accessor((row) => categoryLabels[row.category] ?? row.category, {
+        id: 'category',
+        header: 'Categoría',
       }),
-      columnHelper.accessor((row) => serviceTypes?.find((s) => s.id === row.serviceTypeId)?.name ?? '—', {
-        id: 'serviceType',
-        header: 'Servicio',
+      columnHelper.accessor('date', {
+        id: 'date',
+        header: 'Fecha',
       }),
-      columnHelper.accessor('cost', {
-        id: 'cost',
-        header: 'Costo',
+      columnHelper.accessor('amount', {
+        id: 'amount',
+        header: 'Monto',
         cell: (info) => <span className="tabular-nums">{currency(info.getValue())}</span>,
       }),
-      columnHelper.accessor('status', {
-        id: 'status',
-        header: 'Estado',
-        cell: (info) => <StatusPill status={info.getValue()} />,
-      }),
     ],
-    [properties, serviceTypes],
+    [properties],
   )
 
-  const pageCount = Math.max(1, Math.ceil(filteredServices.length / PAGE_SIZE))
+  const pageCount = Math.max(1, Math.ceil(filteredExpenses.length / PAGE_SIZE))
   const currentPageIndex = Math.min(pageIndex, pageCount - 1)
 
   const table = useReactTable({
-    data: filteredServices,
+    data: filteredExpenses,
     columns,
     state: { sorting, pagination: { pageIndex: currentPageIndex, pageSize: PAGE_SIZE } },
     onSortingChange: setSorting,
@@ -135,7 +121,7 @@ export const Reportes = () => {
     <div className="pb-10">
       <PageHeader
         title="Reportes"
-        subtitle="Financiero por propiedad y tipo de servicio"
+        subtitle="Gastos por propiedad y categoría"
         action={
           <button
             type="button"
@@ -161,19 +147,6 @@ export const Reportes = () => {
           ))}
         </select>
 
-        <select
-          value={serviceTypeId}
-          onChange={(e) => setServiceTypeId(e.target.value)}
-          className="rounded-lg border border-white/10 bg-surface-alt px-3 py-2 text-sm text-ink-200"
-        >
-          <option value="all">Todos los tipos de servicio</option>
-          {(serviceTypes ?? []).map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.name}
-            </option>
-          ))}
-        </select>
-
         <DateRangeSelect
           value={dateRange}
           onChange={setDateRange}
@@ -181,10 +154,9 @@ export const Reportes = () => {
         />
       </div>
 
-      <div className="grid grid-cols-1 gap-4 px-8 pt-6 sm:grid-cols-3">
-        <StatCard label="Ingresos" value={currency(totalIncome)} icon={TrendingUp} tone="good" />
+      <div className="grid grid-cols-1 gap-4 px-8 pt-6 sm:grid-cols-2 lg:max-w-md">
         <StatCard label="Gastos" value={currency(totalExpenses)} icon={TrendingDown} />
-        <StatCard label="Neto" value={currency(totalIncome - totalExpenses)} icon={Wallet} tone="good" />
+        <StatCard label="Registros" value={String(filteredExpenses.length)} icon={Receipt} />
       </div>
 
       <div className="grid grid-cols-1 gap-6 px-8 pt-6 lg:grid-cols-3">
@@ -217,7 +189,7 @@ export const Reportes = () => {
 
         <div className="flex h-80 xs:max-xl:h-90 xl:max-3xl:h-95 3xl:h-100 flex-col overflow-hidden rounded-xl border border-white/10 bg-surface-alt lg:col-span-2">
           <div className="border-b border-white/10 px-5 py-3.5">
-            <p className="text-sm font-semibold text-white">Servicios en el filtro actual</p>
+            <p className="text-sm font-semibold text-white">Gastos en el filtro actual</p>
           </div>
           <div className="overflow-auto">
             <table className="w-full text-left text-sm">
@@ -243,22 +215,22 @@ export const Reportes = () => {
                 ))}
               </thead>
               <tbody>
-                {loadingServices ? (
+                {loadingExpenses ? (
                   <tr>
                     <td colSpan={4} className="px-5 py-6 text-center text-sm text-ink-500">
-                      Cargando servicios…
+                      Cargando gastos…
                     </td>
                   </tr>
-                ) : errorServices ? (
+                ) : errorExpenses ? (
                   <tr>
                     <td colSpan={4} className="px-5 py-6 text-center text-sm text-red-400">
-                      No se pudieron cargar los servicios: {errorServices}
+                      No se pudieron cargar los gastos: {errorExpenses}
                     </td>
                   </tr>
-                ) : filteredServices.length === 0 ? (
+                ) : filteredExpenses.length === 0 ? (
                   <tr>
                     <td colSpan={4} className="px-5 py-6 text-center text-sm text-ink-500">
-                      No hay servicios con estos filtros.
+                      No hay gastos con estos filtros.
                     </td>
                   </tr>
                 ) : (

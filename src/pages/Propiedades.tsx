@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { ArrowDown, ArrowUp, ArrowUpDown, Pencil } from 'lucide-react'
+import { ArrowDown, ArrowUp, ArrowUpDown, Pencil, Plus, Search } from 'lucide-react'
 import {
   createColumnHelper,
   flexRender,
@@ -9,6 +9,7 @@ import {
   useReactTable,
   type SortingState,
 } from '@tanstack/react-table'
+import { AddPropertyModal } from '../components/AddPropertyModal'
 import { EditPropertyModal } from '../components/EditPropertyModal'
 import { PageHeader } from '../components/PageHeader'
 import { Pagination } from '../components/Pagination'
@@ -40,9 +41,17 @@ export const Propiedades = () => {
   const [refreshKey, setRefreshKey] = useState(0)
   const { data: properties, loading, error } = useSupabaseQuery(fetchProperties, [refreshKey])
 
+  const [searchText, setSearchText] = useState('')
   const [sorting, setSorting] = useState<SortingState>([])
   const [pageIndex, setPageIndex] = useState(0)
+  const [addOpen, setAddOpen] = useState(false)
   const [editingProperty, setEditingProperty] = useState<Property | null>(null)
+
+  const filteredProperties = useMemo(() => {
+    const q = searchText.trim().toLowerCase()
+    if (!q) return properties ?? []
+    return (properties ?? []).filter((p) => p.name.toLowerCase().includes(q))
+  }, [properties, searchText])
 
   const columns = useMemo(
     () => [
@@ -86,11 +95,11 @@ export const Propiedades = () => {
     [],
   )
 
-  const pageCount = Math.max(1, Math.ceil((properties ?? []).length / PAGE_SIZE))
+  const pageCount = Math.max(1, Math.ceil(filteredProperties.length / PAGE_SIZE))
   const currentPageIndex = Math.min(pageIndex, pageCount - 1)
 
   const table = useReactTable({
-    data: properties ?? [],
+    data: filteredProperties,
     columns,
     state: { sorting, pagination: { pageIndex: currentPageIndex, pageSize: PAGE_SIZE } },
     onSortingChange: setSorting,
@@ -109,15 +118,40 @@ export const Propiedades = () => {
       <PageHeader
         title="Propiedades"
         subtitle={properties ? `${properties.length} propiedades registradas` : 'Cargando…'}
+        action={
+          <button
+            type="button"
+            onClick={() => setAddOpen(true)}
+            className="flex items-center gap-2 rounded-lg bg-gold-500 px-3.5 py-2 text-sm font-semibold text-brand-900 transition hover:bg-gold-400"
+          >
+            <Plus className="h-4 w-4" />
+            Agregar propiedad
+          </button>
+        }
       />
 
-      <div className="mx-8 mt-6 mb-6 flex flex-1 min-h-0 flex-col overflow-hidden rounded-xl border border-white/10 bg-surface-alt">
+      <div className="mx-8 mt-6">
+        <div className="relative max-w-sm">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-500" />
+          <input
+            type="text"
+            value={searchText}
+            onChange={(e) => setSearchText(e.target.value)}
+            placeholder="Buscar por nombre…"
+            className="w-full rounded-lg border border-white/10 bg-surface-alt py-2 pl-9 pr-3 text-sm text-ink-200 placeholder:text-ink-500"
+          />
+        </div>
+      </div>
+
+      <div className="mx-8 mt-4 mb-6 flex flex-1 min-h-0 flex-col overflow-hidden rounded-xl border border-white/10 bg-surface-alt">
         {loading ? (
           <p className="px-5 py-6 text-sm text-ink-500">Cargando propiedades…</p>
         ) : error ? (
           <p className="px-5 py-6 text-sm text-red-400">No se pudieron cargar las propiedades: {error}</p>
         ) : !properties || properties.length === 0 ? (
           <p className="px-5 py-6 text-sm text-ink-500">Todavía no hay propiedades registradas.</p>
+        ) : filteredProperties.length === 0 ? (
+          <p className="px-5 py-6 text-sm text-ink-500">Ninguna propiedad coincide con "{searchText}".</p>
         ) : (
           <>
             <div className="min-h-0 flex-1 overflow-auto">
@@ -164,6 +198,8 @@ export const Propiedades = () => {
           </>
         )}
       </div>
+
+      <AddPropertyModal open={addOpen} onClose={() => setAddOpen(false)} onSaved={() => setRefreshKey((k) => k + 1)} />
 
       <EditPropertyModal
         property={editingProperty}

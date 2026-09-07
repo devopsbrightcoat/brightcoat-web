@@ -8,7 +8,6 @@
 
 export type ClientType = 'residential' | 'multifamily' | 'property_manager'
 export type PropertyStatus = 'active' | 'inactive'
-export type ServiceStatus = 'pending' | 'in_progress' | 'completed'
 export type PaymentStatus = 'pending' | 'paid'
 export type ExpenseCategory = 'materials' | 'labor' | 'transport' | 'tools' | 'other'
 export type ServiceCategory = 'painting' | 'cleaning' | 'make_ready' | 'repair' | 'other'
@@ -28,22 +27,6 @@ export type ServiceType = {
   category: ServiceCategory
 }
 
-export type Service = {
-  id: string
-  propertyId: string
-  serviceTypeId: string
-  employeeId?: string
-  unitLabel?: string
-  unitSize?: string
-  status: ServiceStatus
-  scheduledDate: string
-  completedDate?: string
-  cost: number
-  paymentStatus: PaymentStatus
-  paidDate?: string
-  notes?: string
-}
-
 export type Expense = {
   id: string
   propertyId?: string
@@ -55,10 +38,55 @@ export type Expense = {
   description: string
 }
 
+export type W2Status = 'approved' | 'pending'
+
 export type Employee = {
   id: string
   name: string
   role: string
+  contactNumber?: string
+  address?: string
   status: 'active' | 'inactive'
+  w2Status: W2Status
   hourlyRate?: number
+}
+
+export type Charge = {
+  id: string
+  propertyId: string
+  unitLabel?: string
+  description?: string
+  amount: number
+  status: PaymentStatus
+  generatedDate?: string
+  payrollPeriod?: string
+  responsible?: string
+  notes?: string
+}
+
+export type ScheduleStatus = 'pending' | 'in_progress' | 'delivered' | 'cancelled'
+
+export type Schedule = {
+  id: string
+  propertyId: string
+  unitLabel?: string
+  serviceTypeId: string
+  employeeId: string
+  scheduledDate: string
+  scheduledTime: string
+  status: ScheduleStatus
+}
+
+export type ScheduleChargeExtra = {
+  id: string
+  description: string
+  amount: number
+}
+
+export type ScheduleCharge = {
+  id: string
+  scheduleId: string
+  totalCost: number
+  notes?: string
+  extras: ScheduleChargeExtra[]
 }

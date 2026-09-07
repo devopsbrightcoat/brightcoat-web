@@ -1,6 +1,6 @@
 // ---------------------------------------------------------------------------
 // Utilidades para el filtro de rango de fechas (última semana, 15 días, etc.)
-// compartido entre Trabajos, Finanzas y Reportes.
+// compartido entre Finanzas y Reportes.
 // ---------------------------------------------------------------------------
 
 export type DateRangeKey = 'week' | 'fifteen_days' | 'month' | 'three_months' | 'six_months' | 'all'

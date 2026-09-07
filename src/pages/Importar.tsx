@@ -2,22 +2,22 @@ import { useRef, useState } from 'react'
 import { AlertTriangle, CheckCircle2, Download, FileSpreadsheet, RotateCcw, Upload, XCircle } from 'lucide-react'
 import { PageHeader } from '../components/PageHeader'
 import {
+  importValidatedChargeRows,
+  parseChargesWorkbook,
+  validateChargeRow,
+  type ImportChargeOutcome,
+  type ValidatedChargeRow,
+} from '../lib/importCobros'
+import {
   importValidatedExpenseRows,
   parseExpensesWorkbook,
   validateExpenseRow,
   type ImportExpenseOutcome,
   type ValidatedExpenseRow,
 } from '../lib/importExpenses'
-import {
-  importValidatedRows,
-  parseServicesWorkbook,
-  validateRow,
-  type ImportOutcome,
-  type ValidatedRow,
-} from '../lib/importServices'
 
 type Stage = 'idle' | 'parsed' | 'importing' | 'done'
-type Kind = 'servicios' | 'gastos'
+type Kind = 'gastos' | 'cobros'
 
 const currency = (value: number) =>
   value.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 })
@@ -31,22 +31,12 @@ const categoryLabels: Record<string, string> = {
 }
 
 const TABS: { key: Kind; label: string }[] = [
-  { key: 'servicios', label: 'Servicios' },
+  { key: 'cobros', label: 'Cobros' },
   { key: 'gastos', label: 'Gastos' },
 ]
 
 export const Importar = () => {
-  const [kind, setKind] = useState<Kind>('servicios')
-
-  // -- Servicios --------------------------------------------------------
-  const [svcStage, setSvcStage] = useState<Stage>('idle')
-  const [svcFileName, setSvcFileName] = useState('')
-  const [svcParseError, setSvcParseError] = useState<string | null>(null)
-  const [svcRows, setSvcRows] = useState<ValidatedRow[]>([])
-  const [svcProgress, setSvcProgress] = useState({ done: 0, total: 0 })
-  const [svcOutcomes, setSvcOutcomes] = useState<ImportOutcome[]>([])
-  const [svcDragOver, setSvcDragOver] = useState(false)
-  const svcInputRef = useRef<HTMLInputElement>(null)
+  const [kind, setKind] = useState<Kind>('cobros')
 
   // -- Gastos -------------------------------------------------------------
   const [expStage, setExpStage] = useState<Stage>('idle')
@@ -58,11 +48,15 @@ export const Importar = () => {
   const [expDragOver, setExpDragOver] = useState(false)
   const expInputRef = useRef<HTMLInputElement>(null)
 
-  const svcValidRows = svcRows.filter((r) => r.errors.length === 0)
-  const svcInvalidCount = svcRows.length - svcValidRows.length
-  const svcSuccessCount = svcOutcomes.filter((o) => o.success && !o.skipped).length
-  const svcSkippedCount = svcOutcomes.filter((o) => o.skipped).length
-  const svcFailureCount = svcOutcomes.filter((o) => !o.success).length
+  // -- Cobros ---------------------------------------------------------------
+  const [chgStage, setChgStage] = useState<Stage>('idle')
+  const [chgFileName, setChgFileName] = useState('')
+  const [chgParseError, setChgParseError] = useState<string | null>(null)
+  const [chgRows, setChgRows] = useState<ValidatedChargeRow[]>([])
+  const [chgProgress, setChgProgress] = useState({ done: 0, total: 0 })
+  const [chgOutcomes, setChgOutcomes] = useState<ImportChargeOutcome[]>([])
+  const [chgDragOver, setChgDragOver] = useState(false)
+  const chgInputRef = useRef<HTMLInputElement>(null)
 
   const expValidRows = expRows.filter((r) => r.errors.length === 0)
   const expInvalidCount = expRows.length - expValidRows.length
@@ -70,44 +64,11 @@ export const Importar = () => {
   const expSkippedCount = expOutcomes.filter((o) => o.skipped).length
   const expFailureCount = expOutcomes.filter((o) => !o.success).length
 
-  const handleServiceFile = async (file: File) => {
-    setSvcFileName(file.name)
-    setSvcParseError(null)
-    setSvcOutcomes([])
-
-    try {
-      const parsed = await parseServicesWorkbook(file)
-      if (parsed.length === 0) {
-        setSvcParseError('No se encontraron filas con datos en la hoja "Servicios".')
-        setSvcRows([])
-        setSvcStage('idle')
-        return
-      }
-      setSvcRows(parsed.map(validateRow))
-      setSvcStage('parsed')
-    } catch (err) {
-      setSvcParseError(err instanceof Error ? err.message : 'No se pudo leer el archivo.')
-      setSvcRows([])
-      setSvcStage('idle')
-    }
-  }
-
-  const handleServiceImport = async () => {
-    setSvcStage('importing')
-    setSvcProgress({ done: 0, total: svcValidRows.length })
-    const result = await importValidatedRows(svcValidRows, (done, total) => setSvcProgress({ done, total }))
-    setSvcOutcomes(result)
-    setSvcStage('done')
-  }
-
-  const resetServices = () => {
-    setSvcStage('idle')
-    setSvcFileName('')
-    setSvcParseError(null)
-    setSvcRows([])
-    setSvcOutcomes([])
-    if (svcInputRef.current) svcInputRef.current.value = ''
-  }
+  const chgValidRows = chgRows.filter((r) => r.errors.length === 0)
+  const chgInvalidCount = chgRows.length - chgValidRows.length
+  const chgSuccessCount = chgOutcomes.filter((o) => o.success && !o.skipped).length
+  const chgSkippedCount = chgOutcomes.filter((o) => o.skipped).length
+  const chgFailureCount = chgOutcomes.filter((o) => !o.success).length
 
   const handleExpenseFile = async (file: File) => {
     setExpFileName(file.name)
@@ -148,21 +109,62 @@ export const Importar = () => {
     if (expInputRef.current) expInputRef.current.value = ''
   }
 
-  const stage = kind === 'servicios' ? svcStage : expStage
-  const fileName = kind === 'servicios' ? svcFileName : expFileName
-  const parseError = kind === 'servicios' ? svcParseError : expParseError
-  const dragOver = kind === 'servicios' ? svcDragOver : expDragOver
-  const setDragOver = kind === 'servicios' ? setSvcDragOver : setExpDragOver
-  const inputRef = kind === 'servicios' ? svcInputRef : expInputRef
-  const handleFile = kind === 'servicios' ? handleServiceFile : handleExpenseFile
-  const templateHref = kind === 'servicios' ? '/plantilla-servicios.xlsx' : '/plantilla-gastos.xlsx'
-  const acceptHint = kind === 'servicios' ? 'Plantilla "Servicios" en formato .xlsx' : 'Plantilla "Gastos" en formato .xlsx'
+  const handleChargeFile = async (file: File) => {
+    setChgFileName(file.name)
+    setChgParseError(null)
+    setChgOutcomes([])
+
+    try {
+      const parsed = await parseChargesWorkbook(file)
+      if (parsed.length === 0) {
+        setChgParseError('No se encontraron filas con datos en la hoja "Cobros".')
+        setChgRows([])
+        setChgStage('idle')
+        return
+      }
+      setChgRows(parsed.map(validateChargeRow))
+      setChgStage('parsed')
+    } catch (err) {
+      setChgParseError(err instanceof Error ? err.message : 'No se pudo leer el archivo.')
+      setChgRows([])
+      setChgStage('idle')
+    }
+  }
+
+  const handleChargeImport = async () => {
+    setChgStage('importing')
+    setChgProgress({ done: 0, total: chgValidRows.length })
+    const result = await importValidatedChargeRows(chgValidRows, (done, total) => setChgProgress({ done, total }))
+    setChgOutcomes(result)
+    setChgStage('done')
+  }
+
+  const resetCharges = () => {
+    setChgStage('idle')
+    setChgFileName('')
+    setChgParseError(null)
+    setChgRows([])
+    setChgOutcomes([])
+    if (chgInputRef.current) chgInputRef.current.value = ''
+  }
+
+  const stage = kind === 'gastos' ? expStage : chgStage
+  const fileName = kind === 'gastos' ? expFileName : chgFileName
+  const parseError = kind === 'gastos' ? expParseError : chgParseError
+  const dragOver = kind === 'gastos' ? expDragOver : chgDragOver
+  const setDragOver = kind === 'gastos' ? setExpDragOver : setChgDragOver
+  const inputRef = kind === 'gastos' ? expInputRef : chgInputRef
+  const handleFile = kind === 'gastos' ? handleExpenseFile : handleChargeFile
+  const templateHref = kind === 'gastos' ? '/plantilla-gastos.xlsx' : '/plantilla-cobros.xlsx'
+  const acceptHint = kind === 'gastos' ? 'Plantilla "Gastos" en formato .xlsx' : 'Plantilla "Cobros" en formato .xlsx'
 
   return (
     <div className="pb-10">
       <PageHeader
         title="Importar Excel"
-        subtitle={kind === 'servicios' ? 'Sube la plantilla de servicios y cobros' : 'Sube la plantilla de gastos y planillas'}
+        subtitle={
+          kind === 'gastos' ? 'Sube la plantilla de gastos y planillas' : 'Sube la plantilla de cobros por apartamento'
+        }
         action={
           <a
             href={templateHref}
@@ -243,120 +245,6 @@ export const Importar = () => {
         </div>
       )}
 
-      {kind === 'servicios' && stage !== 'idle' && (
-        <>
-          <div className="mx-8 mt-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-white/10 bg-surface-alt px-5 py-3.5">
-            <div className="flex items-center gap-2 text-sm text-ink-200">
-              <FileSpreadsheet className="h-4 w-4 text-ink-500" />
-              {fileName} · {svcRows.length} filas · {svcValidRows.length} válidas
-              {svcInvalidCount > 0 && <span className="text-red-400">, {svcInvalidCount} con error</span>}
-            </div>
-            {svcStage !== 'importing' && (
-              <button
-                type="button"
-                onClick={resetServices}
-                className="flex items-center gap-1.5 rounded-lg border border-white/10 px-3 py-1.5 text-xs font-medium text-ink-300 hover:bg-white/5"
-              >
-                <RotateCcw className="h-3.5 w-3.5" />
-                Cargar otro archivo
-              </button>
-            )}
-          </div>
-
-          {svcStage === 'parsed' && (
-            <div className="mx-8 mt-4">
-              <button
-                type="button"
-                disabled={svcValidRows.length === 0}
-                onClick={handleServiceImport}
-                className="rounded-lg bg-gold-500 px-4 py-2.5 text-sm font-semibold text-brand-900 transition hover:bg-gold-400 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                Importar {svcValidRows.length} {svcValidRows.length === 1 ? 'fila válida' : 'filas válidas'}
-              </button>
-            </div>
-          )}
-
-          {svcStage === 'importing' && (
-            <p className="mx-8 mt-4 text-sm text-ink-400">
-              Importando… {svcProgress.done} / {svcProgress.total}
-            </p>
-          )}
-
-          {svcStage === 'done' && (
-            <div className="mx-8 mt-4 flex flex-wrap items-center gap-4 text-sm">
-              <span className="flex items-center gap-1.5 text-emerald-400">
-                <CheckCircle2 className="h-4 w-4" /> {svcSuccessCount} importados
-              </span>
-              {svcSkippedCount > 0 && (
-                <span className="flex items-center gap-1.5 text-amber-400">
-                  <AlertTriangle className="h-4 w-4" /> {svcSkippedCount} ya estaban importados (omitidos)
-                </span>
-              )}
-              {svcFailureCount > 0 && (
-                <span className="flex items-center gap-1.5 text-red-400">
-                  <XCircle className="h-4 w-4" /> {svcFailureCount} con error
-                </span>
-              )}
-            </div>
-          )}
-
-          <div className="mx-8 mt-4 overflow-x-auto rounded-xl border border-white/10 bg-surface-alt">
-            <table className="w-full text-left text-sm">
-              <thead>
-                <tr className="border-b border-white/10 bg-white/5 text-xs uppercase tracking-wide text-ink-500">
-                  <th className="px-5 py-3 font-medium">Pestaña</th>
-                  <th className="px-5 py-3 font-medium">Propiedad</th>
-                  <th className="px-5 py-3 font-medium">Servicio</th>
-                  <th className="px-5 py-3 font-medium">Costo</th>
-                  <th className="px-5 py-3 font-medium">Resultado</th>
-                </tr>
-              </thead>
-              <tbody>
-                {svcRows.map((row) => {
-                  const outcome = svcOutcomes.find((o) => o.sheetName === row.sheetName && o.rowNumber === row.rowNumber)
-                  return (
-                    <tr key={`${row.sheetName}-${row.rowNumber}`} className="border-b border-white/5 last:border-0">
-                      <td className="px-5 py-3 text-ink-500">
-                        {row.sheetName} · fila {row.rowNumber}
-                      </td>
-                      <td className="px-5 py-3 text-ink-200">{row.propertyName || '—'}</td>
-                      <td className="px-5 py-3 text-ink-400">{row.serviceTypeName || '—'}</td>
-                      <td className="px-5 py-3 tabular-nums text-ink-400">
-                        {Number.isNaN(row.cost) ? '—' : currency(row.cost)}
-                      </td>
-                      <td className="px-5 py-3">
-                        {outcome ? (
-                          outcome.skipped ? (
-                            <span className="flex items-start gap-1.5 text-amber-400">
-                              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" /> Ya estaba importado
-                            </span>
-                          ) : outcome.success ? (
-                            <span className="flex items-center gap-1.5 text-emerald-400">
-                              <CheckCircle2 className="h-4 w-4 shrink-0" /> Importado
-                            </span>
-                          ) : (
-                            <span className="flex items-start gap-1.5 text-red-400">
-                              <XCircle className="mt-0.5 h-4 w-4 shrink-0" /> {outcome.message}
-                            </span>
-                          )
-                        ) : row.errors.length > 0 ? (
-                          <span className="flex items-start gap-1.5 text-red-400">
-                            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-                            <span>{row.errors.join(' ')}</span>
-                          </span>
-                        ) : (
-                          <span className="text-ink-500">Lista para importar</span>
-                        )}
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          </div>
-        </>
-      )}
-
       {kind === 'gastos' && stage !== 'idle' && (
         <>
           <div className="mx-8 mt-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-white/10 bg-surface-alt px-5 py-3.5">
@@ -433,6 +321,126 @@ export const Importar = () => {
                       <td className="px-5 py-3 text-ink-500">fila {row.rowNumber}</td>
                       <td className="px-5 py-3 text-ink-200">{row.propertyName || 'Gasto general'}</td>
                       <td className="px-5 py-3 text-ink-400">{categoryLabels[row.category] ?? row.category}</td>
+                      <td className="px-5 py-3 tabular-nums text-ink-400">
+                        {Number.isNaN(row.amount) ? '—' : currency(row.amount)}
+                      </td>
+                      <td className="px-5 py-3">
+                        {outcome ? (
+                          outcome.skipped ? (
+                            <span className="flex items-start gap-1.5 text-amber-400">
+                              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" /> Ya estaba importado
+                            </span>
+                          ) : outcome.success ? (
+                            <span className="flex items-center gap-1.5 text-emerald-400">
+                              <CheckCircle2 className="h-4 w-4 shrink-0" /> Importado
+                            </span>
+                          ) : (
+                            <span className="flex items-start gap-1.5 text-red-400">
+                              <XCircle className="mt-0.5 h-4 w-4 shrink-0" /> {outcome.message}
+                            </span>
+                          )
+                        ) : row.errors.length > 0 ? (
+                          <span className="flex items-start gap-1.5 text-red-400">
+                            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                            <span>{row.errors.join(' ')}</span>
+                          </span>
+                        ) : (
+                          <span className="text-ink-500">Lista para importar</span>
+                        )}
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
+
+      {kind === 'cobros' && stage !== 'idle' && (
+        <>
+          <div className="mx-8 mt-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-white/10 bg-surface-alt px-5 py-3.5">
+            <div className="flex items-center gap-2 text-sm text-ink-200">
+              <FileSpreadsheet className="h-4 w-4 text-ink-500" />
+              {fileName} · {chgRows.length} filas · {chgValidRows.length} válidas
+              {chgInvalidCount > 0 && <span className="text-red-400">, {chgInvalidCount} con error</span>}
+            </div>
+            {chgStage !== 'importing' && (
+              <button
+                type="button"
+                onClick={resetCharges}
+                className="flex items-center gap-1.5 rounded-lg border border-white/10 px-3 py-1.5 text-xs font-medium text-ink-300 hover:bg-white/5"
+              >
+                <RotateCcw className="h-3.5 w-3.5" />
+                Cargar otro archivo
+              </button>
+            )}
+          </div>
+
+          {chgStage === 'parsed' && (
+            <div className="mx-8 mt-4">
+              <button
+                type="button"
+                disabled={chgValidRows.length === 0}
+                onClick={handleChargeImport}
+                className="rounded-lg bg-gold-500 px-4 py-2.5 text-sm font-semibold text-brand-900 transition hover:bg-gold-400 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Importar {chgValidRows.length} {chgValidRows.length === 1 ? 'fila válida' : 'filas válidas'}
+              </button>
+            </div>
+          )}
+
+          {chgStage === 'importing' && (
+            <p className="mx-8 mt-4 text-sm text-ink-400">
+              Importando… {chgProgress.done} / {chgProgress.total}
+            </p>
+          )}
+
+          {chgStage === 'done' && (
+            <div className="mx-8 mt-4 flex flex-wrap items-center gap-4 text-sm">
+              <span className="flex items-center gap-1.5 text-emerald-400">
+                <CheckCircle2 className="h-4 w-4" /> {chgSuccessCount} importados
+              </span>
+              {chgSkippedCount > 0 && (
+                <span className="flex items-center gap-1.5 text-amber-400">
+                  <AlertTriangle className="h-4 w-4" /> {chgSkippedCount} ya estaban importados (omitidos)
+                </span>
+              )}
+              {chgFailureCount > 0 && (
+                <span className="flex items-center gap-1.5 text-red-400">
+                  <XCircle className="h-4 w-4" /> {chgFailureCount} con error
+                </span>
+              )}
+            </div>
+          )}
+
+          <div className="mx-8 mt-4 overflow-x-auto rounded-xl border border-white/10 bg-surface-alt">
+            <table className="w-full text-left text-sm">
+              <thead>
+                <tr className="border-b border-white/10 bg-white/5 text-xs uppercase tracking-wide text-ink-500">
+                  <th className="px-5 py-3 font-medium">Pestaña</th>
+                  <th className="px-5 py-3 font-medium">Tabla</th>
+                  <th className="px-5 py-3 font-medium">Apartamento</th>
+                  <th className="px-5 py-3 font-medium">Descripción</th>
+                  <th className="px-5 py-3 font-medium">Monto</th>
+                  <th className="px-5 py-3 font-medium">Resultado</th>
+                </tr>
+              </thead>
+              <tbody>
+                {chgRows.map((row) => {
+                  const outcome = chgOutcomes.find(
+                    (o) => o.sheetName === row.sheetName && o.rowNumber === row.rowNumber && o.side === row.side,
+                  )
+                  return (
+                    <tr key={`${row.sheetName}-${row.rowNumber}-${row.side}`} className="border-b border-white/5 last:border-0">
+                      <td className="px-5 py-3 text-ink-500">
+                        {row.sheetName} · fila {row.rowNumber}
+                      </td>
+                      <td className="px-5 py-3 text-ink-400">
+                        {row.status === 'paid' ? 'Subido a OPS' : 'Pendiente'}
+                      </td>
+                      <td className="px-5 py-3 text-ink-200">{row.unitLabel || '—'}</td>
+                      <td className="px-5 py-3 text-ink-400">{row.description || '—'}</td>
                       <td className="px-5 py-3 tabular-nums text-ink-400">
                         {Number.isNaN(row.amount) ? '—' : currency(row.amount)}
                       </td>

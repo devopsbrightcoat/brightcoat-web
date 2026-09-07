@@ -5,9 +5,9 @@
 // no cambien al pasar de una fuente a otra.
 // ---------------------------------------------------------------------------
 
-import type { Employee, Expense, Property, Service, ServiceType } from '../types'
+import type { Employee, Expense, Property, ServiceType } from '../types'
 
-export type { ClientType, ExpenseCategory, PaymentStatus, PropertyStatus, ServiceStatus } from '../types'
+export type { ClientType, ExpenseCategory, PaymentStatus, PropertyStatus } from '../types'
 
 export const properties: Property[] = [
   { id: 'p1', name: 'Riverside Apartments', address: '1200 Riverside Dr, Austin, TX', clientType: 'multifamily', managerContact: 'Laura Given', status: 'active' },
@@ -26,20 +26,10 @@ export const serviceTypes: ServiceType[] = [
 ]
 
 export const employees: Employee[] = [
-  { id: 'e1', name: 'David L.', role: 'Owner / Project Manager', status: 'active' },
-  { id: 'e2', name: 'Marco R.', role: 'Painter', status: 'active', hourlyRate: 22 },
-  { id: 'e3', name: 'Sandra P.', role: 'Cleaning Lead', status: 'active', hourlyRate: 18 },
-  { id: 'e4', name: 'Tony G.', role: 'Drywall / Repairs', status: 'active', hourlyRate: 24 },
-]
-
-export const services: Service[] = [
-  { id: 's1', propertyId: 'p1', serviceTypeId: 'st1', employeeId: 'e2', unitLabel: '4102', unitSize: '2x2', status: 'completed', scheduledDate: '2026-08-04', completedDate: '2026-08-06', cost: 1450, paymentStatus: 'paid', paidDate: '2026-08-06' },
-  { id: 's2', propertyId: 'p3', serviceTypeId: 'st2', employeeId: 'e3', unitLabel: 'Pasillos', status: 'completed', scheduledDate: '2026-08-10', completedDate: '2026-08-10', cost: 320, paymentStatus: 'paid', paidDate: '2026-08-10' },
-  { id: 's3', propertyId: 'p2', serviceTypeId: 'st4', employeeId: 'e4', status: 'in_progress', scheduledDate: '2026-08-28', cost: 680, paymentStatus: 'pending' },
-  { id: 's4', propertyId: 'p5', serviceTypeId: 'st1', employeeId: 'e2', unitLabel: 'L303', unitSize: '1x1', status: 'pending', scheduledDate: '2026-09-05', cost: 2100, paymentStatus: 'pending' },
-  { id: 's5', propertyId: 'p4', serviceTypeId: 'st3', employeeId: 'e4', status: 'pending', scheduledDate: '2026-09-08', cost: 940, paymentStatus: 'pending' },
-  { id: 's6', propertyId: 'p1', serviceTypeId: 'st2', employeeId: 'e3', unitLabel: 'Oficina', status: 'completed', scheduledDate: '2026-08-18', completedDate: '2026-08-18', cost: 280, paymentStatus: 'paid', paidDate: '2026-08-18' },
-  { id: 's7', propertyId: 'p3', serviceTypeId: 'st1', employeeId: 'e2', unitLabel: '3105', unitSize: '3x3 TH', status: 'in_progress', scheduledDate: '2026-08-30', cost: 1780, paymentStatus: 'pending' },
+  { id: 'e1', name: 'David L.', role: 'Owner / Project Manager', status: 'active', w2Status: 'approved' },
+  { id: 'e2', name: 'Marco R.', role: 'Painter', status: 'active', w2Status: 'approved', hourlyRate: 22 },
+  { id: 'e3', name: 'Sandra P.', role: 'Cleaning Lead', status: 'active', w2Status: 'approved', hourlyRate: 18 },
+  { id: 'e4', name: 'Tony G.', role: 'Drywall / Repairs', status: 'active', w2Status: 'pending', hourlyRate: 24 },
 ]
 
 export const expenses: Expense[] = [

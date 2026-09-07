@@ -23,24 +23,11 @@ export type EmployeeRow = {
   id: string
   name: string
   role: string | null
+  contact_number: string | null
+  address: string | null
   hourly_rate: number | string | null
   status: 'active' | 'inactive'
-}
-
-export type ServiceRow = {
-  id: string
-  property_id: string
-  service_type_id: string
-  employee_id: string | null
-  unit_label: string | null
-  unit_size: string | null
-  description: string | null
-  status: 'pending' | 'in_progress' | 'completed'
-  scheduled_date: string | null
-  completed_date: string | null
-  cost: number | string
-  payment_status: 'pending' | 'paid'
-  paid_date: string | null
+  w2_status: 'approved' | 'pending'
 }
 
 export type ExpenseRow = {
@@ -52,4 +39,42 @@ export type ExpenseRow = {
   amount: number | string
   date: string
   description: string | null
+}
+
+export type ChargeRow = {
+  id: string
+  property_id: string
+  unit_label: string | null
+  description: string | null
+  amount: number | string
+  status: 'pending' | 'paid'
+  generated_date: string | null
+  payroll_period: string | null
+  responsible: string | null
+  notes: string | null
+}
+
+export type ScheduleRow = {
+  id: string
+  property_id: string
+  unit_label: string | null
+  service_type_id: string
+  employee_id: string
+  scheduled_date: string
+  scheduled_time: string
+  status: 'pending' | 'in_progress' | 'delivered' | 'cancelled'
+}
+
+export type ScheduleChargeRow = {
+  id: string
+  schedule_id: string
+  total_cost: number | string
+  notes: string | null
+}
+
+export type ScheduleChargeExtraRow = {
+  id: string
+  schedule_charge_id: string
+  description: string
+  amount: number | string
 }

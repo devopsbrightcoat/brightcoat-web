@@ -1,6 +1,6 @@
 import {
   Building2,
-  ClipboardList,
+  CalendarClock,
   LayoutDashboard,
   LineChart,
   LogOut,
@@ -15,7 +15,7 @@ import { useAuth } from '../auth/AuthProvider'
 const navItems = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard, end: true },
   { to: '/propiedades', label: 'Propiedades', icon: Building2 },
-  { to: '/trabajos', label: 'Trabajos', icon: ClipboardList },
+  { to: '/horarios', label: 'Horarios', icon: CalendarClock },
   { to: '/finanzas', label: 'Finanzas', icon: Wallet },
   { to: '/empleados', label: 'Empleados', icon: Users },
   { to: '/importar', label: 'Importar Excel', icon: Upload },

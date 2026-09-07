@@ -5,12 +5,12 @@ import { Configuracion } from './pages/Configuracion'
 import { Dashboard } from './pages/Dashboard'
 import { Empleados } from './pages/Empleados'
 import { Finanzas } from './pages/Finanzas'
+import { Horarios } from './pages/Horarios'
 import { Importar } from './pages/Importar'
 import { Login } from './pages/Login'
 import { NotFound } from './pages/NotFound'
 import { Propiedades } from './pages/Propiedades'
 import { Reportes } from './pages/Reportes'
-import { Trabajos } from './pages/Trabajos'
 
 const App = () => {
   return (
@@ -26,7 +26,7 @@ const App = () => {
       >
         <Route index element={<Dashboard />} />
         <Route path="propiedades" element={<Propiedades />} />
-        <Route path="trabajos" element={<Trabajos />} />
+        <Route path="horarios" element={<Horarios />} />
         <Route path="finanzas" element={<Finanzas />} />
         <Route path="empleados" element={<Empleados />} />
         <Route path="importar" element={<Importar />} />

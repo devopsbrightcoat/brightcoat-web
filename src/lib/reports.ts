@@ -1,19 +1,17 @@
-import type { Expense, Service } from '../types'
+import type { Expense } from '../types'
 
-export type MonthlyFinancial = { month: string; income: number; expenses: number }
+export type MonthlyExpenses = { month: string; expenses: number }
 
 const MONTH_LABELS = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']
 
 const monthKey = (dateStr: string) => dateStr.slice(0, 7) // 'YYYY-MM'
 
-// Agrupa services (ingresos, por scheduledDate) y expenses (por date) en los
-// últimos `monthsBack` meses, para el gráfico de Dashboard/Reportes. Antes
-// esto venía precalculado en los datos mock (monthlyFinancials).
-export const computeMonthlyFinancials = (
-  services: Service[],
-  expenses: Expense[],
-  monthsBack = 6,
-): MonthlyFinancial[] => {
+// Agrupa expenses (por date) en los últimos `monthsBack` meses, para el
+// gráfico de gastos de Dashboard/Reportes. El ingreso ya no se calcula acá
+// desde `services` — el módulo de Trabajos se eliminó; el tracking de
+// cobros vive ahora en Horarios (schedule_charges) y en Cobros (tabla
+// `charges`), que todavía no tienen una vista de reportería propia.
+export const computeMonthlyExpenses = (expenses: Expense[], monthsBack = 6): MonthlyExpenses[] => {
   const now = new Date()
   const buckets: { key: string; month: string }[] = []
 
@@ -27,9 +25,6 @@ export const computeMonthlyFinancials = (
 
   return buckets.map(({ key, month }) => ({
     month,
-    income: services
-      .filter((s) => s.scheduledDate && monthKey(s.scheduledDate) === key)
-      .reduce((sum, s) => sum + s.cost, 0),
     expenses: expenses.filter((e) => monthKey(e.date) === key).reduce((sum, e) => sum + e.amount, 0),
   }))
 }
