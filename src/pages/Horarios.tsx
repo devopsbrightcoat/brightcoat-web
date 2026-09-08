@@ -1,8 +1,9 @@
 import { useMemo, useState } from 'react'
-import { ChevronLeft, ChevronRight, Plus } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Pencil, Plus } from 'lucide-react'
 import { PageHeader } from '../components/PageHeader'
 import { StatusPill } from '../components/StatusPill'
 import { AddScheduleModal } from '../components/AddScheduleModal'
+import { EditScheduleModal } from '../components/EditScheduleModal'
 import { ScheduleActionModal } from '../components/ScheduleActionModal'
 import { fetchEmployees, fetchProperties, fetchSchedules, fetchServiceTypes } from '../lib/api'
 import { useSupabaseQuery } from '../lib/useSupabaseQuery'
@@ -39,6 +40,7 @@ export const Horarios = () => {
 
   const [addOpen, setAddOpen] = useState(false)
   const [actionSchedule, setActionSchedule] = useState<Schedule | null>(null)
+  const [editingSchedule, setEditingSchedule] = useState<Schedule | null>(null)
 
   const changeMonth = (delta: number) => {
     let year = viewYear
@@ -175,6 +177,7 @@ export const Horarios = () => {
                   <th className="px-5 py-3 font-medium">Empleado</th>
                   <th className="px-5 py-3 font-medium">Horario</th>
                   <th className="px-5 py-3 font-medium">Estatus</th>
+                  <th className="px-5 py-3 font-medium">Acciones</th>
                 </tr>
               </thead>
               <tbody>
@@ -188,6 +191,16 @@ export const Horarios = () => {
                     <td className="px-5 py-3">
                       <button type="button" onClick={() => setActionSchedule(row)}>
                         <StatusPill status={row.status} />
+                      </button>
+                    </td>
+                    <td className="px-5 py-3">
+                      <button
+                        type="button"
+                        onClick={() => setEditingSchedule(row)}
+                        className="flex items-center gap-1.5 rounded-lg border border-white/10 px-2.5 py-1.5 text-xs font-medium text-ink-300 hover:bg-white/5"
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                        Editar
                       </button>
                     </td>
                   </tr>
@@ -211,6 +224,15 @@ export const Horarios = () => {
       <ScheduleActionModal
         schedule={actionSchedule}
         onClose={() => setActionSchedule(null)}
+        onSaved={() => setRefreshKey((k) => k + 1)}
+      />
+
+      <EditScheduleModal
+        schedule={editingSchedule}
+        properties={properties ?? []}
+        serviceTypes={serviceTypes ?? []}
+        employees={employees ?? []}
+        onClose={() => setEditingSchedule(null)}
         onSaved={() => setRefreshKey((k) => k + 1)}
       />
     </div>

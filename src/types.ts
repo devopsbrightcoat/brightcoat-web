@@ -51,10 +51,21 @@ export type Employee = {
   hourlyRate?: number
 }
 
+// `serviceTypeId` + `generatedDate` (fecha del servicio/cobro) identifican
+// de forma única un cobro junto con propertyId + unitLabel — ver constraint
+// `charges_unique_identity` en 20260912000000_unify_charges.sql. Los cobros
+// importados de Excel normalmente no traen serviceTypeId (la plantilla no
+// lo captura); los generados desde Horarios siempre lo traen.
+export type ChargeExtra = {
+  description: string
+  amount: number
+}
+
 export type Charge = {
   id: string
   propertyId: string
   unitLabel?: string
+  serviceTypeId?: string
   description?: string
   amount: number
   status: PaymentStatus
@@ -62,6 +73,7 @@ export type Charge = {
   payrollPeriod?: string
   responsible?: string
   notes?: string
+  extras: ChargeExtra[]
 }
 
 export type ScheduleStatus = 'pending' | 'in_progress' | 'delivered' | 'cancelled'
@@ -77,16 +89,3 @@ export type Schedule = {
   status: ScheduleStatus
 }
 
-export type ScheduleChargeExtra = {
-  id: string
-  description: string
-  amount: number
-}
-
-export type ScheduleCharge = {
-  id: string
-  scheduleId: string
-  totalCost: number
-  notes?: string
-  extras: ScheduleChargeExtra[]
-}

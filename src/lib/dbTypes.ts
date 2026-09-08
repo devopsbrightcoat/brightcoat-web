@@ -45,6 +45,7 @@ export type ChargeRow = {
   id: string
   property_id: string
   unit_label: string | null
+  service_type_id: string | null
   description: string | null
   amount: number | string
   status: 'pending' | 'paid'
@@ -52,6 +53,7 @@ export type ChargeRow = {
   payroll_period: string | null
   responsible: string | null
   notes: string | null
+  extras: { description: string; amount: number }[] | null
 }
 
 export type ScheduleRow = {
@@ -65,16 +67,3 @@ export type ScheduleRow = {
   status: 'pending' | 'in_progress' | 'delivered' | 'cancelled'
 }
 
-export type ScheduleChargeRow = {
-  id: string
-  schedule_id: string
-  total_cost: number | string
-  notes: string | null
-}
-
-export type ScheduleChargeExtraRow = {
-  id: string
-  schedule_charge_id: string
-  description: string
-  amount: number | string
-}

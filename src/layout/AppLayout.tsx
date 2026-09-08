@@ -1,24 +1,37 @@
+import { useEffect, useState } from 'react'
 import {
   Building2,
   CalendarClock,
+  ChevronDown,
   LayoutDashboard,
   LineChart,
   LogOut,
   Settings,
-  Upload,
   Users,
   Wallet,
 } from 'lucide-react'
-import { NavLink, Outlet } from 'react-router-dom'
+import type { LucideIcon } from 'lucide-react'
+import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { useAuth } from '../auth/AuthProvider'
 
-const navItems = [
+type NavChild = { to: string; label: string }
+type NavItem = { to: string; label: string; icon: LucideIcon; end?: boolean; children?: NavChild[] }
+
+const navItems: NavItem[] = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard, end: true },
   { to: '/propiedades', label: 'Propiedades', icon: Building2 },
   { to: '/horarios', label: 'Horarios', icon: CalendarClock },
-  { to: '/finanzas', label: 'Finanzas', icon: Wallet },
+  {
+    to: '/finanzas',
+    label: 'Finanzas',
+    icon: Wallet,
+    children: [
+      { to: '/finanzas/cobros', label: 'Cobros' },
+      { to: '/finanzas/gastos', label: 'Gastos' },
+      { to: '/finanzas/planillas', label: 'Planillas' },
+    ],
+  },
   { to: '/empleados', label: 'Empleados', icon: Users },
-  { to: '/importar', label: 'Importar Excel', icon: Upload },
   { to: '/reportes', label: 'Reportes', icon: LineChart },
   { to: '/configuracion', label: 'Configuración', icon: Settings },
 ]
@@ -31,6 +44,15 @@ const roleLabel: Record<string, string> = {
 
 export const AppLayout = () => {
   const { profile, signOut } = useAuth()
+  const location = useLocation()
+  const [openMenu, setOpenMenu] = useState<string | null>(null)
+
+  // Si la ruta actual cae bajo un item con submenu (ej. /finanzas/gastos),
+  // lo abrimos automáticamente para reflejar dónde está el usuario.
+  useEffect(() => {
+    const match = navItems.find((item) => item.children && location.pathname.startsWith(item.to))
+    if (match) setOpenMenu(match.to)
+  }, [location.pathname])
 
   return (
     <div className="flex h-screen bg-surface">
@@ -44,24 +66,66 @@ export const AppLayout = () => {
         </div>
 
         <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4">
-          {navItems.map(({ to, label, icon: Icon, end }) => (
-            <NavLink
-              key={to}
-              to={to}
-              end={end}
-              className={({ isActive }) =>
-                [
-                  'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition',
-                  isActive
-                    ? 'bg-gold-500 text-brand-900'
-                    : 'text-brand-200 hover:bg-white/5 hover:text-white',
-                ].join(' ')
-              }
-            >
-              <Icon className="h-4 w-4 shrink-0" />
-              {label}
-            </NavLink>
-          ))}
+          {navItems.map(({ to, label, icon: Icon, end, children }) => {
+            if (!children) {
+              return (
+                <NavLink
+                  key={to}
+                  to={to}
+                  end={end}
+                  className={({ isActive }) =>
+                    [
+                      'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition',
+                      isActive ? 'bg-gold-500 text-brand-900' : 'text-brand-200 hover:bg-white/5 hover:text-white',
+                    ].join(' ')
+                  }
+                >
+                  <Icon className="h-4 w-4 shrink-0" />
+                  {label}
+                </NavLink>
+              )
+            }
+
+            const isParentActive = location.pathname.startsWith(to)
+            const isOpen = openMenu === to
+
+            return (
+              <div key={to}>
+                <button
+                  type="button"
+                  onClick={() => setOpenMenu(isOpen ? null : to)}
+                  className={[
+                    'flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition',
+                    isParentActive ? 'text-white' : 'text-brand-200 hover:bg-white/5 hover:text-white',
+                  ].join(' ')}
+                >
+                  <Icon className="h-4 w-4 shrink-0" />
+                  <span className="flex-1 text-left">{label}</span>
+                  <ChevronDown className={`h-4 w-4 shrink-0 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+                </button>
+                {isOpen && (
+                  <div className="mt-1 space-y-1 pl-8">
+                    {children.map((child) => (
+                      <NavLink
+                        key={child.to}
+                        to={child.to}
+                        className={({ isActive }) =>
+                          [
+                            'block rounded-lg px-3 py-2 text-sm font-medium transition',
+                            isActive
+                              ? 'bg-gold-500 text-brand-900'
+                              : 'text-brand-200 hover:bg-white/5 hover:text-white',
+                          ].join(' ')
+                        }
+                      >
+                        {child.label}
+                      </NavLink>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )
+          })}
         </nav>
 
         <div className="border-t border-white/10 px-3 py-4">

@@ -151,13 +151,13 @@ export const ScheduleActionModal = ({ schedule, onClose, onSaved }: ScheduleActi
             ) : (
               <div className="space-y-2.5">
                 {extras.map((extra) => (
-                  <div key={extra.key} className="flex items-center gap-2.5">
+                  <div key={extra.key} className="grid grid-cols-[1fr_6rem_auto] items-center gap-2.5">
                     <input
                       type="text"
                       placeholder="Descripción"
                       value={extra.description}
                       onChange={(e) => updateExtra(extra.key, { description: e.target.value })}
-                      className={`${inputClass} flex-1`}
+                      className={`${inputClass} min-w-0`}
                     />
                     <input
                       type="text"
@@ -165,12 +165,12 @@ export const ScheduleActionModal = ({ schedule, onClose, onSaved }: ScheduleActi
                       placeholder="Costo"
                       value={extra.amount}
                       onChange={(e) => updateExtra(extra.key, { amount: e.target.value })}
-                      className={`${inputClass} w-28`}
+                      className={`${inputClass} min-w-0`}
                     />
                     <button
                       type="button"
                       onClick={() => removeExtra(extra.key)}
-                      className="rounded p-1.5 text-ink-500 hover:bg-white/10 hover:text-white"
+                      className="col-start-3 rounded p-1.5 text-ink-500 hover:bg-white/10 hover:text-white"
                     >
                       <X className="h-4 w-4" />
                     </button>

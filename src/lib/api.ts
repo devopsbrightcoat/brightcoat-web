@@ -80,6 +80,7 @@ const mapCharge = (row: ChargeRow): Charge => ({
   id: row.id,
   propertyId: row.property_id,
   unitLabel: row.unit_label ?? undefined,
+  serviceTypeId: row.service_type_id ?? undefined,
   description: row.description ?? undefined,
   amount: Number(row.amount),
   status: row.status,
@@ -87,6 +88,7 @@ const mapCharge = (row: ChargeRow): Charge => ({
   payrollPeriod: row.payroll_period ?? undefined,
   responsible: row.responsible ?? undefined,
   notes: row.notes ?? undefined,
+  extras: row.extras ?? [],
 })
 
 export const fetchCharges = async (): Promise<Charge[]> => {
@@ -240,31 +242,76 @@ export const createSchedules = async (
   if (error) throw error
 }
 
+export const updateSchedule = async (
+  id: string,
+  patch: {
+    propertyId: string
+    employeeId: string
+    scheduledDate: string
+    unitLabel: string
+    serviceTypeId: string
+    scheduledTime: string
+  },
+): Promise<void> => {
+  const { error } = await supabase
+    .from('schedules')
+    .update({
+      property_id: patch.propertyId,
+      employee_id: patch.employeeId,
+      scheduled_date: patch.scheduledDate,
+      unit_label: patch.unitLabel || null,
+      service_type_id: patch.serviceTypeId,
+      scheduled_time: patch.scheduledTime,
+    })
+    .eq('id', id)
+  if (error) throw error
+}
+
 export const updateScheduleStatus = async (id: string, status: Schedule['status']): Promise<void> => {
   const { error } = await supabase.from('schedules').update({ status }).eq('id', id)
   if (error) throw error
 }
 
-// Crea el cobro de un horario finalizado (+ sus extras) y, en el mismo
-// flujo, marca el horario como 'delivered'. Si el usuario cancela el
-// formulario de cobro antes de confirmar, esta función nunca se llama y el
-// estatus del horario no cambia — así no queda un "delivered" sin cobro.
+// Crea (o reutiliza) el cobro de un horario finalizado directamente en
+// `charges` — ver 20260912000000_unify_charges.sql. Un cobro queda
+// identificado de forma única por propiedad + unidad + tipo de servicio +
+// fecha (constraint `charges_unique_identity`), así que no es posible tener
+// dos cobros para el mismo servicio/unidad/propiedad/fecha: si ya existe
+// uno, Supabase rechaza el insert con un error de duplicado (23505) que
+// se traduce a un mensaje claro para el usuario.
+//
+// En el mismo flujo se marca el horario como 'delivered'. Si el usuario
+// cancela el formulario de cobro antes de confirmar, esta función nunca se
+// llama y el estatus del horario no cambia — así no queda un "delivered"
+// sin cobro.
 export const createScheduleCharge = async (
   scheduleId: string,
   data: { totalCost: number; notes: string; extras: { description: string; amount: number }[] },
 ): Promise<void> => {
-  const { data: charge, error } = await supabase
-    .from('schedule_charges')
-    .insert({ schedule_id: scheduleId, total_cost: data.totalCost, notes: data.notes || null })
-    .select('id')
+  const { data: schedule, error: scheduleError } = await supabase
+    .from('schedules')
+    .select('property_id, unit_label, service_type_id, scheduled_date')
+    .eq('id', scheduleId)
     .single()
-  if (error) throw error
+  if (scheduleError) throw scheduleError
 
-  if (data.extras.length > 0) {
-    const { error: extrasError } = await supabase
-      .from('schedule_charge_extras')
-      .insert(data.extras.map((e) => ({ schedule_charge_id: charge.id, description: e.description, amount: e.amount })))
-    if (extrasError) throw extrasError
+  const amount = data.totalCost + data.extras.reduce((sum, e) => sum + e.amount, 0)
+
+  const { error } = await supabase.from('charges').insert({
+    property_id: schedule.property_id,
+    unit_label: schedule.unit_label,
+    service_type_id: schedule.service_type_id,
+    amount,
+    status: 'pending',
+    generated_date: schedule.scheduled_date,
+    notes: data.notes.trim() || null,
+    extras: data.extras,
+  })
+  if (error) {
+    if (error.code === '23505') {
+      throw new Error('Ya existe un cobro para este mismo servicio, unidad, propiedad y fecha.')
+    }
+    throw error
   }
 
   const { error: statusError } = await supabase.from('schedules').update({ status: 'delivered' }).eq('id', scheduleId)
