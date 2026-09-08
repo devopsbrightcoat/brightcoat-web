@@ -3,6 +3,7 @@ import { Plus, X } from 'lucide-react'
 import { Modal } from './Modal'
 import { createScheduleCharge, updateScheduleStatus } from '../lib/api'
 import type { Schedule, ScheduleStatus } from '../types'
+import { getErrorMessage } from '../lib/errors'
 
 const inputClass =
   'w-full rounded-lg border border-white/10 bg-surface px-3 py-2.5 text-sm text-white outline-none focus:border-gold-500'
@@ -54,7 +55,7 @@ export const ScheduleActionModal = ({ schedule, onClose, onSaved }: ScheduleActi
       onSaved()
       onClose()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'No se pudo cambiar el estatus.')
+      setError(getErrorMessage(err, 'No se pudo cambiar el estatus.'))
     } finally {
       setSaving(false)
     }
@@ -96,7 +97,7 @@ export const ScheduleActionModal = ({ schedule, onClose, onSaved }: ScheduleActi
       onSaved()
       onClose()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'No se pudo guardar el cobro.')
+      setError(getErrorMessage(err, 'No se pudo guardar el cobro.'))
     } finally {
       setSaving(false)
     }

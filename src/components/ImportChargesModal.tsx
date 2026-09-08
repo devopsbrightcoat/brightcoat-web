@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { AlertTriangle, CheckCircle2, Download, FileSpreadsheet, RotateCcw, XCircle } from 'lucide-react'
 import { Modal } from './Modal'
 import { ImportDropzone } from './ImportDropzone'
+import { getErrorMessage } from '../lib/errors'
 import {
   importValidatedChargeRows,
   parseChargesWorkbook,
@@ -63,7 +64,7 @@ export const ImportChargesModal = ({ open, onClose, onImported }: ImportChargesM
       setRows(parsed.map(validateChargeRow))
       setStage('parsed')
     } catch (err) {
-      setParseError(err instanceof Error ? err.message : 'No se pudo leer el archivo.')
+      setParseError(getErrorMessage(err, 'No se pudo leer el archivo.'))
       setRows([])
       setStage('idle')
     }

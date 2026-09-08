@@ -3,6 +3,7 @@ import { Plus, X } from 'lucide-react'
 import { Modal } from './Modal'
 import { createSchedules } from '../lib/api'
 import type { Employee, Property, ServiceType } from '../types'
+import { getErrorMessage } from '../lib/errors'
 
 const inputClass =
   'w-full rounded-lg border border-white/10 bg-surface px-3 py-2.5 text-sm text-white outline-none focus:border-gold-500'
@@ -104,7 +105,7 @@ export const AddScheduleModal = ({
       onSaved()
       onClose()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'No se pudo guardar el horario.')
+      setError(getErrorMessage(err, 'No se pudo guardar el horario.'))
     } finally {
       setSaving(false)
     }

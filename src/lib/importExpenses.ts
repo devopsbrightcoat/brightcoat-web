@@ -10,6 +10,7 @@ import ExcelJS from 'exceljs'
 import { fetchEmployees, fetchExpenses, fetchProperties } from './api'
 import { supabase } from './supabase'
 import type { ExpenseCategory } from '../types'
+import { getErrorMessage } from './errors'
 
 const IGNORED_SHEETS = new Set(['instrucciones'])
 
@@ -230,7 +231,7 @@ export const importValidatedExpenseRows = async (
       seenSignatures.add(signature)
       outcomes.push({ rowNumber: row.rowNumber, propertyName: row.propertyName, success: true, message: 'Importado.' })
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Error desconocido.'
+      const message = getErrorMessage(err, 'Error desconocido.')
       outcomes.push({ rowNumber: row.rowNumber, propertyName: row.propertyName, success: false, message })
     }
     onProgress?.(i + 1, rows.length)

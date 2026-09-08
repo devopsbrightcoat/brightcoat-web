@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Modal } from './Modal'
 import { createEmployee } from '../lib/api'
 import type { Employee } from '../types'
+import { getErrorMessage } from '../lib/errors'
 
 type EmployeeStatus = Employee['status']
 type W2Status = Employee['w2Status']
@@ -79,7 +80,7 @@ export const AddEmployeeModal = ({ open, onClose, onSaved }: AddEmployeeModalPro
       onSaved()
       onClose()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'No se pudo crear el empleado.')
+      setError(getErrorMessage(err, 'No se pudo crear el empleado.'))
     } finally {
       setSaving(false)
     }

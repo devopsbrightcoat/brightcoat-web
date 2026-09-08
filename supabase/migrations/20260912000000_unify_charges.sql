@@ -43,22 +43,30 @@ create unique index if not exists charges_unique_identity
 comment on index charges_unique_identity is
   'Evita duplicar un cobro para la misma propiedad + unidad + tipo de servicio + fecha. Solo aplica cuando service_type_id y generated_date están presentes (siempre el caso para cobros generados desde Horarios).';
 
-insert into charges (property_id, unit_label, service_type_id, amount, status, generated_date, notes)
-select
-  s.property_id,
-  s.unit_label,
-  s.service_type_id,
-  sc.total_cost + coalesce(extras.total_extra, 0),
-  'pending',
-  s.scheduled_date,
-  nullif(sc.notes, '')
-from schedule_charges sc
-join schedules s on s.id = sc.schedule_id
-left join (
-  select schedule_charge_id, sum(amount) as total_extra
-  from schedule_charge_extras
-  group by schedule_charge_id
-) extras on extras.schedule_charge_id = sc.id
-on conflict (property_id, (coalesce(unit_label, '')), service_type_id, generated_date)
-  where service_type_id is not null and generated_date is not null
-  do nothing;
+-- La tabla schedule_charges puede ya no existir (si se borró manualmente
+-- antes de correr esta migración) — en ese caso no hay nada que migrar, así
+-- que este bloque se salta solo en vez de fallar.
+do $$
+begin
+  if to_regclass('public.schedule_charges') is not null then
+    insert into charges (property_id, unit_label, service_type_id, amount, status, generated_date, notes)
+    select
+      s.property_id,
+      s.unit_label,
+      s.service_type_id,
+      sc.total_cost + coalesce(extras.total_extra, 0),
+      'pending',
+      s.scheduled_date,
+      nullif(sc.notes, '')
+    from schedule_charges sc
+    join schedules s on s.id = sc.schedule_id
+    left join (
+      select schedule_charge_id, sum(amount) as total_extra
+      from schedule_charge_extras
+      group by schedule_charge_id
+    ) extras on extras.schedule_charge_id = sc.id
+    on conflict (property_id, (coalesce(unit_label, '')), service_type_id, generated_date)
+      where service_type_id is not null and generated_date is not null
+      do nothing;
+  end if;
+end $$;

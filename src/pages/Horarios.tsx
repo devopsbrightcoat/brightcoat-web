@@ -189,15 +189,23 @@ export const Horarios = () => {
                     <td className="px-5 py-3 text-ink-400">{employeeMap.get(row.employeeId) ?? '—'}</td>
                     <td className="px-5 py-3 tabular-nums text-ink-400">{formatTime(row.scheduledTime)}</td>
                     <td className="px-5 py-3">
-                      <button type="button" onClick={() => setActionSchedule(row)}>
+                      <button
+                        type="button"
+                        disabled={row.status === 'delivered'}
+                        onClick={() => setActionSchedule(row)}
+                        className="disabled:cursor-not-allowed"
+                        title={row.status === 'delivered' ? 'Ya entregado y cobrado — el estatus no se puede cambiar.' : undefined}
+                      >
                         <StatusPill status={row.status} />
                       </button>
                     </td>
                     <td className="px-5 py-3">
                       <button
                         type="button"
+                        disabled={row.status === 'delivered'}
                         onClick={() => setEditingSchedule(row)}
-                        className="flex items-center gap-1.5 rounded-lg border border-white/10 px-2.5 py-1.5 text-xs font-medium text-ink-300 hover:bg-white/5"
+                        title={row.status === 'delivered' ? 'Ya entregado y cobrado — no se puede editar.' : undefined}
+                        className="flex items-center gap-1.5 rounded-lg border border-white/10 px-2.5 py-1.5 text-xs font-medium text-ink-300 hover:bg-white/5 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
                       >
                         <Pencil className="h-3.5 w-3.5" />
                         Editar

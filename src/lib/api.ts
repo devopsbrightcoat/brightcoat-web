@@ -242,6 +242,13 @@ export const createSchedules = async (
   if (error) throw error
 }
 
+// Un horario ya entregado (delivered) siempre tiene un cobro asociado en
+// `charges` (ver createScheduleCharge) — permitir editarlo después dejaría
+// el cobro ya generado desincronizado de la propiedad/unidad/servicio/fecha
+// real del horario. El filtro `.neq('status', 'delivered')` bloquea el
+// update a nivel de base de datos (no solo en la UI): si el horario ya
+// está entregado, ninguna fila hace match y `.single()` lanza PGRST116,
+// que traducimos a un mensaje claro.
 export const updateSchedule = async (
   id: string,
   patch: {
@@ -264,7 +271,15 @@ export const updateSchedule = async (
       scheduled_time: patch.scheduledTime,
     })
     .eq('id', id)
-  if (error) throw error
+    .neq('status', 'delivered')
+    .select('id')
+    .single()
+  if (error) {
+    if (error.code === 'PGRST116') {
+      throw new Error('Este horario ya fue entregado y cobrado — no se puede editar.')
+    }
+    throw error
+  }
 }
 
 export const updateScheduleStatus = async (id: string, status: Schedule['status']): Promise<void> => {

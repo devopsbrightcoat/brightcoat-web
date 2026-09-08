@@ -34,9 +34,9 @@ export const Planillas = () => {
   const [sorting, setSorting] = useState<SortingState>([])
   const [pageIndex, setPageIndex] = useState(0)
 
-  const { data: expenses, loading, error } = useSupabaseQuery(fetchExpenses, [refreshKey])
-  const { data: properties } = useSupabaseQuery(fetchProperties, [refreshKey])
-  const { data: employees } = useSupabaseQuery(fetchEmployees, [refreshKey])
+  const { data: expenses, loading: loadingExpenses, error } = useSupabaseQuery(fetchExpenses, [refreshKey])
+  const { data: properties, loading: loadingProperties } = useSupabaseQuery(fetchProperties, [refreshKey])
+  const { data: employees, loading: loadingEmployees } = useSupabaseQuery(fetchEmployees, [refreshKey])
 
   const filtered = useMemo(
     () =>
@@ -87,6 +87,10 @@ export const Planillas = () => {
     getPaginationRowModel: getPaginationRowModel(),
   })
 
+  // Las columnas dependen de properties/employees, no solo de expenses —
+  // hay que esperar las tres consultas para no pintar la tabla con nombres
+  // vacíos que aparecen un instante después.
+  const loading = loadingExpenses || loadingProperties || loadingEmployees
   const tableState = loading ? 'loading' : error ? 'error' : filtered.length === 0 ? 'empty' : 'ready'
   const tableMessage = loading
     ? 'Cargando planillas…'

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { getErrorMessage } from './errors'
 
 type QueryState<T> = {
   data: T | null
@@ -23,7 +24,7 @@ export const useSupabaseQuery = <T>(fetcher: () => Promise<T>, deps: unknown[]):
       })
       .catch((err: unknown) => {
         if (!active) return
-        const message = err instanceof Error ? err.message : 'Error al cargar los datos.'
+        const message = getErrorMessage(err, 'Error al cargar los datos.')
         setState({ data: null, loading: false, error: message })
       })
 

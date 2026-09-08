@@ -40,8 +40,8 @@ export const Gastos = () => {
   const [sorting, setSorting] = useState<SortingState>([])
   const [pageIndex, setPageIndex] = useState(0)
 
-  const { data: expenses, loading, error } = useSupabaseQuery(fetchExpenses, [refreshKey])
-  const { data: properties } = useSupabaseQuery(fetchProperties, [refreshKey])
+  const { data: expenses, loading: loadingExpenses, error } = useSupabaseQuery(fetchExpenses, [refreshKey])
+  const { data: properties, loading: loadingProperties } = useSupabaseQuery(fetchProperties, [refreshKey])
 
   const filtered = useMemo(
     () =>
@@ -92,6 +92,10 @@ export const Gastos = () => {
     getPaginationRowModel: getPaginationRowModel(),
   })
 
+  // La columna Propiedad depende de `properties`, no solo de `expenses` —
+  // hay que esperar ambas consultas para no pintar la tabla con nombres
+  // vacíos que aparecen un instante después.
+  const loading = loadingExpenses || loadingProperties
   const tableState = loading ? 'loading' : error ? 'error' : filtered.length === 0 ? 'empty' : 'ready'
   const tableMessage = loading
     ? 'Cargando gastos…'

@@ -48,7 +48,11 @@ export const Reportes = () => {
   const [dateRange, setDateRange] = useState<DateRangeKey>('all')
 
   const { data: expenses, loading: loadingExpenses, error: errorExpenses } = useSupabaseQuery(fetchExpenses, [])
-  const { data: properties } = useSupabaseQuery(fetchProperties, [])
+  const { data: properties, loading: loadingProperties } = useSupabaseQuery(fetchProperties, [])
+  // La columna Propiedad depende de `properties`, no solo de `expenses` —
+  // hay que esperar ambas consultas para no pintar la tabla con nombres
+  // vacíos que aparecen un instante después.
+  const loading = loadingExpenses || loadingProperties
 
   const [sorting, setSorting] = useState<SortingState>([])
   const [pageIndex, setPageIndex] = useState(0)
@@ -215,7 +219,7 @@ export const Reportes = () => {
                 ))}
               </thead>
               <tbody>
-                {loadingExpenses ? (
+                {loading ? (
                   <tr>
                     <td colSpan={4} className="px-5 py-6 text-center text-sm text-ink-500">
                       Cargando gastos…

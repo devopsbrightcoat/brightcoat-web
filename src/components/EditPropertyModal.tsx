@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Modal } from './Modal'
 import { updateProperty } from '../lib/api'
 import type { ClientType, Property, PropertyStatus } from '../types'
+import { getErrorMessage } from '../lib/errors'
 
 const CLIENT_TYPE_OPTIONS: { value: ClientType; label: string }[] = [
   { value: 'residential', label: 'Residencial' },
@@ -56,7 +57,7 @@ export const EditPropertyModal = ({ property, onClose, onSaved }: EditPropertyMo
       onSaved()
       onClose()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'No se pudo guardar la propiedad.')
+      setError(getErrorMessage(err, 'No se pudo guardar la propiedad.'))
     } finally {
       setSaving(false)
     }

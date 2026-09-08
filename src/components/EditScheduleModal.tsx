@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Modal } from './Modal'
 import { updateSchedule } from '../lib/api'
 import type { Employee, Property, Schedule, ServiceType } from '../types'
+import { getErrorMessage } from '../lib/errors'
 
 const inputClass =
   'w-full rounded-lg border border-white/10 bg-surface px-3 py-2.5 text-sm text-white outline-none focus:border-gold-500'
@@ -81,7 +82,7 @@ export const EditScheduleModal = ({
       onSaved()
       onClose()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'No se pudo guardar el horario.')
+      setError(getErrorMessage(err, 'No se pudo guardar el horario.'))
     } finally {
       setSaving(false)
     }

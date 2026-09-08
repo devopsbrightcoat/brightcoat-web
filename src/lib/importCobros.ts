@@ -16,6 +16,7 @@ import ExcelJS from 'exceljs'
 import { fetchCharges, fetchProperties } from './api'
 import { supabase } from './supabase'
 import type { PaymentStatus } from '../types'
+import { getErrorMessage } from './errors'
 
 const IGNORED_SHEETS = new Set(['instrucciones'])
 
@@ -315,7 +316,7 @@ export const importValidatedChargeRows = async (
         message: 'Importado.',
       })
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Error desconocido.'
+      const message = getErrorMessage(err, 'Error desconocido.')
       outcomes.push({
         sheetName: row.sheetName,
         rowNumber: row.rowNumber,

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Modal } from './Modal'
 import { createProperty } from '../lib/api'
 import type { ClientType, PropertyStatus } from '../types'
+import { getErrorMessage } from '../lib/errors'
 
 const CLIENT_TYPE_OPTIONS: { value: ClientType; label: string }[] = [
   { value: 'residential', label: 'Residencial' },
@@ -55,7 +56,7 @@ export const AddPropertyModal = ({ open, onClose, onSaved }: AddPropertyModalPro
       onSaved()
       onClose()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'No se pudo crear la propiedad.')
+      setError(getErrorMessage(err, 'No se pudo crear la propiedad.'))
     } finally {
       setSaving(false)
     }

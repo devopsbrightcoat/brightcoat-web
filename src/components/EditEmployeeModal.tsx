@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Modal } from './Modal'
 import { updateEmployee } from '../lib/api'
 import type { Employee } from '../types'
+import { getErrorMessage } from '../lib/errors'
 
 type EmployeeStatus = Employee['status']
 type W2Status = Employee['w2Status']
@@ -80,7 +81,7 @@ export const EditEmployeeModal = ({ employee, onClose, onSaved }: EditEmployeeMo
       onSaved()
       onClose()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'No se pudo guardar el empleado.')
+      setError(getErrorMessage(err, 'No se pudo guardar el empleado.'))
     } finally {
       setSaving(false)
     }

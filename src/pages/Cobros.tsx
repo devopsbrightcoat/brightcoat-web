@@ -36,9 +36,9 @@ export const Cobros = () => {
   const [sorting, setSorting] = useState<SortingState>([])
   const [pageIndex, setPageIndex] = useState(0)
 
-  const { data: charges, loading, error } = useSupabaseQuery(fetchCharges, [refreshKey])
-  const { data: properties } = useSupabaseQuery(fetchProperties, [refreshKey])
-  const { data: serviceTypes } = useSupabaseQuery(fetchServiceTypes, [refreshKey])
+  const { data: charges, loading: loadingCharges, error } = useSupabaseQuery(fetchCharges, [refreshKey])
+  const { data: properties, loading: loadingProperties } = useSupabaseQuery(fetchProperties, [refreshKey])
+  const { data: serviceTypes, loading: loadingServiceTypes } = useSupabaseQuery(fetchServiceTypes, [refreshKey])
 
   const filtered = useMemo(
     () =>
@@ -104,6 +104,11 @@ export const Cobros = () => {
     getPaginationRowModel: getPaginationRowModel(),
   })
 
+  // Las columnas dependen de properties/serviceTypes (para mostrar nombres,
+  // no solo ids) además de charges — hay que esperar a que las tres
+  // consultas terminen, o si no la tabla se pinta con nombres vacíos que
+  // "aparecen" un instante después, cuando cada query resuelve por separado.
+  const loading = loadingCharges || loadingProperties || loadingServiceTypes
   const tableState = loading ? 'loading' : error ? 'error' : filtered.length === 0 ? 'empty' : 'ready'
   const tableMessage = loading
     ? 'Cargando cobros…'
