@@ -52,7 +52,7 @@ export type PayrollEntryRow = {
   unit_label: string
   employee_id: string
   service_name: string
-  amount: number | string
+  amount: number | string | null
   date: string
   payroll_entry_items?: PayrollEntryItemRow[]
 }

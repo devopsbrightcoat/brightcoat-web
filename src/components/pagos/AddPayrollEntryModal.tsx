@@ -77,10 +77,13 @@ export const AddPayrollEntryModal = ({ open, properties, employees, onClose, onS
       setError('El nombre del servicio es obligatorio.')
       return
     }
-    const amountValue = Number(amount)
-    if (!amount || Number.isNaN(amountValue) || amountValue < 0) {
-      setError('El pago no es un número válido.')
-      return
+    let amountValue: number | null = null
+    if (amount.trim()) {
+      amountValue = Number(amount)
+      if (Number.isNaN(amountValue) || amountValue < 0) {
+        setError('El pago no es un número válido.')
+        return
+      }
     }
     if (!date) {
       setError('La fecha es obligatoria.')
@@ -202,13 +205,14 @@ export const AddPayrollEntryModal = ({ open, properties, employees, onClose, onS
 
         <div>
           <label htmlFor="pe-amount" className={labelClass}>
-            Pago al empleado
+            Pago al empleado <span className="font-normal normal-case text-ink-500">(opcional — se puede completar después)</span>
           </label>
           <input
             id="pe-amount"
             type="number"
             min="0"
             step="0.01"
+            placeholder="Se define después si aún no se sabe"
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
             className={inputClass}

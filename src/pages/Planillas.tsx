@@ -27,7 +27,7 @@ const currency = (value: number) =>
 
 const PAGE_SIZE = 15
 
-type PayrollRow = PayrollEntry & { sales: number; profit: number }
+type PayrollRow = PayrollEntry & { sales: number; profit: number | null }
 
 const columnHelper = createColumnHelper<PayrollRow>()
 
@@ -79,7 +79,7 @@ export const Planillas = () => {
       })
       .map((e) => {
         const sales = e.items.reduce((sum, item) => sum + item.amount, 0)
-        return { ...e, sales, profit: sales - e.amount }
+        return { ...e, sales, profit: e.amount == null ? null : sales - e.amount }
       })
     return rows
   }, [entries, properties, employees, propertyId, employeeId, dateFrom, dateTo, searchText])
@@ -88,7 +88,7 @@ export const Planillas = () => {
     (propertyId !== 'all' ? 1 : 0) + (employeeId !== 'all' ? 1 : 0) + (dateFrom ? 1 : 0) + (dateTo ? 1 : 0)
 
   const totalSales = filtered.reduce((sum, e) => sum + e.sales, 0)
-  const totalProfit = filtered.reduce((sum, e) => sum + e.profit, 0)
+  const totalProfit = filtered.reduce((sum, e) => sum + (e.profit ?? 0), 0)
 
   const handleExport = async () => {
     setExporting(true)
@@ -118,7 +118,14 @@ export const Planillas = () => {
       columnHelper.accessor('amount', {
         id: 'amount',
         header: 'Pago',
-        cell: (info) => <span className="tabular-nums">{currency(info.getValue())}</span>,
+        cell: (info) => {
+          const value = info.getValue()
+          return value == null ? (
+            <span className="text-ink-500">Pendiente</span>
+          ) : (
+            <span className="tabular-nums">{currency(value)}</span>
+          )
+        },
       }),
       columnHelper.accessor('sales', {
         id: 'sales',
@@ -130,6 +137,7 @@ export const Planillas = () => {
         header: 'Ganancia',
         cell: (info) => {
           const value = info.getValue()
+          if (value == null) return <span className="text-ink-500">Pendiente</span>
           return <span className={`tabular-nums ${value < 0 ? 'text-red-400' : 'text-gold-400'}`}>{currency(value)}</span>
         },
       }),

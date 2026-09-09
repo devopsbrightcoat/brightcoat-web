@@ -5,6 +5,9 @@ import type { Employee, PayrollEntry, Property } from '../../types'
 const currency = (value: number) =>
   value.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 })
 
+const currencyOrPending = (value: number | null) =>
+  value == null ? <span className="text-ink-500">Pendiente</span> : <span className="tabular-nums">{currency(value)}</span>
+
 const Field = ({ label, value }: { label: string; value: React.ReactNode }) => (
   <div>
     <p className="text-xs font-medium uppercase tracking-wide text-ink-500">{label}</p>
@@ -28,7 +31,7 @@ export const PayrollEntryDetailModal = ({ entry, properties, employees, onClose 
   const propertyName = properties.find((p) => p.id === entry?.propertyId)?.name
   const employeeName = employees.find((e) => e.id === entry?.employeeId)?.name
   const sales = entry ? entry.items.reduce((sum, item) => sum + item.amount, 0) : 0
-  const profit = entry ? sales - entry.amount : 0
+  const profit = entry && entry.amount != null ? sales - entry.amount : null
 
   return (
     <Modal open={entry !== null} onClose={onClose} title="Detalle de la planilla" widthClassName="max-w-2xl">
@@ -43,14 +46,18 @@ export const PayrollEntryDetailModal = ({ entry, properties, employees, onClose 
           </div>
 
           <div className="grid grid-cols-3 gap-4 rounded-xl border border-white/10 bg-surface p-4">
-            <Field label="Pago" value={<span className="tabular-nums">{currency(entry.amount)}</span>} />
+            <Field label="Pago" value={currencyOrPending(entry.amount)} />
             <Field label="Venta" value={<span className="tabular-nums text-emerald-400">{currency(sales)}</span>} />
             <Field
               label="Ganancia"
               value={
-                <span className={`tabular-nums ${profit < 0 ? 'text-red-400' : 'text-gold-400'}`}>
-                  {currency(profit)}
-                </span>
+                profit == null ? (
+                  <span className="text-ink-500">Pendiente</span>
+                ) : (
+                  <span className={`tabular-nums ${profit < 0 ? 'text-red-400' : 'text-gold-400'}`}>
+                    {currency(profit)}
+                  </span>
+                )
               }
             />
           </div>

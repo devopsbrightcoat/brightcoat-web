@@ -43,7 +43,10 @@ export type Expense = {
 // (payroll_entries), separada de expenses desde
 // 20260917000000_split_expenses_payroll.sql. El desglose del servicio
 // (payroll_entry_items) se usa para calcular Ventas/Ganancia en la UI —
-// ver 20260918000000_payroll_service_breakdown.sql.
+// ver 20260918000000_payroll_service_breakdown.sql. `amount` (Pago) puede
+// quedar en null cuando todavía no se sabe cuánto se le va a pagar al
+// empleado — se completa después editando la planilla — ver
+// 20260919000000_payroll_amount_optional.sql.
 export type PayrollEntryItem = {
   id: string
   description: string
@@ -56,7 +59,7 @@ export type PayrollEntry = {
   unitLabel: string
   employeeId: string
   serviceName: string
-  amount: number
+  amount: number | null
   date: string
   items: PayrollEntryItem[]
 }

@@ -9,7 +9,7 @@
 import ExcelJS from 'exceljs'
 import type { Employee, PayrollEntry, Property } from '../types'
 
-export type PayrollExportRow = PayrollEntry & { sales: number; profit: number }
+export type PayrollExportRow = PayrollEntry & { sales: number; profit: number | null }
 
 export const exportPayrollToExcel = async (
   entries: PayrollExportRow[],
@@ -47,9 +47,9 @@ export const exportPayrollToExcel = async (
       employee: employeeName ?? '—',
       service: e.serviceName || '—',
       breakdown: breakdown || '—',
-      amount: e.amount,
+      amount: e.amount ?? 'Pendiente',
       sales: e.sales,
-      profit: e.profit,
+      profit: e.profit ?? 'Pendiente',
     })
   }
 

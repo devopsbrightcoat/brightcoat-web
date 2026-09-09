@@ -137,7 +137,7 @@ const mapPayrollEntry = (row: PayrollEntryRow): PayrollEntry => ({
   unitLabel: row.unit_label,
   employeeId: row.employee_id,
   serviceName: row.service_name,
-  amount: Number(row.amount),
+  amount: row.amount == null ? null : Number(row.amount),
   date: row.date,
   items: (row.payroll_entry_items ?? []).map((item) => ({
     id: item.id,
@@ -161,7 +161,7 @@ type PayrollEntryInput = {
   unitLabel: string
   employeeId: string
   serviceName: string
-  amount: number
+  amount: number | null
   date: string
   items: { description: string; amount: number }[]
 }
