@@ -1,5 +1,5 @@
 import { Settings } from 'lucide-react'
-import { PageHeader } from '../components/PageHeader'
+import { PageHeader } from '../components/common/PageHeader'
 
 // Todavía no hay configuraciones generales definidas — esta pestaña queda
 // lista para cuando aparezcan (nombre de la empresa, datos de contacto,

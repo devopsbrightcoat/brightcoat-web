@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
-import { Modal } from './Modal'
-import { createEmployee } from '../lib/api'
-import type { Employee } from '../types'
-import { getErrorMessage } from '../lib/errors'
+import { Modal } from '../common/Modal'
+import { updateEmployee } from '../../lib/api'
+import type { Employee } from '../../types'
+import { getErrorMessage } from '../../lib/errors'
 
 type EmployeeStatus = Employee['status']
 type W2Status = Employee['w2Status']
@@ -21,13 +21,13 @@ const inputClass =
   'w-full rounded-lg border border-white/10 bg-surface px-3 py-2.5 text-sm text-white outline-none focus:border-gold-500'
 const labelClass = 'mb-1.5 block text-sm font-medium text-ink-200'
 
-type AddEmployeeModalProps = {
-  open: boolean
+type EditEmployeeModalProps = {
+  employee: Employee | null
   onClose: () => void
   onSaved: () => void
 }
 
-export const AddEmployeeModal = ({ open, onClose, onSaved }: AddEmployeeModalProps) => {
+export const EditEmployeeModal = ({ employee, onClose, onSaved }: EditEmployeeModalProps) => {
   const [name, setName] = useState('')
   const [role, setRole] = useState('')
   const [contactNumber, setContactNumber] = useState('')
@@ -39,18 +39,19 @@ export const AddEmployeeModal = ({ open, onClose, onSaved }: AddEmployeeModalPro
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    if (!open) return
-    setName('')
-    setRole('')
-    setContactNumber('')
-    setAddress('')
-    setStatus('active')
-    setW2Status('pending')
-    setHourlyRate('')
+    if (!employee) return
+    setName(employee.name)
+    setRole(employee.role ?? '')
+    setContactNumber(employee.contactNumber ?? '')
+    setAddress(employee.address ?? '')
+    setStatus(employee.status)
+    setW2Status(employee.w2Status)
+    setHourlyRate(employee.hourlyRate != null ? String(employee.hourlyRate) : '')
     setError(null)
-  }, [open])
+  }, [employee])
 
   const handleSave = async () => {
+    if (!employee) return
     if (!name.trim()) {
       setError('El nombre del empleado es obligatorio.')
       return
@@ -68,7 +69,7 @@ export const AddEmployeeModal = ({ open, onClose, onSaved }: AddEmployeeModalPro
     setSaving(true)
     setError(null)
     try {
-      await createEmployee({
+      await updateEmployee(employee.id, {
         name: name.trim(),
         role,
         contactNumber,
@@ -80,48 +81,36 @@ export const AddEmployeeModal = ({ open, onClose, onSaved }: AddEmployeeModalPro
       onSaved()
       onClose()
     } catch (err) {
-      setError(getErrorMessage(err, 'No se pudo crear el empleado.'))
+      setError(getErrorMessage(err, 'No se pudo guardar el empleado.'))
     } finally {
       setSaving(false)
     }
   }
 
   return (
-    <Modal open={open} onClose={onClose} title="Agregar empleado">
+    <Modal open={employee !== null} onClose={onClose} title="Editar empleado">
       <div className="space-y-4">
         <div>
-          <label htmlFor="new-emp-name" className={labelClass}>
+          <label htmlFor="emp-name" className={labelClass}>
             Nombre
           </label>
-          <input
-            id="new-emp-name"
-            type="text"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            className={inputClass}
-          />
+          <input id="emp-name" type="text" value={name} onChange={(e) => setName(e.target.value)} className={inputClass} />
         </div>
 
         <div>
-          <label htmlFor="new-emp-role" className={labelClass}>
+          <label htmlFor="emp-role" className={labelClass}>
             Rol / puesto
           </label>
-          <input
-            id="new-emp-role"
-            type="text"
-            value={role}
-            onChange={(e) => setRole(e.target.value)}
-            className={inputClass}
-          />
+          <input id="emp-role" type="text" value={role} onChange={(e) => setRole(e.target.value)} className={inputClass} />
         </div>
 
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label htmlFor="new-emp-contact" className={labelClass}>
+            <label htmlFor="emp-contact" className={labelClass}>
               Número de contacto
             </label>
             <input
-              id="new-emp-contact"
+              id="emp-contact"
               type="text"
               value={contactNumber}
               onChange={(e) => setContactNumber(e.target.value)}
@@ -129,11 +118,11 @@ export const AddEmployeeModal = ({ open, onClose, onSaved }: AddEmployeeModalPro
             />
           </div>
           <div>
-            <label htmlFor="new-emp-rate" className={labelClass}>
+            <label htmlFor="emp-rate" className={labelClass}>
               Tarifa por hora (opcional)
             </label>
             <input
-              id="new-emp-rate"
+              id="emp-rate"
               type="text"
               inputMode="decimal"
               value={hourlyRate}
@@ -145,11 +134,11 @@ export const AddEmployeeModal = ({ open, onClose, onSaved }: AddEmployeeModalPro
         </div>
 
         <div>
-          <label htmlFor="new-emp-address" className={labelClass}>
+          <label htmlFor="emp-address" className={labelClass}>
             Dirección
           </label>
           <input
-            id="new-emp-address"
+            id="emp-address"
             type="text"
             value={address}
             onChange={(e) => setAddress(e.target.value)}
@@ -159,11 +148,11 @@ export const AddEmployeeModal = ({ open, onClose, onSaved }: AddEmployeeModalPro
 
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label htmlFor="new-emp-status" className={labelClass}>
+            <label htmlFor="emp-status" className={labelClass}>
               Estado
             </label>
             <select
-              id="new-emp-status"
+              id="emp-status"
               value={status}
               onChange={(e) => setStatus(e.target.value as EmployeeStatus)}
               className={inputClass}
@@ -176,11 +165,11 @@ export const AddEmployeeModal = ({ open, onClose, onSaved }: AddEmployeeModalPro
             </select>
           </div>
           <div>
-            <label htmlFor="new-emp-w2" className={labelClass}>
+            <label htmlFor="emp-w2" className={labelClass}>
               W2
             </label>
             <select
-              id="new-emp-w2"
+              id="emp-w2"
               value={w2Status}
               onChange={(e) => setW2Status(e.target.value as W2Status)}
               className={inputClass}
@@ -210,7 +199,7 @@ export const AddEmployeeModal = ({ open, onClose, onSaved }: AddEmployeeModalPro
             onClick={handleSave}
             className="rounded-lg bg-gold-500 px-4 py-2 text-sm font-semibold text-brand-900 transition hover:bg-gold-400 disabled:opacity-60"
           >
-            {saving ? 'Guardando…' : 'Agregar empleado'}
+            {saving ? 'Guardando…' : 'Guardar cambios'}
           </button>
         </div>
       </div>

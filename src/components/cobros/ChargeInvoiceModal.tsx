@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
-import { Modal } from './Modal'
-import { updateChargeStatus } from '../lib/api'
-import { getErrorMessage } from '../lib/errors'
-import type { Charge } from '../types'
+import { Modal } from '../common/Modal'
+import { updateChargeStatus } from '../../lib/api'
+import { getErrorMessage } from '../../lib/errors'
+import type { Charge } from '../../types'
 
 const inputClass =
   'w-full rounded-lg border border-white/10 bg-surface px-3 py-2.5 text-sm text-white outline-none focus:border-gold-500'

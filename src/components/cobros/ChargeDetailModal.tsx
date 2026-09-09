@@ -1,6 +1,6 @@
-import { Modal } from './Modal'
-import { StatusPill } from './StatusPill'
-import type { Charge, Property, ServiceType } from '../types'
+import { Modal } from '../common/Modal'
+import { StatusPill } from '../common/StatusPill'
+import type { Charge, Property, ServiceType } from '../../types'
 
 const currency = (value: number) =>
   value.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 })

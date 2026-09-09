@@ -1,6 +1,6 @@
-import { Modal } from './Modal'
-import { formatFullDate } from '../lib/scheduleDates'
-import type { Employee, PayrollEntry, Property } from '../types'
+import { Modal } from '../common/Modal'
+import { formatFullDate } from '../../lib/scheduleDates'
+import type { Employee, PayrollEntry, Property } from '../../types'
 
 const currency = (value: number) =>
   value.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 })

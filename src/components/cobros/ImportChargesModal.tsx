@@ -1,15 +1,15 @@
 import { useState } from 'react'
 import { AlertTriangle, CheckCircle2, Download, FileSpreadsheet, RotateCcw, XCircle } from 'lucide-react'
-import { Modal } from './Modal'
-import { ImportDropzone } from './ImportDropzone'
-import { getErrorMessage } from '../lib/errors'
+import { Modal } from '../common/Modal'
+import { ImportDropzone } from '../common/ImportDropzone'
+import { getErrorMessage } from '../../lib/errors'
 import {
   importValidatedChargeRows,
   parseChargesWorkbook,
   validateChargeRow,
   type ImportChargeOutcome,
   type ValidatedChargeRow,
-} from '../lib/importCobros'
+} from '../../lib/importCobros'
 
 type Stage = 'idle' | 'parsed' | 'importing' | 'done'
 

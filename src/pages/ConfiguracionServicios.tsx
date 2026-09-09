@@ -9,10 +9,10 @@ import {
   useReactTable,
   type SortingState,
 } from '@tanstack/react-table'
-import { PageHeader } from '../components/PageHeader'
-import { Pagination } from '../components/Pagination'
-import { AddServiceTypeModal } from '../components/AddServiceTypeModal'
-import { EditServiceTypeModal } from '../components/EditServiceTypeModal'
+import { PageHeader } from '../components/common/PageHeader'
+import { Pagination } from '../components/common/Pagination'
+import { AddServiceTypeModal } from '../components/servicios/AddServiceTypeModal'
+import { EditServiceTypeModal } from '../components/servicios/EditServiceTypeModal'
 import { fetchServiceTypes } from '../lib/api'
 import { useSupabaseQuery } from '../lib/useSupabaseQuery'
 import type { ServiceType } from '../types'

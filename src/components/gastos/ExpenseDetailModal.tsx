@@ -1,5 +1,5 @@
-import { Modal } from './Modal'
-import type { Expense } from '../types'
+import { Modal } from '../common/Modal'
+import type { Expense } from '../../types'
 
 const currency = (value: number) =>
   value.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 })

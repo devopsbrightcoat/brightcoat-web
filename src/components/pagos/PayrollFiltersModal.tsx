@@ -1,5 +1,5 @@
-import { FilterPanel } from './FilterPanel'
-import type { Employee, Property } from '../types'
+import { FilterPanel } from '../common/FilterPanel'
+import type { Employee, Property } from '../../types'
 
 const inputClass =
   'w-full rounded-lg border border-white/10 bg-surface px-3 py-2.5 text-sm text-white outline-none focus:border-gold-500'

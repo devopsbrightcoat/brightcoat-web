@@ -10,10 +10,10 @@ import {
   useReactTable,
   type SortingState,
 } from '@tanstack/react-table'
-import { PageHeader } from '../components/PageHeader'
-import { Pagination } from '../components/Pagination'
-import { StatCard } from '../components/StatCard'
-import { DateRangeSelect } from '../components/DateRangeSelect'
+import { PageHeader } from '../components/common/PageHeader'
+import { Pagination } from '../components/common/Pagination'
+import { StatCard } from '../components/common/StatCard'
+import { DateRangeSelect } from '../components/common/DateRangeSelect'
 import { fetchExpenses } from '../lib/api'
 import { useSupabaseQuery } from '../lib/useSupabaseQuery'
 import { computeMonthlyExpenses } from '../lib/reports'

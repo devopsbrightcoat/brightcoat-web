@@ -1,4 +1,4 @@
-import { FilterPanel } from './FilterPanel'
+import { FilterPanel } from '../common/FilterPanel'
 
 const inputClass =
   'w-full rounded-lg border border-white/10 bg-surface px-3 py-2.5 text-sm text-white outline-none focus:border-gold-500'

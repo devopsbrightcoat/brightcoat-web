@@ -1,4 +1,4 @@
-import { DATE_RANGE_OPTIONS, type DateRangeKey } from '../lib/dateRange'
+import { DATE_RANGE_OPTIONS, type DateRangeKey } from '../../lib/dateRange'
 
 // ---------------------------------------------------------------------------
 // Select reutilizable para el filtro de rango de fechas. Mismo estilo que

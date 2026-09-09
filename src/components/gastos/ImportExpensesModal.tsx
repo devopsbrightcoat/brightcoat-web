@@ -1,34 +1,34 @@
 import { useState } from 'react'
 import { AlertTriangle, CheckCircle2, Download, FileSpreadsheet, RotateCcw, XCircle } from 'lucide-react'
-import { Modal } from './Modal'
-import { ImportDropzone } from './ImportDropzone'
-import { getErrorMessage } from '../lib/errors'
+import { Modal } from '../common/Modal'
+import { ImportDropzone } from '../common/ImportDropzone'
+import { getErrorMessage } from '../../lib/errors'
 import {
-  importValidatedPayrollRows,
-  parsePayrollWorkbook,
-  validatePayrollRow,
-  type ImportPayrollOutcome,
-  type ValidatedPayrollRow,
-} from '../lib/importPayroll'
+  importValidatedExpenseRows,
+  parseExpensesWorkbook,
+  validateExpenseRow,
+  type ImportExpenseOutcome,
+  type ValidatedExpenseRow,
+} from '../../lib/importExpenses'
 
 type Stage = 'idle' | 'parsed' | 'importing' | 'done'
 
 const currency = (value: number) =>
   value.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 })
 
-type ImportPayrollModalProps = {
+type ImportExpensesModalProps = {
   open: boolean
   onClose: () => void
   onImported: () => void
 }
 
-export const ImportPayrollModal = ({ open, onClose, onImported }: ImportPayrollModalProps) => {
+export const ImportExpensesModal = ({ open, onClose, onImported }: ImportExpensesModalProps) => {
   const [stage, setStage] = useState<Stage>('idle')
   const [fileName, setFileName] = useState('')
   const [parseError, setParseError] = useState<string | null>(null)
-  const [rows, setRows] = useState<ValidatedPayrollRow[]>([])
+  const [rows, setRows] = useState<ValidatedExpenseRow[]>([])
   const [progress, setProgress] = useState({ done: 0, total: 0 })
-  const [outcomes, setOutcomes] = useState<ImportPayrollOutcome[]>([])
+  const [outcomes, setOutcomes] = useState<ImportExpenseOutcome[]>([])
 
   const validRows = rows.filter((r) => r.errors.length === 0)
   const invalidCount = rows.length - validRows.length
@@ -54,14 +54,14 @@ export const ImportPayrollModal = ({ open, onClose, onImported }: ImportPayrollM
     setParseError(null)
     setOutcomes([])
     try {
-      const parsed = await parsePayrollWorkbook(file)
+      const parsed = await parseExpensesWorkbook(file)
       if (parsed.length === 0) {
-        setParseError('No se encontraron filas con datos en la hoja "Planillas".')
+        setParseError('No se encontraron filas con datos en la hoja "Gastos".')
         setRows([])
         setStage('idle')
         return
       }
-      setRows(parsed.map(validatePayrollRow))
+      setRows(parsed.map(validateExpenseRow))
       setStage('parsed')
     } catch (err) {
       setParseError(getErrorMessage(err, 'No se pudo leer el archivo.'))
@@ -73,17 +73,17 @@ export const ImportPayrollModal = ({ open, onClose, onImported }: ImportPayrollM
   const handleImport = async () => {
     setStage('importing')
     setProgress({ done: 0, total: validRows.length })
-    const result = await importValidatedPayrollRows(validRows, (done, total) => setProgress({ done, total }))
+    const result = await importValidatedExpenseRows(validRows, (done, total) => setProgress({ done, total }))
     setOutcomes(result)
     setStage('done')
     onImported()
   }
 
   return (
-    <Modal open={open} onClose={handleClose} title="Cargar Excel de planillas" widthClassName="max-w-3xl">
+    <Modal open={open} onClose={handleClose} title="Cargar Excel de gastos" widthClassName="max-w-3xl">
       <div className="space-y-4">
         <a
-          href="/plantilla-planillas.xlsx"
+          href="/plantilla-gastos.xlsx"
           download
           className="flex w-fit items-center gap-2 rounded-lg border border-white/10 bg-surface px-3.5 py-2 text-sm font-medium text-ink-300 hover:bg-white/5"
         >
@@ -95,7 +95,7 @@ export const ImportPayrollModal = ({ open, onClose, onImported }: ImportPayrollM
           <ImportDropzone
             onFile={handleFile}
             parseError={parseError}
-            acceptHint='Plantilla "Planillas" en formato .xlsx (propiedad, empleado, monto, fecha y descripción)'
+            acceptHint='Plantilla "Gastos" en formato .xlsx (número de factura, monto, fecha y descripción)'
           />
         )}
 
@@ -159,8 +159,9 @@ export const ImportPayrollModal = ({ open, onClose, onImported }: ImportPayrollM
                 <thead>
                   <tr className="border-b border-white/10 bg-white/5 text-xs uppercase tracking-wide text-ink-500">
                     <th className="px-4 py-2.5 font-medium">Fila</th>
-                    <th className="px-4 py-2.5 font-medium">Empleado</th>
+                    <th className="px-4 py-2.5 font-medium">Factura</th>
                     <th className="px-4 py-2.5 font-medium">Monto</th>
+                    <th className="px-4 py-2.5 font-medium">Fecha</th>
                     <th className="px-4 py-2.5 font-medium">Resultado</th>
                   </tr>
                 </thead>
@@ -170,10 +171,11 @@ export const ImportPayrollModal = ({ open, onClose, onImported }: ImportPayrollM
                     return (
                       <tr key={row.rowNumber} className="border-b border-white/5 last:border-0">
                         <td className="px-4 py-2.5 text-ink-500">fila {row.rowNumber}</td>
-                        <td className="px-4 py-2.5 text-ink-200">{row.employeeName || '—'}</td>
+                        <td className="px-4 py-2.5 text-ink-200">{row.invoiceNumber || '—'}</td>
                         <td className="px-4 py-2.5 tabular-nums text-ink-400">
                           {Number.isNaN(row.amount) ? '—' : currency(row.amount)}
                         </td>
+                        <td className="px-4 py-2.5 text-ink-400">{row.date || '—'}</td>
                         <td className="px-4 py-2.5">
                           {outcome ? (
                             outcome.skipped ? (

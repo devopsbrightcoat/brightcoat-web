@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
-import { Modal } from './Modal'
-import { createExpense } from '../lib/api'
-import { getErrorMessage } from '../lib/errors'
+import { Modal } from '../common/Modal'
+import { createExpense } from '../../lib/api'
+import { getErrorMessage } from '../../lib/errors'
 
 const inputClass =
   'w-full rounded-lg border border-white/10 bg-surface px-3 py-2.5 text-sm text-white outline-none focus:border-gold-500'

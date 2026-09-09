@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react'
 import { Plus, X } from 'lucide-react'
-import { Modal } from './Modal'
-import { updatePayrollEntry } from '../lib/api'
-import type { Employee, PayrollEntry, Property } from '../types'
-import { getErrorMessage } from '../lib/errors'
+import { Modal } from '../common/Modal'
+import { createPayrollEntry } from '../../lib/api'
+import type { Employee, Property } from '../../types'
+import { getErrorMessage } from '../../lib/errors'
 
 const inputClass =
   'w-full rounded-lg border border-white/10 bg-surface px-3 py-2.5 text-sm text-white outline-none focus:border-gold-500'
@@ -16,15 +16,20 @@ const emptyItem = (key: number): ItemLine => ({ key, description: '', amount: ''
 const currency = (value: number) =>
   value.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 })
 
-type EditPayrollEntryModalProps = {
-  entry: PayrollEntry | null
+// Blanca recibe de un empleado "hoy trabajé en tal unidad, tal propiedad,
+// tal servicio" — con el pago completo del servicio y un desglose de los
+// sub-servicios que lo componen (cada uno con su propia descripción y
+// costo). El desglose se usa para calcular Ventas/Ganancia en Planillas.tsx
+// (ver lib/api.ts createPayrollEntry).
+type AddPayrollEntryModalProps = {
+  open: boolean
   properties: Property[]
   employees: Employee[]
   onClose: () => void
   onSaved: () => void
 }
 
-export const EditPayrollEntryModal = ({ entry, properties, employees, onClose, onSaved }: EditPayrollEntryModalProps) => {
+export const AddPayrollEntryModal = ({ open, properties, employees, onClose, onSaved }: AddPayrollEntryModalProps) => {
   const [propertyId, setPropertyId] = useState('')
   const [unitLabel, setUnitLabel] = useState('')
   const [employeeId, setEmployeeId] = useState('')
@@ -36,20 +41,16 @@ export const EditPayrollEntryModal = ({ entry, properties, employees, onClose, o
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    if (!entry) return
-    setPropertyId(entry.propertyId)
-    setUnitLabel(entry.unitLabel)
-    setEmployeeId(entry.employeeId)
-    setServiceName(entry.serviceName)
-    setAmount(String(entry.amount))
-    setDate(entry.date)
-    setItems(
-      entry.items.length > 0
-        ? entry.items.map((item, i) => ({ key: i, description: item.description, amount: String(item.amount) }))
-        : [emptyItem(0)],
-    )
+    if (!open) return
+    setPropertyId('')
+    setUnitLabel('')
+    setEmployeeId('')
+    setServiceName('')
+    setAmount('')
+    setDate('')
+    setItems([emptyItem(0)])
     setError(null)
-  }, [entry])
+  }, [open])
 
   const updateItem = (key: number, patch: Partial<ItemLine>) =>
     setItems((prev) => prev.map((item) => (item.key === key ? { ...item, ...patch } : item)))
@@ -60,7 +61,6 @@ export const EditPayrollEntryModal = ({ entry, properties, employees, onClose, o
   const salesTotal = filledItems.reduce((sum, item) => sum + (Number(item.amount) || 0), 0)
 
   const handleSave = async () => {
-    if (!entry) return
     if (!propertyId) {
       setError('Selecciona una propiedad.')
       return
@@ -104,7 +104,7 @@ export const EditPayrollEntryModal = ({ entry, properties, employees, onClose, o
     setSaving(true)
     setError(null)
     try {
-      await updatePayrollEntry(entry.id, {
+      await createPayrollEntry({
         propertyId,
         unitLabel: unitLabel.trim(),
         employeeId,
@@ -123,15 +123,15 @@ export const EditPayrollEntryModal = ({ entry, properties, employees, onClose, o
   }
 
   return (
-    <Modal open={entry !== null} onClose={onClose} title="Editar planilla" widthClassName="max-w-2xl">
+    <Modal open={open} onClose={onClose} title="Agregar planilla" widthClassName="max-w-2xl">
       <div className="space-y-4">
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label htmlFor="pe-edit-property" className={labelClass}>
+            <label htmlFor="pe-property" className={labelClass}>
               Propiedad
             </label>
             <select
-              id="pe-edit-property"
+              id="pe-property"
               value={propertyId}
               onChange={(e) => setPropertyId(e.target.value)}
               className={inputClass}
@@ -145,11 +145,11 @@ export const EditPayrollEntryModal = ({ entry, properties, employees, onClose, o
             </select>
           </div>
           <div>
-            <label htmlFor="pe-edit-unit" className={labelClass}>
+            <label htmlFor="pe-unit" className={labelClass}>
               Unidad
             </label>
             <input
-              id="pe-edit-unit"
+              id="pe-unit"
               type="text"
               placeholder="ej. L303"
               value={unitLabel}
@@ -161,11 +161,11 @@ export const EditPayrollEntryModal = ({ entry, properties, employees, onClose, o
 
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label htmlFor="pe-edit-employee" className={labelClass}>
+            <label htmlFor="pe-employee" className={labelClass}>
               Empleado
             </label>
             <select
-              id="pe-edit-employee"
+              id="pe-employee"
               value={employeeId}
               onChange={(e) => setEmployeeId(e.target.value)}
               className={inputClass}
@@ -179,25 +179,19 @@ export const EditPayrollEntryModal = ({ entry, properties, employees, onClose, o
             </select>
           </div>
           <div>
-            <label htmlFor="pe-edit-date" className={labelClass}>
+            <label htmlFor="pe-date" className={labelClass}>
               Fecha
             </label>
-            <input
-              id="pe-edit-date"
-              type="date"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-              className={inputClass}
-            />
+            <input id="pe-date" type="date" value={date} onChange={(e) => setDate(e.target.value)} className={inputClass} />
           </div>
         </div>
 
         <div>
-          <label htmlFor="pe-edit-service" className={labelClass}>
+          <label htmlFor="pe-service" className={labelClass}>
             Servicio
           </label>
           <input
-            id="pe-edit-service"
+            id="pe-service"
             type="text"
             placeholder="ej. Vacante reparación tape and float"
             value={serviceName}
@@ -207,11 +201,11 @@ export const EditPayrollEntryModal = ({ entry, properties, employees, onClose, o
         </div>
 
         <div>
-          <label htmlFor="pe-edit-amount" className={labelClass}>
+          <label htmlFor="pe-amount" className={labelClass}>
             Pago al empleado
           </label>
           <input
-            id="pe-edit-amount"
+            id="pe-amount"
             type="number"
             min="0"
             step="0.01"
@@ -286,7 +280,7 @@ export const EditPayrollEntryModal = ({ entry, properties, employees, onClose, o
             onClick={handleSave}
             className="rounded-lg bg-gold-500 px-4 py-2 text-sm font-semibold text-brand-900 transition hover:bg-gold-400 disabled:opacity-60"
           >
-            {saving ? 'Guardando…' : 'Guardar cambios'}
+            {saving ? 'Guardando…' : 'Guardar planilla'}
           </button>
         </div>
       </div>

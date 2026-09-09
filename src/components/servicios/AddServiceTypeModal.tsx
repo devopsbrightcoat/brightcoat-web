@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
-import { Modal } from './Modal'
-import { createServiceType } from '../lib/api'
-import { getErrorMessage } from '../lib/errors'
-import type { ServiceCategory } from '../types'
+import { Modal } from '../common/Modal'
+import { createServiceType } from '../../lib/api'
+import { getErrorMessage } from '../../lib/errors'
+import type { ServiceCategory } from '../../types'
 
 const CATEGORY_OPTIONS: { value: ServiceCategory; label: string }[] = [
   { value: 'painting', label: 'Pintura' },

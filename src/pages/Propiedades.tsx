@@ -9,11 +9,11 @@ import {
   useReactTable,
   type SortingState,
 } from '@tanstack/react-table'
-import { AddPropertyModal } from '../components/AddPropertyModal'
-import { EditPropertyModal } from '../components/EditPropertyModal'
-import { PageHeader } from '../components/PageHeader'
-import { Pagination } from '../components/Pagination'
-import { StatusPill } from '../components/StatusPill'
+import { AddPropertyModal } from '../components/propiedades/AddPropertyModal'
+import { EditPropertyModal } from '../components/propiedades/EditPropertyModal'
+import { PageHeader } from '../components/common/PageHeader'
+import { Pagination } from '../components/common/Pagination'
+import { StatusPill } from '../components/common/StatusPill'
 import { fetchProperties } from '../lib/api'
 import { useSupabaseQuery } from '../lib/useSupabaseQuery'
 import type { Property } from '../types'

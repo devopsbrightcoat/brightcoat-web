@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
-import { Modal } from './Modal'
-import { updateProperty } from '../lib/api'
-import type { ClientType, Property, PropertyStatus } from '../types'
-import { getErrorMessage } from '../lib/errors'
+import { Modal } from '../common/Modal'
+import { createProperty } from '../../lib/api'
+import type { ClientType, PropertyStatus } from '../../types'
+import { getErrorMessage } from '../../lib/errors'
 
 const CLIENT_TYPE_OPTIONS: { value: ClientType; label: string }[] = [
   { value: 'residential', label: 'Residencial' },
@@ -19,13 +19,13 @@ const inputClass =
   'w-full rounded-lg border border-white/10 bg-surface px-3 py-2.5 text-sm text-white outline-none focus:border-gold-500'
 const labelClass = 'mb-1.5 block text-sm font-medium text-ink-200'
 
-type EditPropertyModalProps = {
-  property: Property | null
+type AddPropertyModalProps = {
+  open: boolean
   onClose: () => void
   onSaved: () => void
 }
 
-export const EditPropertyModal = ({ property, onClose, onSaved }: EditPropertyModalProps) => {
+export const AddPropertyModal = ({ open, onClose, onSaved }: AddPropertyModalProps) => {
   const [name, setName] = useState('')
   const [address, setAddress] = useState('')
   const [clientType, setClientType] = useState<ClientType>('residential')
@@ -35,17 +35,16 @@ export const EditPropertyModal = ({ property, onClose, onSaved }: EditPropertyMo
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    if (!property) return
-    setName(property.name)
-    setAddress(property.address ?? '')
-    setClientType(property.clientType)
-    setManagerContact(property.managerContact ?? '')
-    setStatus(property.status)
+    if (!open) return
+    setName('')
+    setAddress('')
+    setClientType('residential')
+    setManagerContact('')
+    setStatus('active')
     setError(null)
-  }, [property])
+  }, [open])
 
   const handleSave = async () => {
-    if (!property) return
     if (!name.trim()) {
       setError('El nombre de la propiedad es obligatorio.')
       return
@@ -53,32 +52,38 @@ export const EditPropertyModal = ({ property, onClose, onSaved }: EditPropertyMo
     setSaving(true)
     setError(null)
     try {
-      await updateProperty(property.id, { name: name.trim(), address, clientType, managerContact, status })
+      await createProperty({ name: name.trim(), address, clientType, managerContact, status })
       onSaved()
       onClose()
     } catch (err) {
-      setError(getErrorMessage(err, 'No se pudo guardar la propiedad.'))
+      setError(getErrorMessage(err, 'No se pudo crear la propiedad.'))
     } finally {
       setSaving(false)
     }
   }
 
   return (
-    <Modal open={property !== null} onClose={onClose} title="Editar propiedad">
+    <Modal open={open} onClose={onClose} title="Agregar propiedad">
       <div className="space-y-4">
         <div>
-          <label htmlFor="prop-name" className={labelClass}>
+          <label htmlFor="new-prop-name" className={labelClass}>
             Nombre
           </label>
-          <input id="prop-name" type="text" value={name} onChange={(e) => setName(e.target.value)} className={inputClass} />
+          <input
+            id="new-prop-name"
+            type="text"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            className={inputClass}
+          />
         </div>
 
         <div>
-          <label htmlFor="prop-address" className={labelClass}>
+          <label htmlFor="new-prop-address" className={labelClass}>
             Dirección
           </label>
           <input
-            id="prop-address"
+            id="new-prop-address"
             type="text"
             value={address}
             onChange={(e) => setAddress(e.target.value)}
@@ -87,11 +92,11 @@ export const EditPropertyModal = ({ property, onClose, onSaved }: EditPropertyMo
         </div>
 
         <div>
-          <label htmlFor="prop-client-type" className={labelClass}>
+          <label htmlFor="new-prop-client-type" className={labelClass}>
             Tipo de cliente
           </label>
           <select
-            id="prop-client-type"
+            id="new-prop-client-type"
             value={clientType}
             onChange={(e) => setClientType(e.target.value as ClientType)}
             className={inputClass}
@@ -105,11 +110,11 @@ export const EditPropertyModal = ({ property, onClose, onSaved }: EditPropertyMo
         </div>
 
         <div>
-          <label htmlFor="prop-contact" className={labelClass}>
+          <label htmlFor="new-prop-contact" className={labelClass}>
             Contacto del manager
           </label>
           <input
-            id="prop-contact"
+            id="new-prop-contact"
             type="text"
             value={managerContact}
             onChange={(e) => setManagerContact(e.target.value)}
@@ -118,11 +123,11 @@ export const EditPropertyModal = ({ property, onClose, onSaved }: EditPropertyMo
         </div>
 
         <div>
-          <label htmlFor="prop-status" className={labelClass}>
+          <label htmlFor="new-prop-status" className={labelClass}>
             Estado
           </label>
           <select
-            id="prop-status"
+            id="new-prop-status"
             value={status}
             onChange={(e) => setStatus(e.target.value as PropertyStatus)}
             className={inputClass}
@@ -151,7 +156,7 @@ export const EditPropertyModal = ({ property, onClose, onSaved }: EditPropertyMo
             onClick={handleSave}
             className="rounded-lg bg-gold-500 px-4 py-2 text-sm font-semibold text-brand-900 transition hover:bg-gold-400 disabled:opacity-60"
           >
-            {saving ? 'Guardando…' : 'Guardar cambios'}
+            {saving ? 'Guardando…' : 'Agregar propiedad'}
           </button>
         </div>
       </div>
