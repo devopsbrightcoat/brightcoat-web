@@ -5,9 +5,9 @@
 // no cambien al pasar de una fuente a otra.
 // ---------------------------------------------------------------------------
 
-import type { Employee, Expense, Property, ServiceType } from '../types'
+import type { Employee, Expense, PayrollEntry, Property, ServiceType } from '../types'
 
-export type { ClientType, ExpenseCategory, PaymentStatus, PropertyStatus } from '../types'
+export type { ClientType, PaymentStatus, PropertyStatus } from '../types'
 
 export const properties: Property[] = [
   { id: 'p1', name: 'Riverside Apartments', address: '1200 Riverside Dr, Austin, TX', clientType: 'multifamily', managerContact: 'Laura Given', status: 'active' },
@@ -33,12 +33,15 @@ export const employees: Employee[] = [
 ]
 
 export const expenses: Expense[] = [
-  { id: 'x1', propertyId: 'p1', category: 'materials', amount: 410, date: '2026-08-03', description: 'Pintura y sellador' },
-  { id: 'x2', propertyId: 'p1', category: 'labor', amount: 620, date: '2026-08-06', description: 'Mano de obra — pintura interior' },
-  { id: 'x3', category: 'tools', amount: 185, date: '2026-08-09', description: 'Compresor de aire' },
-  { id: 'x4', propertyId: 'p3', category: 'materials', amount: 95, date: '2026-08-10', description: 'Insumos de limpieza' },
-  { id: 'x5', propertyId: 'p2', category: 'transport', amount: 60, date: '2026-08-27', description: 'Combustible — visita a propiedad' },
-  { id: 'x6', propertyId: 'p5', category: 'materials', amount: 890, date: '2026-08-22', description: 'Pintura para 6 unidades' },
+  { id: 'x1', invoiceNumber: 'F-1001', amount: 410, date: '2026-08-03', description: 'Pintura y sellador' },
+  { id: 'x3', invoiceNumber: 'F-1002', amount: 185, date: '2026-08-09', description: 'Compresor de aire' },
+  { id: 'x4', amount: 95, date: '2026-08-10', description: 'Insumos de limpieza' },
+  { id: 'x5', amount: 60, date: '2026-08-27', description: 'Combustible — visita a propiedad' },
+  { id: 'x6', invoiceNumber: 'F-1003', amount: 890, date: '2026-08-22', description: 'Pintura para 6 unidades' },
+]
+
+export const payrollEntries: PayrollEntry[] = [
+  { id: 'pe1', propertyId: 'p1', employeeId: 'e2', amount: 620, date: '2026-08-06', description: 'Mano de obra — pintura interior' },
 ]
 
 // Serie mensual para el gráfico de ingresos vs. gastos del dashboard/reportes

@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { ArrowDown, ArrowUp, ArrowUpDown, Download, Receipt, TrendingDown } from 'lucide-react'
-import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
+import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import {
   createColumnHelper,
   flexRender,
@@ -14,8 +14,9 @@ import { PageHeader } from '../components/PageHeader'
 import { Pagination } from '../components/Pagination'
 import { StatCard } from '../components/StatCard'
 import { DateRangeSelect } from '../components/DateRangeSelect'
-import { fetchExpenses, fetchProperties } from '../lib/api'
+import { fetchExpenses } from '../lib/api'
 import { useSupabaseQuery } from '../lib/useSupabaseQuery'
+import { computeMonthlyExpenses } from '../lib/reports'
 import { isWithinDateRange, type DateRangeKey } from '../lib/dateRange'
 import type { Expense } from '../types'
 
@@ -23,14 +24,6 @@ const currency = (value: number) =>
   value.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 })
 
 const PAGE_SIZE = 15
-
-const categoryLabels: Record<string, string> = {
-  materials: 'Materiales',
-  labor: 'Mano de obra',
-  transport: 'Transporte',
-  tools: 'Herramientas',
-  other: 'Otro',
-}
 
 const columnHelper = createColumnHelper<Expense>()
 
@@ -43,56 +36,41 @@ const SortIcon = ({ direction }: { direction: false | 'asc' | 'desc' }) =>
     <ArrowUpDown className="h-3 w-3 opacity-40" />
   )
 
+// Gastos ahora es un módulo independiente (sin propiedad ni categoría), así
+// que Reportes ya no desglosa por esos campos — muestra el total y la
+// tendencia mensual de Gastos, más la tabla filtrable por rango de fecha.
+// Nota: estos totales reflejan solo Gastos — el gasto de mano de obra vive
+// aparte en Planillas (payroll_entries) desde que se separó de Gastos.
 export const Reportes = () => {
-  const [propertyId, setPropertyId] = useState('all')
   const [dateRange, setDateRange] = useState<DateRangeKey>('all')
 
-  const { data: expenses, loading: loadingExpenses, error: errorExpenses } = useSupabaseQuery(fetchExpenses, [])
-  const { data: properties, loading: loadingProperties } = useSupabaseQuery(fetchProperties, [])
-  // La columna Propiedad depende de `properties`, no solo de `expenses` —
-  // hay que esperar ambas consultas para no pintar la tabla con nombres
-  // vacíos que aparecen un instante después.
-  const loading = loadingExpenses || loadingProperties
+  const { data: expenses, loading, error: errorExpenses } = useSupabaseQuery(fetchExpenses, [])
 
   const [sorting, setSorting] = useState<SortingState>([])
   const [pageIndex, setPageIndex] = useState(0)
 
   const filteredExpenses = useMemo(
-    () =>
-      (expenses ?? []).filter(
-        (e) => (propertyId === 'all' || e.propertyId === propertyId) && isWithinDateRange(e.date, dateRange),
-      ),
-    [expenses, propertyId, dateRange],
+    () => (expenses ?? []).filter((e) => isWithinDateRange(e.date, dateRange)),
+    [expenses, dateRange],
   )
 
   const totalExpenses = filteredExpenses.reduce((sum, e) => sum + e.amount, 0)
 
-  const expensesByCategory = useMemo(() => {
-    const categories = ['materials', 'labor', 'transport', 'tools', 'other'] as const
-    return categories
-      .map((category) => ({
-        category: categoryLabels[category],
-        total: filteredExpenses.filter((e) => e.category === category).reduce((sum, e) => sum + e.amount, 0),
-      }))
-      .filter((row) => row.total > 0)
-  }, [filteredExpenses])
+  const monthlyExpenses = useMemo(() => computeMonthlyExpenses(expenses ?? []), [expenses])
 
   const columns = useMemo(
     () => [
-      columnHelper.accessor(
-        (row) => (row.propertyId ? properties?.find((p) => p.id === row.propertyId)?.name : 'Gasto general') ?? '—',
-        {
-          id: 'property',
-          header: 'Propiedad',
-        },
-      ),
-      columnHelper.accessor((row) => categoryLabels[row.category] ?? row.category, {
-        id: 'category',
-        header: 'Categoría',
+      columnHelper.accessor((row) => row.invoiceNumber || '—', {
+        id: 'invoiceNumber',
+        header: 'Factura',
       }),
       columnHelper.accessor('date', {
         id: 'date',
         header: 'Fecha',
+      }),
+      columnHelper.accessor((row) => row.description || '—', {
+        id: 'description',
+        header: 'Descripción',
       }),
       columnHelper.accessor('amount', {
         id: 'amount',
@@ -100,7 +78,7 @@ export const Reportes = () => {
         cell: (info) => <span className="tabular-nums">{currency(info.getValue())}</span>,
       }),
     ],
-    [properties],
+    [],
   )
 
   const pageCount = Math.max(1, Math.ceil(filteredExpenses.length / PAGE_SIZE))
@@ -125,7 +103,7 @@ export const Reportes = () => {
     <div className="pb-10">
       <PageHeader
         title="Reportes"
-        subtitle="Gastos por propiedad y categoría"
+        subtitle="Gastos generales"
         action={
           <button
             type="button"
@@ -138,19 +116,6 @@ export const Reportes = () => {
       />
 
       <div className="mx-8 mt-6 flex flex-wrap gap-3">
-        <select
-          value={propertyId}
-          onChange={(e) => setPropertyId(e.target.value)}
-          className="rounded-lg border border-white/10 bg-surface-alt px-3 py-2 text-sm text-ink-200"
-        >
-          <option value="all">Todas las propiedades</option>
-          {(properties ?? []).map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.name}
-            </option>
-          ))}
-        </select>
-
         <DateRangeSelect
           value={dateRange}
           onChange={setDateRange}
@@ -165,28 +130,20 @@ export const Reportes = () => {
 
       <div className="grid grid-cols-1 gap-6 px-8 pt-6 lg:grid-cols-3">
         <div className="rounded-xl border border-white/10 bg-surface-alt p-5 lg:col-span-1">
-          <p className="text-sm font-semibold text-white">Gastos por categoría</p>
+          <p className="text-sm font-semibold text-white">Gastos por mes</p>
+          <p className="text-xs text-ink-500">Últimos 6 meses</p>
           <div className="mt-4 h-64">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={expensesByCategory} margin={{ left: -20, right: 10, bottom: 28 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#ffffff1a" vertical={false} />
-                <XAxis
-                  dataKey="category"
-                  tick={{ fontSize: 10, fill: '#94a3b8' }}
-                  axisLine={false}
-                  tickLine={false}
-                  interval={0}
-                  angle={-30}
-                  textAnchor="end"
-                  height={50}
-                />
-                <YAxis tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
+              <LineChart data={monthlyExpenses} margin={{ left: -20, right: 10 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#ffffff1a" />
+                <XAxis dataKey="month" tick={{ fontSize: 12, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fontSize: 12, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
                 <Tooltip
                   formatter={(value) => currency(Number(value))}
                   contentStyle={{ fontSize: 12, borderRadius: 8, background: '#1e1f25', border: '1px solid #ffffff1a', color: '#fff' }}
                 />
-                <Bar dataKey="total" fill="#cf9122" radius={[4, 4, 0, 0]} />
-              </BarChart>
+                <Line type="monotone" dataKey="expenses" name="Gastos" stroke="#f87171" strokeWidth={2} dot={false} />
+              </LineChart>
             </ResponsiveContainer>
           </div>
         </div>

@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Clock, DollarSign, Receipt, Upload } from 'lucide-react'
+import { Clock, DollarSign, Download, Receipt, Upload } from 'lucide-react'
 import {
   createColumnHelper,
   getCoreRowModel,
@@ -17,6 +17,8 @@ import { ChargeDetailModal } from '../components/ChargeDetailModal'
 import { StatusPill } from '../components/StatusPill'
 import { fetchCharges, fetchProperties, fetchServiceTypes } from '../lib/api'
 import { useSupabaseQuery } from '../lib/useSupabaseQuery'
+import { exportChargesToExcel } from '../lib/exportCharges'
+import { getErrorMessage } from '../lib/errors'
 import type { Charge } from '../types'
 
 const currency = (value: number) =>
@@ -39,6 +41,8 @@ export const Cobros = () => {
   const [status, setStatus] = useState<'all' | 'paid' | 'pending'>('all')
   const [sorting, setSorting] = useState<SortingState>([])
   const [pageIndex, setPageIndex] = useState(0)
+  const [exporting, setExporting] = useState(false)
+  const [exportError, setExportError] = useState<string | null>(null)
 
   const { data: charges, loading: loadingCharges, error } = useSupabaseQuery(fetchCharges, [refreshKey])
   const { data: properties, loading: loadingProperties } = useSupabaseQuery(fetchProperties, [refreshKey])
@@ -54,6 +58,18 @@ export const Cobros = () => {
 
   const totalPaid = (charges ?? []).filter((c) => c.status === 'paid').reduce((sum, c) => sum + c.amount, 0)
   const totalPending = (charges ?? []).filter((c) => c.status === 'pending').reduce((sum, c) => sum + c.amount, 0)
+
+  const handleExport = async () => {
+    setExporting(true)
+    setExportError(null)
+    try {
+      await exportChargesToExcel(filtered, properties ?? [], serviceTypes ?? [])
+    } catch (err) {
+      setExportError(getErrorMessage(err, 'No se pudo generar el Excel.'))
+    } finally {
+      setExporting(false)
+    }
+  }
 
   const columns = useMemo(
     () => [
@@ -148,29 +164,43 @@ export const Cobros = () => {
         }
       />
 
-      <div className="mx-8 mt-6 flex flex-wrap items-center gap-3">
-        <select
-          value={propertyId}
-          onChange={(e) => setPropertyId(e.target.value)}
-          className="rounded-lg border border-white/10 bg-surface-alt px-3 py-2 text-sm text-ink-200"
+      <div className="mx-8 mt-6 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-3">
+          <select
+            value={propertyId}
+            onChange={(e) => setPropertyId(e.target.value)}
+            className="rounded-lg border border-white/10 bg-surface-alt px-3 py-2 text-sm text-ink-200"
+          >
+            <option value="all">Todas las propiedades</option>
+            {(properties ?? []).map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name}
+              </option>
+            ))}
+          </select>
+          <select
+            value={status}
+            onChange={(e) => setStatus(e.target.value as typeof status)}
+            className="rounded-lg border border-white/10 bg-surface-alt px-3 py-2 text-sm text-ink-200"
+          >
+            <option value="all">Todos los estatus</option>
+            <option value="paid">Subidos a OPS</option>
+            <option value="pending">Pendientes</option>
+          </select>
+        </div>
+
+        <button
+          type="button"
+          disabled={exporting || filtered.length === 0}
+          onClick={handleExport}
+          className="flex items-center gap-2 rounded-lg border border-white/10 px-3.5 py-2 text-sm font-medium text-ink-300 hover:bg-white/5 disabled:opacity-60"
         >
-          <option value="all">Todas las propiedades</option>
-          {(properties ?? []).map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.name}
-            </option>
-          ))}
-        </select>
-        <select
-          value={status}
-          onChange={(e) => setStatus(e.target.value as typeof status)}
-          className="rounded-lg border border-white/10 bg-surface-alt px-3 py-2 text-sm text-ink-200"
-        >
-          <option value="all">Todos los estatus</option>
-          <option value="paid">Subidos a OPS</option>
-          <option value="pending">Pendientes</option>
-        </select>
+          <Download className="h-4 w-4" />
+          {exporting ? 'Generando…' : 'Exportar a Excel'}
+        </button>
       </div>
+
+      {exportError && <p className="mx-8 mt-3 text-sm text-red-400">{exportError}</p>}
 
       <div className="grid grid-cols-1 gap-4 px-8 pt-6 sm:grid-cols-3 lg:max-w-2xl">
         <StatCard label="Cobrado" value={currency(totalPaid)} icon={DollarSign} tone="good" />

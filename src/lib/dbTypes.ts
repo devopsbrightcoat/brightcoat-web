@@ -32,9 +32,16 @@ export type EmployeeRow = {
 
 export type ExpenseRow = {
   id: string
+  invoice_number: string | null
+  amount: number | string
+  date: string
+  description: string | null
+}
+
+export type PayrollEntryRow = {
+  id: string
   property_id: string | null
   employee_id: string | null
-  category: 'materials' | 'labor' | 'transport' | 'tools' | 'other'
   amount: number | string
   date: string
   description: string | null

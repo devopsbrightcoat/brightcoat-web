@@ -4,12 +4,13 @@
 // para que las páginas no tengan que cambiar al pasar de mock a real.
 // ---------------------------------------------------------------------------
 
-import type { Charge, Employee, Expense, Property, Schedule, ServiceType } from '../types'
+import type { Charge, Employee, Expense, PayrollEntry, Property, Schedule, ServiceType } from '../types'
 import { supabase } from './supabase'
 import type {
   ChargeRow,
   EmployeeRow,
   ExpenseRow,
+  PayrollEntryRow,
   PropertyRow,
   ScheduleRow,
   ServiceTypeRow,
@@ -77,18 +78,68 @@ export const fetchEmployees = async (): Promise<Employee[]> => {
 
 const mapExpense = (row: ExpenseRow): Expense => ({
   id: row.id,
-  propertyId: row.property_id ?? undefined,
-  employeeId: row.employee_id ?? undefined,
-  category: row.category,
+  invoiceNumber: row.invoice_number ?? undefined,
   amount: Number(row.amount),
   date: row.date,
-  description: row.description ?? '',
+  description: row.description ?? undefined,
 })
 
 export const fetchExpenses = async (): Promise<Expense[]> => {
   const { data, error } = await supabase.from('expenses').select('*').order('date', { ascending: false })
   if (error) throw error
   return ((data ?? []) as ExpenseRow[]).map(mapExpense)
+}
+
+export const createExpense = async (data: {
+  invoiceNumber: string
+  amount: number
+  date: string
+  description: string
+}): Promise<void> => {
+  const { error } = await supabase.from('expenses').insert({
+    invoice_number: data.invoiceNumber.trim() || null,
+    amount: data.amount,
+    date: data.date,
+    description: data.description.trim() || null,
+  })
+  if (error) throw error
+}
+
+export const updateExpense = async (
+  id: string,
+  patch: { invoiceNumber: string; amount: number; date: string; description: string },
+): Promise<void> => {
+  const { error } = await supabase
+    .from('expenses')
+    .update({
+      invoice_number: patch.invoiceNumber.trim() || null,
+      amount: patch.amount,
+      date: patch.date,
+      description: patch.description.trim() || null,
+    })
+    .eq('id', id)
+  if (error) throw error
+}
+
+// ---------------------------------------------------------------------------
+// Planillas — pago de mano de obra por propiedad/empleado. Tabla propia
+// (payroll_entries) desde 20260917000000_split_expenses_payroll.sql, separada
+// de expenses (que ahora es un módulo independiente de facturas/gastos).
+// ---------------------------------------------------------------------------
+
+const mapPayrollEntry = (row: PayrollEntryRow): PayrollEntry => ({
+  id: row.id,
+  propertyId: row.property_id ?? undefined,
+  employeeId: row.employee_id ?? undefined,
+  amount: Number(row.amount),
+  date: row.date,
+  description: row.description ?? undefined,
+})
+
+export const fetchPayrollEntries = async (): Promise<PayrollEntry[]> => {
+  const { data, error } = await supabase.from('payroll_entries').select('*').order('date', { ascending: false })
+  if (error) throw error
+  return ((data ?? []) as PayrollEntryRow[]).map(mapPayrollEntry)
 }
 
 const mapCharge = (row: ChargeRow): Charge => ({

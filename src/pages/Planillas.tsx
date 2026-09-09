@@ -11,21 +11,22 @@ import {
 import { PageHeader } from '../components/PageHeader'
 import { DataTablePanel } from '../components/DataTablePanel'
 import { DateRangeSelect } from '../components/DateRangeSelect'
-import { ImportExpensesModal } from '../components/ImportExpensesModal'
-import { fetchEmployees, fetchExpenses, fetchProperties } from '../lib/api'
+import { ImportPayrollModal } from '../components/ImportPayrollModal'
+import { fetchEmployees, fetchPayrollEntries, fetchProperties } from '../lib/api'
 import { useSupabaseQuery } from '../lib/useSupabaseQuery'
 import { isWithinDateRange, type DateRangeKey } from '../lib/dateRange'
-import type { Expense } from '../types'
+import type { PayrollEntry } from '../types'
 
 const currency = (value: number) =>
   value.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 })
 
 const PAGE_SIZE = 15
 
-const columnHelper = createColumnHelper<Expense>()
+const columnHelper = createColumnHelper<PayrollEntry>()
 
-// Planillas = gastos de la plantilla "Gastos" cuya categoría es 'labor'
-// (mano de obra). Comparte tabla, plantilla e importador con Gastos.tsx.
+// Planillas — pago de mano de obra por propiedad/empleado. Tabla propia
+// (payroll_entries) desde 20260917000000_split_expenses_payroll.sql,
+// separada de Gastos (que ahora es un módulo independiente).
 export const Planillas = () => {
   const [refreshKey, setRefreshKey] = useState(0)
   const [importOpen, setImportOpen] = useState(false)
@@ -34,19 +35,16 @@ export const Planillas = () => {
   const [sorting, setSorting] = useState<SortingState>([])
   const [pageIndex, setPageIndex] = useState(0)
 
-  const { data: expenses, loading: loadingExpenses, error } = useSupabaseQuery(fetchExpenses, [refreshKey])
+  const { data: entries, loading: loadingEntries, error } = useSupabaseQuery(fetchPayrollEntries, [refreshKey])
   const { data: properties, loading: loadingProperties } = useSupabaseQuery(fetchProperties, [refreshKey])
   const { data: employees, loading: loadingEmployees } = useSupabaseQuery(fetchEmployees, [refreshKey])
 
   const filtered = useMemo(
     () =>
-      (expenses ?? []).filter(
-        (e) =>
-          e.category === 'labor' &&
-          (propertyId === 'all' || e.propertyId === propertyId) &&
-          isWithinDateRange(e.date, dateRange),
+      (entries ?? []).filter(
+        (e) => (propertyId === 'all' || e.propertyId === propertyId) && isWithinDateRange(e.date, dateRange),
       ),
-    [expenses, propertyId, dateRange],
+    [entries, propertyId, dateRange],
   )
 
   const columns = useMemo(
@@ -87,10 +85,10 @@ export const Planillas = () => {
     getPaginationRowModel: getPaginationRowModel(),
   })
 
-  // Las columnas dependen de properties/employees, no solo de expenses —
-  // hay que esperar las tres consultas para no pintar la tabla con nombres
+  // Las columnas dependen de properties/employees, no solo de entries — hay
+  // que esperar las tres consultas para no pintar la tabla con nombres
   // vacíos que aparecen un instante después.
-  const loading = loadingExpenses || loadingProperties || loadingEmployees
+  const loading = loadingEntries || loadingProperties || loadingEmployees
   const tableState = loading ? 'loading' : error ? 'error' : filtered.length === 0 ? 'empty' : 'ready'
   const tableMessage = loading
     ? 'Cargando planillas…'
@@ -141,7 +139,7 @@ export const Planillas = () => {
         message={tableMessage}
       />
 
-      <ImportExpensesModal
+      <ImportPayrollModal
         open={importOpen}
         onClose={() => setImportOpen(false)}
         onImported={() => setRefreshKey((k) => k + 1)}

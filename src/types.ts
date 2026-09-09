@@ -9,7 +9,6 @@
 export type ClientType = 'residential' | 'multifamily' | 'property_manager'
 export type PropertyStatus = 'active' | 'inactive'
 export type PaymentStatus = 'pending' | 'paid'
-export type ExpenseCategory = 'materials' | 'labor' | 'transport' | 'tools' | 'other'
 export type ServiceCategory = 'painting' | 'cleaning' | 'make_ready' | 'repair' | 'other'
 
 export type Property = {
@@ -27,14 +26,27 @@ export type ServiceType = {
   category: ServiceCategory
 }
 
+// Gastos es un módulo totalmente independiente — no está ligado a
+// propiedades, empleados ni servicios. Solo factura, monto, fecha y
+// descripción. Los pagos de mano de obra viven aparte, en payroll_entries
+// (ver PayrollEntry más abajo).
 export type Expense = {
+  id: string
+  invoiceNumber?: string
+  amount: number
+  date: string
+  description?: string
+}
+
+// Planillas — pago de mano de obra por propiedad/empleado. Tabla propia
+// (payroll_entries), separada de expenses desde 20260917000000_split_expenses_payroll.sql.
+export type PayrollEntry = {
   id: string
   propertyId?: string
   employeeId?: string
-  category: ExpenseCategory
   amount: number
   date: string
-  description: string
+  description?: string
 }
 
 export type W2Status = 'approved' | 'pending'
