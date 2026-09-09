@@ -16,6 +16,7 @@ type DataTablePanelProps<T> = {
   onPageChange: (page: number) => void
   state: 'loading' | 'error' | 'empty' | 'ready'
   message?: string
+  onRowClick?: (row: T) => void
 }
 
 const SortIcon = ({ direction }: { direction: false | 'asc' | 'desc' }) =>
@@ -27,7 +28,16 @@ const SortIcon = ({ direction }: { direction: false | 'asc' | 'desc' }) =>
     <ArrowUpDown className="h-3 w-3 opacity-40" />
   )
 
-export function DataTablePanel<T>({ title, table, page, totalPages, onPageChange, state, message }: DataTablePanelProps<T>) {
+export function DataTablePanel<T>({
+  title,
+  table,
+  page,
+  totalPages,
+  onPageChange,
+  state,
+  message,
+  onRowClick,
+}: DataTablePanelProps<T>) {
   return (
     <div className="mx-8 mt-6 mb-6 flex flex-1 min-h-0 flex-col overflow-hidden rounded-xl border border-white/10 bg-surface-alt">
       <div className="border-b border-white/10 px-5 py-3.5">
@@ -62,7 +72,11 @@ export function DataTablePanel<T>({ title, table, page, totalPages, onPageChange
               </thead>
               <tbody>
                 {table.getRowModel().rows.map((row) => (
-                  <tr key={row.id} className="border-b border-white/5 last:border-0 hover:bg-white/5">
+                  <tr
+                    key={row.id}
+                    onClick={onRowClick ? () => onRowClick(row.original) : undefined}
+                    className={`border-b border-white/5 last:border-0 hover:bg-white/5 ${onRowClick ? 'cursor-pointer' : ''}`}
+                  >
                     {row.getVisibleCells().map((cell) => (
                       <td key={cell.id} className="px-5 py-3 text-ink-200">
                         {flexRender(cell.column.columnDef.cell, cell.getContext())}

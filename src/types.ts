@@ -30,7 +30,6 @@ export type ServiceType = {
 export type Expense = {
   id: string
   propertyId?: string
-  serviceId?: string
   employeeId?: string
   category: ExpenseCategory
   amount: number
@@ -74,6 +73,7 @@ export type Charge = {
   responsible?: string
   notes?: string
   extras: ChargeExtra[]
+  invoiceNumber?: string
 }
 
 export type ScheduleStatus = 'pending' | 'in_progress' | 'delivered' | 'cancelled'

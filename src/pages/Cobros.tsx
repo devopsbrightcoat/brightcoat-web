@@ -12,6 +12,8 @@ import { PageHeader } from '../components/PageHeader'
 import { StatCard } from '../components/StatCard'
 import { DataTablePanel } from '../components/DataTablePanel'
 import { ImportChargesModal } from '../components/ImportChargesModal'
+import { ChargeInvoiceModal } from '../components/ChargeInvoiceModal'
+import { ChargeDetailModal } from '../components/ChargeDetailModal'
 import { StatusPill } from '../components/StatusPill'
 import { fetchCharges, fetchProperties, fetchServiceTypes } from '../lib/api'
 import { useSupabaseQuery } from '../lib/useSupabaseQuery'
@@ -31,6 +33,8 @@ const columnHelper = createColumnHelper<Charge>()
 export const Cobros = () => {
   const [refreshKey, setRefreshKey] = useState(0)
   const [importOpen, setImportOpen] = useState(false)
+  const [invoiceCharge, setInvoiceCharge] = useState<Charge | null>(null)
+  const [detailCharge, setDetailCharge] = useState<Charge | null>(null)
   const [propertyId, setPropertyId] = useState('all')
   const [status, setStatus] = useState<'all' | 'paid' | 'pending'>('all')
   const [sorting, setSorting] = useState<SortingState>([])
@@ -80,8 +84,19 @@ export const Cobros = () => {
       columnHelper.accessor('status', {
         id: 'status',
         header: 'Estatus',
-        cell: (info) => <StatusPill status={info.getValue()} />,
+        cell: (info) => (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation()
+              setInvoiceCharge(info.row.original)
+            }}
+          >
+            <StatusPill status={info.getValue()} />
+          </button>
+        ),
       }),
+      columnHelper.accessor((row) => row.invoiceNumber || '—', { id: 'invoiceNumber', header: 'Invoice #' }),
     ],
     [properties, serviceTypes],
   )
@@ -171,12 +186,26 @@ export const Cobros = () => {
         onPageChange={(p) => setPageIndex(p - 1)}
         state={tableState}
         message={tableMessage}
+        onRowClick={setDetailCharge}
       />
 
       <ImportChargesModal
         open={importOpen}
         onClose={() => setImportOpen(false)}
         onImported={() => setRefreshKey((k) => k + 1)}
+      />
+
+      <ChargeInvoiceModal
+        charge={invoiceCharge}
+        onClose={() => setInvoiceCharge(null)}
+        onSaved={() => setRefreshKey((k) => k + 1)}
+      />
+
+      <ChargeDetailModal
+        charge={detailCharge}
+        properties={properties ?? []}
+        serviceTypes={serviceTypes ?? []}
+        onClose={() => setDetailCharge(null)}
       />
     </div>
   )

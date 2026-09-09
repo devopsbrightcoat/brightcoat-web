@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { ArrowDown, ArrowUp, ArrowUpDown } from 'lucide-react'
+import { ArrowDown, ArrowUp, ArrowUpDown, Pencil, Plus } from 'lucide-react'
 import {
   createColumnHelper,
   flexRender,
@@ -11,6 +11,8 @@ import {
 } from '@tanstack/react-table'
 import { PageHeader } from '../components/PageHeader'
 import { Pagination } from '../components/Pagination'
+import { AddServiceTypeModal } from '../components/AddServiceTypeModal'
+import { EditServiceTypeModal } from '../components/EditServiceTypeModal'
 import { fetchServiceTypes } from '../lib/api'
 import { useSupabaseQuery } from '../lib/useSupabaseQuery'
 import type { ServiceType } from '../types'
@@ -36,8 +38,11 @@ const SortIcon = ({ direction }: { direction: false | 'asc' | 'desc' }) =>
     <ArrowUpDown className="h-3 w-3 opacity-40" />
   )
 
-export const Configuracion = () => {
-  const { data: serviceTypes, loading, error } = useSupabaseQuery(fetchServiceTypes, [])
+export const ConfiguracionServicios = () => {
+  const [refreshKey, setRefreshKey] = useState(0)
+  const [addOpen, setAddOpen] = useState(false)
+  const [editingServiceType, setEditingServiceType] = useState<ServiceType | null>(null)
+  const { data: serviceTypes, loading, error } = useSupabaseQuery(fetchServiceTypes, [refreshKey])
 
   const [sorting, setSorting] = useState<SortingState>([])
   const [pageIndex, setPageIndex] = useState(0)
@@ -51,6 +56,20 @@ export const Configuracion = () => {
       columnHelper.accessor((row) => categoryLabels[row.category] ?? row.category, {
         id: 'category',
         header: 'Categoría',
+      }),
+      columnHelper.display({
+        id: 'actions',
+        header: 'Acciones',
+        cell: (info) => (
+          <button
+            type="button"
+            onClick={() => setEditingServiceType(info.row.original)}
+            className="flex items-center gap-1.5 rounded-lg border border-white/10 px-2.5 py-1.5 text-xs font-medium text-ink-300 hover:bg-white/5"
+          >
+            <Pencil className="h-3.5 w-3.5" />
+            Editar
+          </button>
+        ),
       }),
     ],
     [],
@@ -76,9 +95,22 @@ export const Configuracion = () => {
 
   return (
     <div className="h-screen overflow-hidden flex flex-col">
-      <PageHeader title="Configuración" subtitle="Catálogo de tipos de servicio" />
+      <PageHeader
+        title="Servicios"
+        subtitle="Catálogo de tipos de servicio que ofrece BrightCoat"
+        action={
+          <button
+            type="button"
+            onClick={() => setAddOpen(true)}
+            className="flex items-center gap-2 rounded-lg bg-gold-500 px-3.5 py-2 text-sm font-semibold text-brand-900 transition hover:bg-gold-400"
+          >
+            <Plus className="h-4 w-4" />
+            Agregar servicio
+          </button>
+        }
+      />
 
-      <div className="mx-8 mt-6 mb-6 flex flex-1 min-h-0 max-w-xl flex-col overflow-hidden rounded-xl border border-white/10 bg-surface-alt">
+      <div className="mx-8 mt-6 mb-6 flex flex-1 min-h-0 max-w-2xl flex-col overflow-hidden rounded-xl border border-white/10 bg-surface-alt">
         {loading ? (
           <p className="px-5 py-6 text-sm text-ink-500">Cargando…</p>
         ) : error ? (
@@ -97,14 +129,18 @@ export const Configuracion = () => {
                     >
                       {headerGroup.headers.map((header) => (
                         <th key={header.id} className="px-5 py-2.5 font-medium">
-                          <button
-                            type="button"
-                            onClick={header.column.getToggleSortingHandler()}
-                            className="flex items-center gap-1.5 hover:text-ink-300"
-                          >
-                            {flexRender(header.column.columnDef.header, header.getContext())}
-                            <SortIcon direction={header.column.getIsSorted()} />
-                          </button>
+                          {header.column.getCanSort() ? (
+                            <button
+                              type="button"
+                              onClick={header.column.getToggleSortingHandler()}
+                              className="flex items-center gap-1.5 hover:text-ink-300"
+                            >
+                              {flexRender(header.column.columnDef.header, header.getContext())}
+                              <SortIcon direction={header.column.getIsSorted()} />
+                            </button>
+                          ) : (
+                            flexRender(header.column.columnDef.header, header.getContext())
+                          )}
                         </th>
                       ))}
                     </tr>
@@ -114,26 +150,27 @@ export const Configuracion = () => {
                   {table.getRowModel().rows.map((row) => (
                     <tr key={row.id} className="border-b border-white/5 last:border-0">
                       {row.getVisibleCells().map((cell, i) => (
-                        <td
-                          key={cell.id}
-                          className={i === 0 ? 'px-5 py-3 text-ink-200' : 'px-5 py-3 text-ink-400'}
-                      >
-                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                      </td>
+                        <td key={cell.id} className={i === 0 ? 'px-5 py-3 text-ink-200' : 'px-5 py-3 text-ink-400'}>
+                          {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                        </td>
                       ))}
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
-            <Pagination
-              page={currentPageIndex + 1}
-              totalPages={pageCount}
-              onChange={(p) => setPageIndex(p - 1)}
-            />
+            <Pagination page={currentPageIndex + 1} totalPages={pageCount} onChange={(p) => setPageIndex(p - 1)} />
           </>
         )}
       </div>
+
+      <AddServiceTypeModal open={addOpen} onClose={() => setAddOpen(false)} onSaved={() => setRefreshKey((k) => k + 1)} />
+
+      <EditServiceTypeModal
+        serviceType={editingServiceType}
+        onClose={() => setEditingServiceType(null)}
+        onSaved={() => setRefreshKey((k) => k + 1)}
+      />
     </div>
   )
 }

@@ -1,12 +1,16 @@
 import { useMemo, useState } from 'react'
-import { ChevronLeft, ChevronRight, Pencil, Plus } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Download, Filter, Pencil, Plus } from 'lucide-react'
 import { PageHeader } from '../components/PageHeader'
 import { StatusPill } from '../components/StatusPill'
 import { AddScheduleModal } from '../components/AddScheduleModal'
 import { EditScheduleModal } from '../components/EditScheduleModal'
 import { ScheduleActionModal } from '../components/ScheduleActionModal'
+import { ScheduleDetailModal } from '../components/ScheduleDetailModal'
+import { ScheduleFiltersModal } from '../components/ScheduleFiltersModal'
 import { fetchEmployees, fetchProperties, fetchSchedules, fetchServiceTypes } from '../lib/api'
 import { useSupabaseQuery } from '../lib/useSupabaseQuery'
+import { exportSchedulesToExcel } from '../lib/exportSchedules'
+import { getErrorMessage } from '../lib/errors'
 import {
   DAY_LABELS,
   addDays,
@@ -41,6 +45,12 @@ export const Horarios = () => {
   const [addOpen, setAddOpen] = useState(false)
   const [actionSchedule, setActionSchedule] = useState<Schedule | null>(null)
   const [editingSchedule, setEditingSchedule] = useState<Schedule | null>(null)
+  const [detailSchedule, setDetailSchedule] = useState<Schedule | null>(null)
+  const [exporting, setExporting] = useState(false)
+  const [exportError, setExportError] = useState<string | null>(null)
+  const [filtersOpen, setFiltersOpen] = useState(false)
+  const [filterPropertyId, setFilterPropertyId] = useState('all')
+  const [filterEmployeeId, setFilterEmployeeId] = useState('all')
 
   const changeMonth = (delta: number) => {
     let year = viewYear
@@ -71,9 +81,25 @@ export const Horarios = () => {
 
   const dayRows = (schedules ?? [])
     .filter((s) => s.scheduledDate === selectedDateIso)
+    .filter((s) => filterPropertyId === 'all' || s.propertyId === filterPropertyId)
+    .filter((s) => filterEmployeeId === 'all' || s.employeeId === filterEmployeeId)
     .sort((a, b) => a.scheduledTime.localeCompare(b.scheduledTime))
 
+  const activeFilterCount = (filterPropertyId !== 'all' ? 1 : 0) + (filterEmployeeId !== 'all' ? 1 : 0)
+
   const selectedDate = parseISODate(selectedDateIso)
+
+  const handleExport = async () => {
+    setExporting(true)
+    setExportError(null)
+    try {
+      await exportSchedulesToExcel(dayRows, propertyMap, serviceTypeMap, employeeMap, selectedDateIso)
+    } catch (err) {
+      setExportError(getErrorMessage(err, 'No se pudo generar el Excel.'))
+    } finally {
+      setExporting(false)
+    }
+  }
 
   return (
     <div className="pb-10">
@@ -152,17 +178,49 @@ export const Horarios = () => {
       </div>
 
       <div className="mx-8 mt-6">
-        <p className="mb-3 text-sm font-medium text-ink-300">
-          {DAY_LABELS[(selectedDate.getDay() + 6) % 7]} {selectedDate.getDate()} de{' '}
-          {formatMonthLabel(selectedDate.getFullYear(), selectedDate.getMonth()).split(' ')[0].toLowerCase()}
-        </p>
+        <div className="mb-3 flex items-center justify-between">
+          <p className="text-sm font-medium text-ink-300">
+            {DAY_LABELS[(selectedDate.getDay() + 6) % 7]} {selectedDate.getDate()} de{' '}
+            {formatMonthLabel(selectedDate.getFullYear(), selectedDate.getMonth()).split(' ')[0].toLowerCase()}
+          </p>
+
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setFiltersOpen(true)}
+              className="flex items-center gap-2 rounded-lg border border-white/10 px-3.5 py-2 text-sm font-medium text-ink-300 hover:bg-white/5"
+            >
+              <Filter className="h-4 w-4" />
+              Filtros
+              {activeFilterCount > 0 && (
+                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-gold-500 text-xs font-semibold text-brand-900">
+                  {activeFilterCount}
+                </span>
+              )}
+            </button>
+
+            {!loading && !error && dayRows.length > 0 && (
+              <button
+                type="button"
+                disabled={exporting}
+                onClick={handleExport}
+                className="flex items-center gap-2 rounded-lg border border-white/10 px-3.5 py-2 text-sm font-medium text-ink-300 hover:bg-white/5 disabled:opacity-60"
+              >
+                <Download className="h-4 w-4" />
+                {exporting ? 'Generando…' : 'Exportar a Excel'}
+              </button>
+            )}
+          </div>
+        </div>
+
+        {exportError && <p className="mb-3 text-sm text-red-400">{exportError}</p>}
 
         {loading && <p className="text-sm text-ink-400">Cargando horarios…</p>}
         {error && <p className="text-sm text-red-400">{error}</p>}
 
         {!loading && !error && dayRows.length === 0 && (
           <p className="rounded-xl border border-white/10 bg-surface-alt px-5 py-8 text-center text-sm text-ink-500">
-            No hay horarios para este día.
+            {activeFilterCount > 0 ? 'No hay horarios para este día con estos filtros.' : 'No hay horarios para este día.'}
           </p>
         )}
 
@@ -182,7 +240,11 @@ export const Horarios = () => {
               </thead>
               <tbody>
                 {dayRows.map((row) => (
-                  <tr key={row.id} className="border-b border-white/5 last:border-0">
+                  <tr
+                    key={row.id}
+                    onClick={() => setDetailSchedule(row)}
+                    className="cursor-pointer border-b border-white/5 last:border-0 hover:bg-white/5"
+                  >
                     <td className="px-5 py-3 text-ink-200">{propertyMap.get(row.propertyId) ?? '—'}</td>
                     <td className="px-5 py-3 text-ink-400">{row.unitLabel || '—'}</td>
                     <td className="px-5 py-3 text-ink-400">{serviceTypeMap.get(row.serviceTypeId) ?? '—'}</td>
@@ -192,7 +254,10 @@ export const Horarios = () => {
                       <button
                         type="button"
                         disabled={row.status === 'delivered'}
-                        onClick={() => setActionSchedule(row)}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setActionSchedule(row)
+                        }}
                         className="disabled:cursor-not-allowed"
                         title={row.status === 'delivered' ? 'Ya entregado y cobrado — el estatus no se puede cambiar.' : undefined}
                       >
@@ -203,7 +268,10 @@ export const Horarios = () => {
                       <button
                         type="button"
                         disabled={row.status === 'delivered'}
-                        onClick={() => setEditingSchedule(row)}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setEditingSchedule(row)
+                        }}
                         title={row.status === 'delivered' ? 'Ya entregado y cobrado — no se puede editar.' : undefined}
                         className="flex items-center gap-1.5 rounded-lg border border-white/10 px-2.5 py-1.5 text-xs font-medium text-ink-300 hover:bg-white/5 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
                       >
@@ -242,6 +310,25 @@ export const Horarios = () => {
         employees={employees ?? []}
         onClose={() => setEditingSchedule(null)}
         onSaved={() => setRefreshKey((k) => k + 1)}
+      />
+
+      <ScheduleDetailModal
+        schedule={detailSchedule}
+        propertyMap={propertyMap}
+        serviceTypeMap={serviceTypeMap}
+        employeeMap={employeeMap}
+        onClose={() => setDetailSchedule(null)}
+      />
+
+      <ScheduleFiltersModal
+        open={filtersOpen}
+        onClose={() => setFiltersOpen(false)}
+        properties={properties ?? []}
+        employees={employees ?? []}
+        propertyId={filterPropertyId}
+        employeeId={filterEmployeeId}
+        onPropertyChange={setFilterPropertyId}
+        onEmployeeChange={setFilterEmployeeId}
       />
     </div>
   )

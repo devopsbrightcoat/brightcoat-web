@@ -33,7 +33,6 @@ export type EmployeeRow = {
 export type ExpenseRow = {
   id: string
   property_id: string | null
-  service_id: string | null
   employee_id: string | null
   category: 'materials' | 'labor' | 'transport' | 'tools' | 'other'
   amount: number | string
@@ -54,6 +53,7 @@ export type ChargeRow = {
   responsible: string | null
   notes: string | null
   extras: { description: string; amount: number }[] | null
+  invoice_number: string | null
 }
 
 export type ScheduleRow = {

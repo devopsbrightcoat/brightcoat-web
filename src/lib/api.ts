@@ -42,6 +42,22 @@ export const fetchServiceTypes = async (): Promise<ServiceType[]> => {
   return ((data ?? []) as ServiceTypeRow[]).map(mapServiceType)
 }
 
+export const createServiceType = async (data: { name: string; category: ServiceType['category'] }): Promise<void> => {
+  const { error } = await supabase.from('service_types').insert({ name: data.name, category: data.category })
+  if (error) throw error
+}
+
+export const updateServiceType = async (
+  id: string,
+  patch: { name: string; category: ServiceType['category'] },
+): Promise<void> => {
+  const { error } = await supabase
+    .from('service_types')
+    .update({ name: patch.name, category: patch.category })
+    .eq('id', id)
+  if (error) throw error
+}
+
 const mapEmployee = (row: EmployeeRow): Employee => ({
   id: row.id,
   name: row.name,
@@ -62,7 +78,6 @@ export const fetchEmployees = async (): Promise<Employee[]> => {
 const mapExpense = (row: ExpenseRow): Expense => ({
   id: row.id,
   propertyId: row.property_id ?? undefined,
-  serviceId: row.service_id ?? undefined,
   employeeId: row.employee_id ?? undefined,
   category: row.category,
   amount: Number(row.amount),
@@ -89,12 +104,29 @@ const mapCharge = (row: ChargeRow): Charge => ({
   responsible: row.responsible ?? undefined,
   notes: row.notes ?? undefined,
   extras: row.extras ?? [],
+  invoiceNumber: row.invoice_number ?? undefined,
 })
 
 export const fetchCharges = async (): Promise<Charge[]> => {
   const { data, error } = await supabase.from('charges').select('*').order('created_at', { ascending: false })
   if (error) throw error
   return ((data ?? []) as ChargeRow[]).map(mapCharge)
+}
+
+// Marca un cobro como pagado/subido a OPS junto con su invoice number — ver
+// ChargeInvoiceModal.tsx. El invoice number se captura en el mismo paso que
+// el cambio de estatus para no dejar un cobro "pagado" sin invoice number
+// asociado; también permite corregir el invoice number de un cobro que ya
+// está pagado (el estatus se reenvía sin cambios en ese caso).
+export const updateChargeStatus = async (
+  id: string,
+  data: { status: Charge['status']; invoiceNumber?: string },
+): Promise<void> => {
+  const { error } = await supabase
+    .from('charges')
+    .update({ status: data.status, invoice_number: data.invoiceNumber?.trim() || null })
+    .eq('id', id)
+  if (error) throw error
 }
 
 
@@ -194,8 +226,11 @@ export const createProperty = async (data: {
 
 // ---------------------------------------------------------------------------
 // Horarios — scheduler semanal de servicios (ver src/pages/Horarios.tsx).
-// Tablas separadas de `services`/`charges`: schedules, schedule_charges y
-// schedule_charge_extras (ver supabase/migrations 20260910000000_add_schedules).
+// El cobro de un horario finalizado se guarda directamente en `charges`
+// (ver createScheduleCharge más abajo y 20260912000000_unify_charges.sql).
+// Las tablas `schedule_charges`/`schedule_charge_extras` de
+// 20260910000000_add_schedules.sql quedaron deprecadas y ya no existen
+// (ver 20260914000000_drop_deprecated_tables.sql).
 // ---------------------------------------------------------------------------
 
 const mapSchedule = (row: ScheduleRow): Schedule => ({

@@ -33,7 +33,15 @@ const navItems: NavItem[] = [
   },
   { to: '/empleados', label: 'Empleados', icon: Users },
   { to: '/reportes', label: 'Reportes', icon: LineChart },
-  { to: '/configuracion', label: 'Configuración', icon: Settings },
+  {
+    to: '/configuracion',
+    label: 'Configuración',
+    icon: Settings,
+    children: [
+      { to: '/configuracion/general', label: 'General' },
+      { to: '/configuracion/servicios', label: 'Servicios' },
+    ],
+  },
 ]
 
 const roleLabel: Record<string, string> = {

@@ -2,7 +2,8 @@ import { Navigate, Route, Routes } from 'react-router-dom'
 import { ProtectedRoute } from './auth/ProtectedRoute'
 import { AppLayout } from './layout/AppLayout'
 import { Cobros } from './pages/Cobros'
-import { Configuracion } from './pages/Configuracion'
+import { ConfiguracionGeneral } from './pages/ConfiguracionGeneral'
+import { ConfiguracionServicios } from './pages/ConfiguracionServicios'
 import { Dashboard } from './pages/Dashboard'
 import { Empleados } from './pages/Empleados'
 import { Gastos } from './pages/Gastos'
@@ -36,7 +37,11 @@ const App = () => {
         </Route>
         <Route path="empleados" element={<Empleados />} />
         <Route path="reportes" element={<Reportes />} />
-        <Route path="configuracion" element={<Configuracion />} />
+        <Route path="configuracion">
+          <Route index element={<Navigate to="general" replace />} />
+          <Route path="general" element={<ConfiguracionGeneral />} />
+          <Route path="servicios" element={<ConfiguracionServicios />} />
+        </Route>
         <Route path="*" element={<NotFound />} />
       </Route>
     </Routes>
