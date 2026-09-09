@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { DollarSign, Filter, Pencil, Plus, Receipt, Search, Upload } from 'lucide-react'
+import { DollarSign, Download, Filter, Pencil, Plus, Receipt, Search, Upload } from 'lucide-react'
 import {
   createColumnHelper,
   getCoreRowModel,
@@ -18,6 +18,8 @@ import { ExpenseFiltersModal } from '../components/ExpenseFiltersModal'
 import { ImportExpensesModal } from '../components/ImportExpensesModal'
 import { fetchExpenses } from '../lib/api'
 import { useSupabaseQuery } from '../lib/useSupabaseQuery'
+import { exportExpensesToExcel } from '../lib/exportExpenses'
+import { getErrorMessage } from '../lib/errors'
 import type { Expense } from '../types'
 
 const currency = (value: number) =>
@@ -49,6 +51,8 @@ export const Gastos = () => {
 
   const [sorting, setSorting] = useState<SortingState>([])
   const [pageIndex, setPageIndex] = useState(0)
+  const [exporting, setExporting] = useState(false)
+  const [exportError, setExportError] = useState<string | null>(null)
 
   const filtered = useMemo(() => {
     const q = searchText.trim().toLowerCase()
@@ -70,6 +74,18 @@ export const Gastos = () => {
 
   const activeFilterCount = [dateFrom, dateTo, amountMin, amountMax].filter(Boolean).length
   const totalAmount = filtered.reduce((sum, e) => sum + e.amount, 0)
+
+  const handleExport = async () => {
+    setExporting(true)
+    setExportError(null)
+    try {
+      await exportExpensesToExcel(filtered)
+    } catch (err) {
+      setExportError(getErrorMessage(err, 'No se pudo generar el Excel.'))
+    } finally {
+      setExporting(false)
+    }
+  }
 
   const columns = useMemo(
     () => [
@@ -172,20 +188,34 @@ export const Gastos = () => {
           />
         </div>
 
-        <button
-          type="button"
-          onClick={() => setFiltersOpen(true)}
-          className="flex items-center gap-2 rounded-lg border border-white/10 bg-surface-alt px-3.5 py-2 text-sm font-medium text-ink-300 hover:bg-white/5"
-        >
-          <Filter className="h-4 w-4" />
-          Filtros
-          {activeFilterCount > 0 && (
-            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-gold-500 text-xs font-semibold text-brand-900">
-              {activeFilterCount}
-            </span>
-          )}
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => setFiltersOpen(true)}
+            className="flex items-center gap-2 rounded-lg border border-white/10 bg-surface-alt px-3.5 py-2 text-sm font-medium text-ink-300 hover:bg-white/5"
+          >
+            <Filter className="h-4 w-4" />
+            Filtros
+            {activeFilterCount > 0 && (
+              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-gold-500 text-xs font-semibold text-brand-900">
+                {activeFilterCount}
+              </span>
+            )}
+          </button>
+
+          <button
+            type="button"
+            disabled={exporting || filtered.length === 0}
+            onClick={handleExport}
+            className="flex items-center gap-2 rounded-lg border border-white/10 px-3.5 py-2 text-sm font-medium text-ink-300 hover:bg-white/5 disabled:opacity-60"
+          >
+            <Download className="h-4 w-4" />
+            {exporting ? 'Generando…' : 'Exportar a Excel'}
+          </button>
+        </div>
       </div>
+
+      {exportError && <p className="mx-8 mt-3 text-sm text-red-400">{exportError}</p>}
 
       <div className="mx-8 mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:max-w-md">
         <StatCard label="Total" value={currency(totalAmount)} icon={DollarSign} />

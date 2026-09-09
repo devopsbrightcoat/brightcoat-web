@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Clock, DollarSign, Download, Receipt, Upload } from 'lucide-react'
+import { Clock, DollarSign, Download, Filter, Receipt, Search, Upload } from 'lucide-react'
 import {
   createColumnHelper,
   getCoreRowModel,
@@ -14,6 +14,7 @@ import { DataTablePanel } from '../components/DataTablePanel'
 import { ImportChargesModal } from '../components/ImportChargesModal'
 import { ChargeInvoiceModal } from '../components/ChargeInvoiceModal'
 import { ChargeDetailModal } from '../components/ChargeDetailModal'
+import { ChargeFiltersModal } from '../components/ChargeFiltersModal'
 import { StatusPill } from '../components/StatusPill'
 import { fetchCharges, fetchProperties, fetchServiceTypes } from '../lib/api'
 import { useSupabaseQuery } from '../lib/useSupabaseQuery'
@@ -39,6 +40,9 @@ export const Cobros = () => {
   const [detailCharge, setDetailCharge] = useState<Charge | null>(null)
   const [propertyId, setPropertyId] = useState('all')
   const [status, setStatus] = useState<'all' | 'paid' | 'pending'>('all')
+  const [serviceTypeId, setServiceTypeId] = useState('all')
+  const [searchText, setSearchText] = useState('')
+  const [filtersOpen, setFiltersOpen] = useState(false)
   const [sorting, setSorting] = useState<SortingState>([])
   const [pageIndex, setPageIndex] = useState(0)
   const [exporting, setExporting] = useState(false)
@@ -48,13 +52,26 @@ export const Cobros = () => {
   const { data: properties, loading: loadingProperties } = useSupabaseQuery(fetchProperties, [refreshKey])
   const { data: serviceTypes, loading: loadingServiceTypes } = useSupabaseQuery(fetchServiceTypes, [refreshKey])
 
-  const filtered = useMemo(
-    () =>
-      (charges ?? []).filter(
-        (c) => (propertyId === 'all' || c.propertyId === propertyId) && (status === 'all' || c.status === status),
-      ),
-    [charges, propertyId, status],
-  )
+  const filtered = useMemo(() => {
+    const q = searchText.trim().toLowerCase()
+    return (charges ?? []).filter((c) => {
+      if (propertyId !== 'all' && c.propertyId !== propertyId) return false
+      if (status !== 'all' && c.status !== status) return false
+      if (serviceTypeId !== 'all' && c.serviceTypeId !== serviceTypeId) return false
+      if (q) {
+        const propertyName = properties?.find((p) => p.id === c.propertyId)?.name ?? ''
+        const haystack = [propertyName, c.unitLabel, c.description, c.notes, c.responsible, c.invoiceNumber]
+          .filter(Boolean)
+          .join(' ')
+          .toLowerCase()
+        if (!haystack.includes(q)) return false
+      }
+      return true
+    })
+  }, [charges, properties, propertyId, status, serviceTypeId, searchText])
+
+  const activeFilterCount =
+    (propertyId !== 'all' ? 1 : 0) + (status !== 'all' ? 1 : 0) + (serviceTypeId !== 'all' ? 1 : 0)
 
   const totalPaid = (charges ?? []).filter((c) => c.status === 'paid').reduce((sum, c) => sum + c.amount, 0)
   const totalPending = (charges ?? []).filter((c) => c.status === 'pending').reduce((sum, c) => sum + c.amount, 0)
@@ -165,39 +182,42 @@ export const Cobros = () => {
       />
 
       <div className="mx-8 mt-6 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-wrap items-center gap-3">
-          <select
-            value={propertyId}
-            onChange={(e) => setPropertyId(e.target.value)}
-            className="rounded-lg border border-white/10 bg-surface-alt px-3 py-2 text-sm text-ink-200"
-          >
-            <option value="all">Todas las propiedades</option>
-            {(properties ?? []).map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name}
-              </option>
-            ))}
-          </select>
-          <select
-            value={status}
-            onChange={(e) => setStatus(e.target.value as typeof status)}
-            className="rounded-lg border border-white/10 bg-surface-alt px-3 py-2 text-sm text-ink-200"
-          >
-            <option value="all">Todos los estatus</option>
-            <option value="paid">Subidos a OPS</option>
-            <option value="pending">Pendientes</option>
-          </select>
+        <div className="relative max-w-sm flex-1 min-w-[220px]">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-500" />
+          <input
+            type="text"
+            value={searchText}
+            onChange={(e) => setSearchText(e.target.value)}
+            placeholder="Buscar por propiedad, apartamento, descripción o invoice #…"
+            className="w-full rounded-lg border border-white/10 bg-surface-alt py-2 pl-9 pr-3 text-sm text-ink-200 placeholder:text-ink-500"
+          />
         </div>
 
-        <button
-          type="button"
-          disabled={exporting || filtered.length === 0}
-          onClick={handleExport}
-          className="flex items-center gap-2 rounded-lg border border-white/10 px-3.5 py-2 text-sm font-medium text-ink-300 hover:bg-white/5 disabled:opacity-60"
-        >
-          <Download className="h-4 w-4" />
-          {exporting ? 'Generando…' : 'Exportar a Excel'}
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => setFiltersOpen(true)}
+            className="flex items-center gap-2 rounded-lg border border-white/10 bg-surface-alt px-3.5 py-2 text-sm font-medium text-ink-300 hover:bg-white/5"
+          >
+            <Filter className="h-4 w-4" />
+            Filtros
+            {activeFilterCount > 0 && (
+              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-gold-500 text-xs font-semibold text-brand-900">
+                {activeFilterCount}
+              </span>
+            )}
+          </button>
+
+          <button
+            type="button"
+            disabled={exporting || filtered.length === 0}
+            onClick={handleExport}
+            className="flex items-center gap-2 rounded-lg border border-white/10 px-3.5 py-2 text-sm font-medium text-ink-300 hover:bg-white/5 disabled:opacity-60"
+          >
+            <Download className="h-4 w-4" />
+            {exporting ? 'Generando…' : 'Exportar a Excel'}
+          </button>
+        </div>
       </div>
 
       {exportError && <p className="mx-8 mt-3 text-sm text-red-400">{exportError}</p>}
@@ -236,6 +256,19 @@ export const Cobros = () => {
         properties={properties ?? []}
         serviceTypes={serviceTypes ?? []}
         onClose={() => setDetailCharge(null)}
+      />
+
+      <ChargeFiltersModal
+        open={filtersOpen}
+        onClose={() => setFiltersOpen(false)}
+        properties={properties ?? []}
+        serviceTypes={serviceTypes ?? []}
+        propertyId={propertyId}
+        status={status}
+        serviceTypeId={serviceTypeId}
+        onPropertyChange={setPropertyId}
+        onStatusChange={setStatus}
+        onServiceTypeChange={setServiceTypeId}
       />
     </div>
   )
