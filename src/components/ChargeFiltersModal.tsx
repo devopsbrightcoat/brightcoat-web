@@ -1,4 +1,4 @@
-import { Modal } from './Modal'
+import { FilterPanel } from './FilterPanel'
 import type { Property, ServiceType } from '../types'
 
 const inputClass =
@@ -7,10 +7,12 @@ const labelClass = 'mb-1.5 block text-sm font-medium text-ink-200'
 
 // Filtros de la tabla de Cobros — por propiedad, estatus y tipo de
 // servicio. Aplican de inmediato (mismo criterio que
-// ScheduleFiltersModal/ExpenseFiltersModal), este modal solo los agrupa
-// detrás de un botón para no ocupar espacio permanente en la página. El
-// searchbar (propiedad/apartamento/descripción/invoice #) vive aparte,
-// directamente en Cobros.tsx.
+// ScheduleFiltersModal/ExpenseFiltersModal), este panel (ver FilterPanel.tsx
+// — el "chrome" común, deslizable desde la derecha, que ahora comparten los
+// filtros de las cuatro pantallas) solo agrupa los campos detrás de un
+// botón para no ocupar espacio permanente en la página. El searchbar
+// (propiedad/apartamento/descripción/invoice #) vive aparte, directamente
+// en Cobros.tsx.
 type ChargeFiltersModalProps = {
   open: boolean
   onClose: () => void
@@ -39,7 +41,16 @@ export const ChargeFiltersModal = ({
   const hasFilters = propertyId !== 'all' || status !== 'all' || serviceTypeId !== 'all'
 
   return (
-    <Modal open={open} onClose={onClose} title="Filtros">
+    <FilterPanel
+      open={open}
+      onClose={onClose}
+      hasFilters={hasFilters}
+      onClear={() => {
+        onPropertyChange('all')
+        onStatusChange('all')
+        onServiceTypeChange('all')
+      }}
+    >
       <div className="space-y-4">
         <div>
           <label htmlFor="chg-filter-property" className={labelClass}>
@@ -94,29 +105,7 @@ export const ChargeFiltersModal = ({
             ))}
           </select>
         </div>
-
-        <div className="flex items-center justify-between pt-2">
-          <button
-            type="button"
-            disabled={!hasFilters}
-            onClick={() => {
-              onPropertyChange('all')
-              onStatusChange('all')
-              onServiceTypeChange('all')
-            }}
-            className="text-sm font-medium text-ink-400 hover:text-ink-200 disabled:opacity-40 disabled:hover:text-ink-400"
-          >
-            Limpiar filtros
-          </button>
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-lg bg-gold-500 px-4 py-2 text-sm font-semibold text-brand-900 transition hover:bg-gold-400"
-          >
-            Aplicar
-          </button>
-        </div>
       </div>
-    </Modal>
+    </FilterPanel>
   )
 }

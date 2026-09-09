@@ -38,15 +38,27 @@ export type Expense = {
   description?: string
 }
 
-// Planillas — pago de mano de obra por propiedad/empleado. Tabla propia
-// (payroll_entries), separada de expenses desde 20260917000000_split_expenses_payroll.sql.
+// Planillas — pago de mano de obra por trabajo completo (propiedad +
+// unidad + empleado + servicio, todos obligatorios). Tabla propia
+// (payroll_entries), separada de expenses desde
+// 20260917000000_split_expenses_payroll.sql. El desglose del servicio
+// (payroll_entry_items) se usa para calcular Ventas/Ganancia en la UI —
+// ver 20260918000000_payroll_service_breakdown.sql.
+export type PayrollEntryItem = {
+  id: string
+  description: string
+  amount: number
+}
+
 export type PayrollEntry = {
   id: string
-  propertyId?: string
-  employeeId?: string
+  propertyId: string
+  unitLabel: string
+  employeeId: string
+  serviceName: string
   amount: number
   date: string
-  description?: string
+  items: PayrollEntryItem[]
 }
 
 export type W2Status = 'approved' | 'pending'

@@ -41,7 +41,19 @@ export const expenses: Expense[] = [
 ]
 
 export const payrollEntries: PayrollEntry[] = [
-  { id: 'pe1', propertyId: 'p1', employeeId: 'e2', amount: 620, date: '2026-08-06', description: 'Mano de obra — pintura interior' },
+  {
+    id: 'pe1',
+    propertyId: 'p1',
+    unitLabel: '204',
+    employeeId: 'e2',
+    serviceName: 'Pintura interior — unidad completa',
+    amount: 620,
+    date: '2026-08-06',
+    items: [
+      { id: 'pei1', description: '2 recámaras + pasillo', amount: 420 },
+      { id: 'pei2', description: 'Baño', amount: 260 },
+    ],
+  },
 ]
 
 // Serie mensual para el gráfico de ingresos vs. gastos del dashboard/reportes

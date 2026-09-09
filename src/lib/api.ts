@@ -122,24 +122,102 @@ export const updateExpense = async (
 }
 
 // ---------------------------------------------------------------------------
-// Planillas — pago de mano de obra por propiedad/empleado. Tabla propia
-// (payroll_entries) desde 20260917000000_split_expenses_payroll.sql, separada
-// de expenses (que ahora es un módulo independiente de facturas/gastos).
+// Planillas — pago de mano de obra por trabajo completo (propiedad + unidad
+// + empleado + servicio, todos obligatorios). Tabla propia (payroll_entries)
+// desde 20260917000000_split_expenses_payroll.sql, separada de expenses (que
+// ahora es un módulo independiente de facturas/gastos). El desglose del
+// servicio vive en payroll_entry_items — ver
+// 20260918000000_payroll_service_breakdown.sql. "Ventas" y "Ganancia" se
+// calculan en la UI a partir del desglose, no se guardan.
 // ---------------------------------------------------------------------------
 
 const mapPayrollEntry = (row: PayrollEntryRow): PayrollEntry => ({
   id: row.id,
-  propertyId: row.property_id ?? undefined,
-  employeeId: row.employee_id ?? undefined,
+  propertyId: row.property_id,
+  unitLabel: row.unit_label,
+  employeeId: row.employee_id,
+  serviceName: row.service_name,
   amount: Number(row.amount),
   date: row.date,
-  description: row.description ?? undefined,
+  items: (row.payroll_entry_items ?? []).map((item) => ({
+    id: item.id,
+    description: item.description,
+    amount: Number(item.amount),
+  })),
 })
 
 export const fetchPayrollEntries = async (): Promise<PayrollEntry[]> => {
-  const { data, error } = await supabase.from('payroll_entries').select('*').order('date', { ascending: false })
+  const { data, error } = await supabase
+    .from('payroll_entries')
+    .select('*, payroll_entry_items(*)')
+    .order('date', { ascending: false })
+    .order('position', { foreignTable: 'payroll_entry_items', ascending: true })
   if (error) throw error
   return ((data ?? []) as PayrollEntryRow[]).map(mapPayrollEntry)
+}
+
+type PayrollEntryInput = {
+  propertyId: string
+  unitLabel: string
+  employeeId: string
+  serviceName: string
+  amount: number
+  date: string
+  items: { description: string; amount: number }[]
+}
+
+const insertPayrollEntryItems = async (payrollEntryId: string, items: PayrollEntryInput['items']): Promise<void> => {
+  if (items.length === 0) return
+  const { error } = await supabase.from('payroll_entry_items').insert(
+    items.map((item, index) => ({
+      payroll_entry_id: payrollEntryId,
+      description: item.description,
+      amount: item.amount,
+      position: index,
+    })),
+  )
+  if (error) throw error
+}
+
+export const createPayrollEntry = async (data: PayrollEntryInput): Promise<void> => {
+  const { data: entry, error } = await supabase
+    .from('payroll_entries')
+    .insert({
+      property_id: data.propertyId,
+      unit_label: data.unitLabel,
+      employee_id: data.employeeId,
+      service_name: data.serviceName,
+      amount: data.amount,
+      date: data.date,
+    })
+    .select('id')
+    .single()
+  if (error) throw error
+
+  await insertPayrollEntryItems(entry.id as string, data.items)
+}
+
+// El desglose se reemplaza completo en cada edición — más simple que
+// diffear filas individuales, y en la práctica siempre se edita como un
+// conjunto (se agregan/quitan líneas junto con el resto del formulario).
+export const updatePayrollEntry = async (id: string, data: PayrollEntryInput): Promise<void> => {
+  const { error } = await supabase
+    .from('payroll_entries')
+    .update({
+      property_id: data.propertyId,
+      unit_label: data.unitLabel,
+      employee_id: data.employeeId,
+      service_name: data.serviceName,
+      amount: data.amount,
+      date: data.date,
+    })
+    .eq('id', id)
+  if (error) throw error
+
+  const { error: deleteError } = await supabase.from('payroll_entry_items').delete().eq('payroll_entry_id', id)
+  if (deleteError) throw deleteError
+
+  await insertPayrollEntryItems(id, data.items)
 }
 
 const mapCharge = (row: ChargeRow): Charge => ({

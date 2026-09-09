@@ -1,4 +1,4 @@
-import { Modal } from './Modal'
+import { FilterPanel } from './FilterPanel'
 import type { Employee, Property } from '../types'
 
 const inputClass =
@@ -7,8 +7,8 @@ const labelClass = 'mb-1.5 block text-sm font-medium text-ink-200'
 
 // Filtros de la agenda del día en Horarios.tsx — por propiedad y por
 // empleado. Los selects aplican de inmediato (mismo criterio que los
-// filtros de Cobros), este modal solo los agrupa detrás de un botón para
-// no ocupar espacio permanente en la página.
+// filtros de Cobros), este panel (ver FilterPanel.tsx) solo los agrupa
+// detrás de un botón para no ocupar espacio permanente en la página.
 type ScheduleFiltersModalProps = {
   open: boolean
   onClose: () => void
@@ -33,7 +33,15 @@ export const ScheduleFiltersModal = ({
   const hasFilters = propertyId !== 'all' || employeeId !== 'all'
 
   return (
-    <Modal open={open} onClose={onClose} title="Filtros">
+    <FilterPanel
+      open={open}
+      onClose={onClose}
+      hasFilters={hasFilters}
+      onClear={() => {
+        onPropertyChange('all')
+        onEmployeeChange('all')
+      }}
+    >
       <div className="space-y-4">
         <div>
           <label htmlFor="sched-filter-property" className={labelClass}>
@@ -72,28 +80,7 @@ export const ScheduleFiltersModal = ({
             ))}
           </select>
         </div>
-
-        <div className="flex items-center justify-between pt-2">
-          <button
-            type="button"
-            disabled={!hasFilters}
-            onClick={() => {
-              onPropertyChange('all')
-              onEmployeeChange('all')
-            }}
-            className="text-sm font-medium text-ink-400 hover:text-ink-200 disabled:opacity-40 disabled:hover:text-ink-400"
-          >
-            Limpiar filtros
-          </button>
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-lg bg-gold-500 px-4 py-2 text-sm font-semibold text-brand-900 transition hover:bg-gold-400"
-          >
-            Aplicar
-          </button>
-        </div>
       </div>
-    </Modal>
+    </FilterPanel>
   )
 }

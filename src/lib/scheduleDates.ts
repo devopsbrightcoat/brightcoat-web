@@ -21,6 +21,9 @@ export const MONTH_NAMES = [
 
 export const DAY_LABELS = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom']
 
+// Date.getDay(): 0=domingo..6=sábado.
+const DAY_NAMES_LONG = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado']
+
 export const toISODate = (d: Date): string => {
   const y = d.getFullYear()
   const m = String(d.getMonth() + 1).padStart(2, '0')
@@ -86,6 +89,17 @@ export const formatWeekLabel = (week: WeekRange): string => {
 export const formatMonthLabel = (year: number, month: number): string => {
   const name = MONTH_NAMES[month]
   return `${name[0].toUpperCase()}${name.slice(1)} ${year}`
+}
+
+// Formatea "YYYY-MM-DD" a "Lunes, 15 de agosto de 2026" (usado en
+// Planillas, donde se necesita el día de la semana completo). Parsea la
+// fecha como local (vía parseISODate) para evitar el corrimiento de un día
+// que da `new Date(iso)` en zonas horarias negativas (ej. Honduras/Texas).
+export const formatFullDate = (iso: string): string => {
+  const date = parseISODate(iso)
+  const dayName = DAY_NAMES_LONG[date.getDay()]
+  const capitalizedDay = `${dayName[0].toUpperCase()}${dayName.slice(1)}`
+  return `${capitalizedDay}, ${date.getDate()} de ${MONTH_NAMES[date.getMonth()]} de ${date.getFullYear()}`
 }
 
 // Formatea "HH:MM:SS" (lo que devuelve Postgres para `time`) a "9:00 AM".

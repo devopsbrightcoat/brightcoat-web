@@ -1,4 +1,4 @@
-import { Modal } from './Modal'
+import { FilterPanel } from './FilterPanel'
 
 const inputClass =
   'w-full rounded-lg border border-white/10 bg-surface px-3 py-2.5 text-sm text-white outline-none focus:border-gold-500'
@@ -6,9 +6,9 @@ const labelClass = 'mb-1.5 block text-sm font-medium text-ink-200'
 
 // Filtros de la tabla de Gastos — rango de fecha y rango de monto. Los
 // campos aplican de inmediato (mismo criterio que ScheduleFiltersModal),
-// este modal solo los agrupa detrás de un botón para no ocupar espacio
-// permanente en la página. El searchbar (factura/descripción) vive aparte,
-// directamente en Gastos.tsx.
+// este panel (ver FilterPanel.tsx) solo los agrupa detrás de un botón para
+// no ocupar espacio permanente en la página. El searchbar
+// (factura/descripción) vive aparte, directamente en Gastos.tsx.
 type ExpenseFiltersModalProps = {
   open: boolean
   onClose: () => void
@@ -37,7 +37,17 @@ export const ExpenseFiltersModal = ({
   const hasFilters = Boolean(dateFrom || dateTo || amountMin || amountMax)
 
   return (
-    <Modal open={open} onClose={onClose} title="Filtros">
+    <FilterPanel
+      open={open}
+      onClose={onClose}
+      hasFilters={hasFilters}
+      onClear={() => {
+        onDateFromChange('')
+        onDateToChange('')
+        onAmountMinChange('')
+        onAmountMaxChange('')
+      }}
+    >
       <div className="space-y-4">
         <div className="grid grid-cols-2 gap-3">
           <div>
@@ -96,30 +106,7 @@ export const ExpenseFiltersModal = ({
             />
           </div>
         </div>
-
-        <div className="flex items-center justify-between pt-2">
-          <button
-            type="button"
-            disabled={!hasFilters}
-            onClick={() => {
-              onDateFromChange('')
-              onDateToChange('')
-              onAmountMinChange('')
-              onAmountMaxChange('')
-            }}
-            className="text-sm font-medium text-ink-400 hover:text-ink-200 disabled:opacity-40 disabled:hover:text-ink-400"
-          >
-            Limpiar filtros
-          </button>
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-lg bg-gold-500 px-4 py-2 text-sm font-semibold text-brand-900 transition hover:bg-gold-400"
-          >
-            Aplicar
-          </button>
-        </div>
       </div>
-    </Modal>
+    </FilterPanel>
   )
 }

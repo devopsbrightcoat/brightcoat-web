@@ -38,13 +38,23 @@ export type ExpenseRow = {
   description: string | null
 }
 
+export type PayrollEntryItemRow = {
+  id: string
+  payroll_entry_id: string
+  description: string
+  amount: number | string
+  position: number
+}
+
 export type PayrollEntryRow = {
   id: string
-  property_id: string | null
-  employee_id: string | null
+  property_id: string
+  unit_label: string
+  employee_id: string
+  service_name: string
   amount: number | string
   date: string
-  description: string | null
+  payroll_entry_items?: PayrollEntryItemRow[]
 }
 
 export type ChargeRow = {
