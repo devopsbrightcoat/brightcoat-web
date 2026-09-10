@@ -103,6 +103,19 @@ export type Charge = {
   invoiceNumber?: string
 }
 
+// Configuración general — tabla singleton (una sola fila) con los datos del
+// negocio y valores por defecto de la app (ver
+// 20260920000000_add_company_settings.sql). `id` siempre viene de la fila
+// existente — la app nunca crea una nueva, solo actualiza.
+export type CompanySettings = {
+  id: string
+  companyName: string
+  address?: string
+  phone?: string
+  email?: string
+  defaultHourlyRate?: number
+}
+
 export type ScheduleStatus = 'pending' | 'in_progress' | 'delivered' | 'cancelled'
 
 export type Schedule = {

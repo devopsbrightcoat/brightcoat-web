@@ -4,10 +4,11 @@
 // para que las páginas no tengan que cambiar al pasar de mock a real.
 // ---------------------------------------------------------------------------
 
-import type { Charge, Employee, Expense, PayrollEntry, Property, Schedule, ServiceType } from '../types'
+import type { Charge, CompanySettings, Employee, Expense, PayrollEntry, Property, Schedule, ServiceType } from '../types'
 import { supabase } from './supabase'
 import type {
   ChargeRow,
+  CompanySettingsRow,
   EmployeeRow,
   ExpenseRow,
   PayrollEntryRow,
@@ -495,4 +496,70 @@ export const createScheduleCharge = async (
 
   const { error: statusError } = await supabase.from('schedules').update({ status: 'delivered' }).eq('id', scheduleId)
   if (statusError) throw statusError
+}
+
+// ---------------------------------------------------------------------------
+// Configuración general — company_settings es una tabla singleton (ver
+// 20260920000000_add_company_settings.sql): siempre hay exactamente una
+// fila, sembrada por la migración, así que fetchCompanySettings nunca
+// debería devolver null en la práctica — el tipo se deja nullable solo por
+// si la fila fuera borrada a mano.
+// ---------------------------------------------------------------------------
+
+const mapCompanySettings = (row: CompanySettingsRow): CompanySettings => ({
+  id: row.id,
+  companyName: row.company_name ?? '',
+  address: row.address ?? undefined,
+  phone: row.phone ?? undefined,
+  email: row.email ?? undefined,
+  defaultHourlyRate: row.default_hourly_rate != null ? Number(row.default_hourly_rate) : undefined,
+})
+
+export const fetchCompanySettings = async (): Promise<CompanySettings | null> => {
+  const { data, error } = await supabase.from('company_settings').select('*').limit(1).maybeSingle()
+  if (error) throw error
+  return data ? mapCompanySettings(data as CompanySettingsRow) : null
+}
+
+export const updateCompanySettings = async (
+  id: string,
+  patch: {
+    companyName: string
+    address: string
+    phone: string
+    email: string
+    defaultHourlyRate: number | null
+  },
+): Promise<void> => {
+  const { error } = await supabase
+    .from('company_settings')
+    .update({
+      company_name: patch.companyName,
+      address: patch.address || null,
+      phone: patch.phone || null,
+      email: patch.email || null,
+      default_hourly_rate: patch.defaultHourlyRate,
+    })
+    .eq('id', id)
+  if (error) throw error
+}
+
+// ---------------------------------------------------------------------------
+// Mi perfil — cada usuario edita su propio nombre y correo de contacto
+// (policy `profiles_update_own`) y puede cambiar su propia contraseña.
+// Username y role NO se exponen para editar acá: el username es el login y
+// el role se asigna a mano por un admin (ver auth_and_rls.sql).
+// ---------------------------------------------------------------------------
+
+export const updateOwnProfile = async (id: string, patch: { fullName: string; email: string }): Promise<void> => {
+  const { error } = await supabase
+    .from('profiles')
+    .update({ full_name: patch.fullName || null, email: patch.email || null })
+    .eq('id', id)
+  if (error) throw error
+}
+
+export const updateOwnPassword = async (password: string): Promise<void> => {
+  const { error } = await supabase.auth.updateUser({ password })
+  if (error) throw error
 }

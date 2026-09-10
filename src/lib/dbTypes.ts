@@ -84,3 +84,12 @@ export type ScheduleRow = {
   status: 'pending' | 'in_progress' | 'delivered' | 'cancelled'
 }
 
+export type CompanySettingsRow = {
+  id: string
+  company_name: string | null
+  address: string | null
+  phone: string | null
+  email: string | null
+  default_hourly_rate: number | string | null
+}
+
