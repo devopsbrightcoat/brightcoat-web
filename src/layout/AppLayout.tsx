@@ -32,7 +32,12 @@ const navItems: NavItem[] = [
     ],
   },
   { to: '/empleados', label: 'Empleados', icon: Users },
-  { to: '/reportes', label: 'Reportes', icon: LineChart },
+  {
+    to: '/reportes',
+    label: 'Reportes',
+    icon: LineChart,
+    children: [{ to: '/reportes/financiero', label: 'Financiero' }],
+  },
   {
     to: '/configuracion',
     label: 'Configuración',

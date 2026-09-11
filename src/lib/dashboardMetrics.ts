@@ -1,5 +1,5 @@
 import type { Charge, Employee, PayrollEntry, Expense, Property, Schedule, ServiceType } from '../types'
-import { toISODate } from './scheduleDates'
+import { addDays, parseISODate, toISODate } from './scheduleDates'
 
 // ---------------------------------------------------------------------------
 // Cálculos para el Dashboard (Business Overview) — ver propuesta de diseño
@@ -148,6 +148,72 @@ export const computeMonthlyFinancials = (
   }))
 }
 
+// --- Revenue by Period (granularidad elegible) ---------------------------
+// A diferencia de computeMonthlyFinancials (fijo a 12 meses, independiente
+// del filtro de fecha de la pantalla), esto agrupa los charges del rango
+// de fecha SELECCIONADO por día, semana, mes, trimestre o año — para
+// "Ingresos por período" del catálogo de reportes (Reportes › Financiero).
+
+export type RevenuePeriodGranularity = 'day' | 'week' | 'month' | 'quarter' | 'year'
+
+export const REVENUE_PERIOD_GRANULARITY_OPTIONS: { value: RevenuePeriodGranularity; label: string }[] = [
+  { value: 'day', label: 'Día' },
+  { value: 'week', label: 'Semana' },
+  { value: 'month', label: 'Mes' },
+  { value: 'quarter', label: 'Trimestre' },
+  { value: 'year', label: 'Año' },
+]
+
+export type RevenueByPeriod = { key: string; label: string; revenue: number }
+
+// Lunes de la semana que contiene `d` — mismo criterio "semana lunes a
+// domingo" que scheduleDates.ts usa para Horarios.
+const startOfWeek = (d: Date): Date => {
+  const day = (d.getDay() + 6) % 7 // lunes=0 ... domingo=6
+  return addDays(d, -day)
+}
+
+export const computeRevenueByPeriod = (
+  charges: Charge[],
+  range: DateRange,
+  granularity: RevenuePeriodGranularity,
+): RevenueByPeriod[] => {
+  const period = filterChargesByRange(charges, range)
+  const totals = new Map<string, { label: string; revenue: number }>()
+
+  for (const c of period) {
+    if (!c.generatedDate) continue
+    const d = parseISODate(c.generatedDate)
+    let key: string
+    let label: string
+
+    if (granularity === 'day') {
+      key = c.generatedDate
+      label = c.generatedDate
+    } else if (granularity === 'week') {
+      key = toISODate(startOfWeek(d))
+      label = `Sem. ${key}`
+    } else if (granularity === 'month') {
+      key = monthKey(c.generatedDate)
+      label = `${MONTH_LABELS[d.getMonth()]} ${d.getFullYear()}`
+    } else if (granularity === 'quarter') {
+      const q = Math.floor(d.getMonth() / 3) + 1
+      key = `${d.getFullYear()}-Q${q}`
+      label = `T${q} ${d.getFullYear()}`
+    } else {
+      key = String(d.getFullYear())
+      label = key
+    }
+
+    const existing = totals.get(key)
+    totals.set(key, { label, revenue: (existing?.revenue ?? 0) + c.amount })
+  }
+
+  return Array.from(totals.entries())
+    .map(([key, v]) => ({ key, label: v.label, revenue: v.revenue }))
+    .sort((a, b) => a.key.localeCompare(b.key))
+}
+
 // --- Revenue by Service --------------------------------------------------
 
 export type ServiceRevenue = { serviceTypeId: string | null; label: string; revenue: number }
@@ -263,6 +329,54 @@ const OVERDUE_CHARGE_DAYS = 30
 const LOW_MARGIN_THRESHOLD_PCT = 15
 const HIGH_EXPENSE_INCREASE_PCT = 25
 
+// --- Property Profitability (todas las propiedades) ----------------------
+// Base de "Ganancia estimada por propiedad" (Reportes › Financiero) y de
+// la alerta de margen bajo de abajo (computeLowMarginProperties es ahora
+// un filtro sobre esta misma función, en vez de duplicar la agregación).
+
+export type PropertyProfitability = {
+  propertyId: string
+  name: string
+  revenue: number
+  laborCost: number
+  estimatedProfit: number
+  margin: number | null // null cuando la propiedad no generó revenue en el período
+}
+
+export const computePropertyProfitability = (
+  charges: Charge[],
+  payrollEntries: PayrollEntry[],
+  properties: Property[],
+  range: DateRange,
+): PropertyProfitability[] => {
+  const periodCharges = filterChargesByRange(charges, range)
+  const periodPayroll = filterPayrollByRange(payrollEntries, range)
+
+  const revenueByProperty = new Map<string, number>()
+  for (const c of periodCharges) revenueByProperty.set(c.propertyId, (revenueByProperty.get(c.propertyId) ?? 0) + c.amount)
+
+  const laborByProperty = new Map<string, number>()
+  for (const p of periodPayroll) laborByProperty.set(p.propertyId, (laborByProperty.get(p.propertyId) ?? 0) + (p.amount ?? 0))
+
+  const propertyIds = new Set([...revenueByProperty.keys(), ...laborByProperty.keys()])
+  const result: PropertyProfitability[] = []
+  for (const propertyId of propertyIds) {
+    const revenue = revenueByProperty.get(propertyId) ?? 0
+    const laborCost = laborByProperty.get(propertyId) ?? 0
+    const estimatedProfit = revenue - laborCost
+    const margin = revenue > 0 ? (estimatedProfit / revenue) * 100 : null
+    result.push({
+      propertyId,
+      name: properties.find((p) => p.id === propertyId)?.name ?? '—',
+      revenue,
+      laborCost,
+      estimatedProfit,
+      margin,
+    })
+  }
+  return result.sort((a, b) => b.estimatedProfit - a.estimatedProfit)
+}
+
 // Margen por propiedad = (Revenue − Labor Cost) / Revenue del período —
 // sin restar gastos generales, que no están atribuidos a una propiedad
 // (ver nota de modelado arriba). Solo propiedades con revenue > 0 en el
@@ -274,25 +388,10 @@ export const computeLowMarginProperties = (
   range: DateRange,
   thresholdPct = LOW_MARGIN_THRESHOLD_PCT,
 ): { propertyId: string; name: string; margin: number }[] => {
-  const periodCharges = filterChargesByRange(charges, range)
-  const periodPayroll = filterPayrollByRange(payrollEntries, range)
-
-  const revenueByProperty = new Map<string, number>()
-  for (const c of periodCharges) revenueByProperty.set(c.propertyId, (revenueByProperty.get(c.propertyId) ?? 0) + c.amount)
-
-  const laborByProperty = new Map<string, number>()
-  for (const p of periodPayroll) laborByProperty.set(p.propertyId, (laborByProperty.get(p.propertyId) ?? 0) + (p.amount ?? 0))
-
-  const result: { propertyId: string; name: string; margin: number }[] = []
-  for (const [propertyId, revenue] of revenueByProperty.entries()) {
-    if (revenue <= 0) continue
-    const labor = laborByProperty.get(propertyId) ?? 0
-    const margin = ((revenue - labor) / revenue) * 100
-    if (margin < thresholdPct) {
-      result.push({ propertyId, name: properties.find((p) => p.id === propertyId)?.name ?? '—', margin })
-    }
-  }
-  return result.sort((a, b) => a.margin - b.margin)
+  return computePropertyProfitability(charges, payrollEntries, properties, range)
+    .filter((p) => p.margin != null && p.margin < thresholdPct)
+    .map((p) => ({ propertyId: p.propertyId, name: p.name, margin: p.margin as number }))
+    .sort((a, b) => a.margin - b.margin)
 }
 
 export const computeAlerts = (

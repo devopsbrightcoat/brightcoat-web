@@ -12,7 +12,7 @@ import { Login } from './pages/Login'
 import { NotFound } from './pages/NotFound'
 import { Planillas } from './pages/Planillas'
 import { Propiedades } from './pages/Propiedades'
-import { Reportes } from './pages/Reportes'
+import { ReportesFinanciero } from './pages/reportes/ReportesFinanciero'
 
 const App = () => {
   return (
@@ -36,7 +36,10 @@ const App = () => {
           <Route path="planillas" element={<Planillas />} />
         </Route>
         <Route path="empleados" element={<Empleados />} />
-        <Route path="reportes" element={<Reportes />} />
+        <Route path="reportes">
+          <Route index element={<Navigate to="financiero" replace />} />
+          <Route path="financiero" element={<ReportesFinanciero />} />
+        </Route>
         <Route path="configuracion">
           <Route index element={<Navigate to="general" replace />} />
           <Route path="general" element={<ConfiguracionGeneral />} />
