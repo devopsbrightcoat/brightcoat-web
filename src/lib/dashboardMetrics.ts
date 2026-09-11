@@ -465,6 +465,142 @@ export const computePendingPayroll = (
     }))
     .sort((a, b) => b.date.localeCompare(a.date))
 
+// --- Operaciones y Propiedades (Reportes) ---------------------------------
+// Trabajos por estatus / Actividad por propiedad / Actividad por empleado /
+// Servicios realizados — "trabajo" acá es Schedule (Horarios), no
+// PayrollEntry. Puerto de la misma lógica ya construida en ops-mobile
+// (catálogo la marcó "móvil primero"), ahora también en la web.
+
+const SCHEDULE_STATUS_ORDER: Schedule['status'][] = ['pending', 'in_progress', 'delivered', 'cancelled', 'rescheduled']
+
+const SCHEDULE_STATUS_LABELS: Record<Schedule['status'], string> = {
+  pending: 'Pendiente',
+  in_progress: 'En proceso',
+  delivered: 'Completado',
+  cancelled: 'Cancelado',
+  rescheduled: 'Reagendado',
+}
+
+export type ScheduleStatusCount = { status: Schedule['status']; label: string; count: number }
+
+export const computeScheduleStatusBreakdown = (schedules: Schedule[]): ScheduleStatusCount[] =>
+  SCHEDULE_STATUS_ORDER.map((status) => ({
+    status,
+    label: SCHEDULE_STATUS_LABELS[status],
+    count: schedules.filter((s) => s.status === status).length,
+  }))
+
+export type ScheduleActivityGranularity = 'week' | 'month'
+
+export const SCHEDULE_ACTIVITY_GRANULARITY_OPTIONS: { value: ScheduleActivityGranularity; label: string }[] = [
+  { value: 'week', label: 'Semana' },
+  { value: 'month', label: 'Mes' },
+]
+
+export type ScheduleActivityPoint = { key: string; label: string; count: number }
+
+// Evolución de la cantidad de trabajos agendados por semana o por mes —
+// "con su evolución semanal o mensual" del catálogo. Recorta a los últimos
+// 12 puntos para que el chart no se sature en negocios con mucho historial.
+export const computeScheduleActivity = (
+  schedules: Schedule[],
+  granularity: ScheduleActivityGranularity,
+): ScheduleActivityPoint[] => {
+  const totals = new Map<string, { label: string; count: number }>()
+
+  for (const s of schedules) {
+    const d = parseISODate(s.scheduledDate)
+    let key: string
+    let label: string
+    if (granularity === 'week') {
+      key = toISODate(startOfWeek(d))
+      label = `Sem. ${key}`
+    } else {
+      key = s.scheduledDate.slice(0, 7)
+      label = `${MONTH_LABELS[d.getMonth()]} ${d.getFullYear()}`
+    }
+    const existing = totals.get(key)
+    totals.set(key, { label, count: (existing?.count ?? 0) + 1 })
+  }
+
+  return Array.from(totals.entries())
+    .map(([key, v]) => ({ key, label: v.label, count: v.count }))
+    .sort((a, b) => a.key.localeCompare(b.key))
+    .slice(-12)
+}
+
+export type PropertyActivity = { propertyId: string; name: string; status: Property['status']; count: number }
+
+// "Actividad por propiedad" — cantidad de trabajos (todo el historial) por
+// propiedad, con su estatus para que la pantalla pueda filtrar inactivas.
+export const computePropertyActivity = (schedules: Schedule[], properties: Property[]): PropertyActivity[] =>
+  properties
+    .map((p) => ({
+      propertyId: p.id,
+      name: p.name,
+      status: p.status,
+      count: schedules.filter((s) => s.propertyId === p.id).length,
+    }))
+    .sort((a, b) => b.count - a.count)
+
+export type EmployeeActivity = {
+  employeeId: string
+  name: string
+  status: Employee['status']
+  count: number
+  completed: number
+  pending: number
+}
+
+// "Actividad por empleado" — distribución de la carga de trabajo. A
+// diferencia de computeEmployeeProductivity (solo cuenta "delivered", para
+// el Dashboard), acá se cuenta todo lo asignado.
+export const computeEmployeeActivity = (schedules: Schedule[], employees: Employee[]): EmployeeActivity[] =>
+  employees
+    .map((e) => {
+      const assigned = schedules.filter((s) => s.employeeId === e.id)
+      return {
+        employeeId: e.id,
+        name: e.name,
+        status: e.status,
+        count: assigned.length,
+        completed: assigned.filter((s) => s.status === 'delivered').length,
+        pending: assigned.filter((s) => s.status === 'pending' || s.status === 'in_progress').length,
+      }
+    })
+    .sort((a, b) => b.count - a.count)
+
+export type ServiceTypeActivity = {
+  serviceTypeId: string
+  name: string
+  count: number
+  byProperty: { propertyId: string; name: string; count: number }[]
+}
+
+// "Servicios realizados" — cantidad de trabajos por tipo de servicio, con
+// desglose por propiedad (top 5 por tipo).
+export const computeServiceTypeActivity = (
+  schedules: Schedule[],
+  serviceTypes: ServiceType[],
+  properties: Property[],
+): ServiceTypeActivity[] =>
+  serviceTypes
+    .map((type) => {
+      const matches = schedules.filter((s) => s.serviceTypeId === type.id)
+      const byPropertyMap = new Map<string, number>()
+      for (const s of matches) byPropertyMap.set(s.propertyId, (byPropertyMap.get(s.propertyId) ?? 0) + 1)
+      const byProperty = Array.from(byPropertyMap.entries())
+        .map(([propertyId, count]) => ({
+          propertyId,
+          name: properties.find((p) => p.id === propertyId)?.name ?? '—',
+          count,
+        }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 5)
+      return { serviceTypeId: type.id, name: type.name, count: matches.length, byProperty }
+    })
+    .sort((a, b) => b.count - a.count)
+
 // --- Alertas ---------------------------------------------------------------
 
 export type DashboardAlert = {
