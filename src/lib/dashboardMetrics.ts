@@ -290,30 +290,66 @@ export const computeOverdueSchedules = (schedules: Schedule[]): Schedule[] => {
 
 export type AgingBucket = { label: string; amount: number; count: number }
 
-// Antigüedad de cobros pendientes por días desde generatedDate (no hay due
-// date en el modelo — ver nota de modelado arriba).
-export const computeOutstandingAging = (charges: Charge[]): AgingBucket[] => {
+const AGING_BUCKET_LABELS = ['0–30 días', '31–60 días', '61–90 días', '+90 días'] as const
+
+const agingBucketLabel = (days: number): string =>
+  days <= 30
+    ? AGING_BUCKET_LABELS[0]
+    : days <= 60
+      ? AGING_BUCKET_LABELS[1]
+      : days <= 90
+        ? AGING_BUCKET_LABELS[2]
+        : AGING_BUCKET_LABELS[3]
+
+export type AgingDetailRow = {
+  chargeId: string
+  propertyId: string
+  propertyName: string
+  unitLabel?: string
+  invoiceNumber?: string
+  generatedDate?: string
+  days: number
+  bucket: string
+  amount: number
+}
+
+// Detalle por cobro pendiente — para "Reportes › Cobros › Antigüedad", el
+// drill-down que el Dashboard no tiene (ahí solo se ven los 4 totales por
+// bucket). Antigüedad de cobros pendientes por días desde generatedDate (no
+// hay due date en el modelo — ver nota de modelado arriba).
+export const computeAgingDetail = (charges: Charge[], properties: Property[] = []): AgingDetailRow[] => {
   const today = new Date()
-  const buckets: AgingBucket[] = [
-    { label: '0–30 días', amount: 0, count: 0 },
-    { label: '31–60 días', amount: 0, count: 0 },
-    { label: '61–90 días', amount: 0, count: 0 },
-    { label: '+90 días', amount: 0, count: 0 },
-  ]
+  const propertyName = (id: string) => properties.find((p) => p.id === id)?.name ?? '—'
 
-  for (const c of charges) {
-    if (c.status !== 'pending') continue
-    if (!c.generatedDate) {
-      buckets[0].amount += c.amount
-      buckets[0].count += 1
-      continue
-    }
-    const days = Math.floor((today.getTime() - new Date(c.generatedDate).getTime()) / 86_400_000)
-    const idx = days <= 30 ? 0 : days <= 60 ? 1 : days <= 90 ? 2 : 3
-    buckets[idx].amount += c.amount
-    buckets[idx].count += 1
+  return charges
+    .filter((c) => c.status === 'pending')
+    .map((c) => {
+      const days = c.generatedDate
+        ? Math.floor((today.getTime() - new Date(c.generatedDate).getTime()) / 86_400_000)
+        : 0
+      return {
+        chargeId: c.id,
+        propertyId: c.propertyId,
+        propertyName: propertyName(c.propertyId),
+        unitLabel: c.unitLabel,
+        invoiceNumber: c.invoiceNumber,
+        generatedDate: c.generatedDate,
+        days,
+        bucket: agingBucketLabel(days),
+        amount: c.amount,
+      }
+    })
+    .sort((a, b) => b.days - a.days)
+}
+
+export const computeOutstandingAging = (charges: Charge[]): AgingBucket[] => {
+  const buckets: AgingBucket[] = AGING_BUCKET_LABELS.map((label) => ({ label, amount: 0, count: 0 }))
+  for (const row of computeAgingDetail(charges)) {
+    const bucket = buckets.find((b) => b.label === row.bucket)
+    if (!bucket) continue
+    bucket.amount += row.amount
+    bucket.count += 1
   }
-
   return buckets
 }
 

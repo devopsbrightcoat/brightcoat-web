@@ -36,7 +36,10 @@ const navItems: NavItem[] = [
     to: '/reportes',
     label: 'Reportes',
     icon: LineChart,
-    children: [{ to: '/reportes/financiero', label: 'Financiero' }],
+    children: [
+      { to: '/reportes/financiero', label: 'Financiero' },
+      { to: '/reportes/cobros', label: 'Cobros' },
+    ],
   },
   {
     to: '/configuracion',
