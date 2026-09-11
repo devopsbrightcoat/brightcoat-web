@@ -1,11 +1,12 @@
 import { useMemo, useState } from 'react'
-import { Pencil, Plus, Search } from 'lucide-react'
+import { Pencil, Plus, Search, Trash2 } from 'lucide-react'
 import { AddEmployeeModal } from '../components/empleados/AddEmployeeModal'
 import { EditEmployeeModal } from '../components/empleados/EditEmployeeModal'
+import { ConfirmModal } from '../components/common/ConfirmModal'
 import { PageHeader } from '../components/common/PageHeader'
 import { Pagination } from '../components/common/Pagination'
 import { StatusPill } from '../components/common/StatusPill'
-import { fetchEmployees } from '../lib/api'
+import { deleteEmployee, fetchEmployees } from '../lib/api'
 import { usePagination } from '../lib/usePagination'
 import { useSupabaseQuery } from '../lib/useSupabaseQuery'
 import type { Employee } from '../types'
@@ -16,6 +17,7 @@ export const Empleados = () => {
   const [searchText, setSearchText] = useState('')
   const [addOpen, setAddOpen] = useState(false)
   const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null)
+  const [deletingEmployee, setDeletingEmployee] = useState<Employee | null>(null)
 
   const filteredEmployees = useMemo(() => {
     const q = searchText.trim().toLowerCase()
@@ -87,14 +89,24 @@ export const Empleados = () => {
                       <StatusPill status={employee.w2Status} />
                     </span>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => setEditingEmployee(employee)}
-                    className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-lg border border-white/10 px-2.5 py-1.5 text-xs font-medium text-ink-300 hover:bg-white/5"
-                  >
-                    <Pencil className="h-3.5 w-3.5" />
-                    Editar
-                  </button>
+                  <div className="mt-3 flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setEditingEmployee(employee)}
+                      className="flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-white/10 px-2.5 py-1.5 text-xs font-medium text-ink-300 hover:bg-white/5"
+                    >
+                      <Pencil className="h-3.5 w-3.5" />
+                      Editar
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setDeletingEmployee(employee)}
+                      className="flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-white/10 px-2.5 py-1.5 text-xs font-medium text-red-400 hover:bg-red-500/10"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                      Eliminar
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
@@ -111,6 +123,18 @@ export const Empleados = () => {
         employee={editingEmployee}
         onClose={() => setEditingEmployee(null)}
         onSaved={() => setRefreshKey((k) => k + 1)}
+      />
+
+      <ConfirmModal
+        open={deletingEmployee !== null}
+        onClose={() => setDeletingEmployee(null)}
+        title="Eliminar empleado"
+        message={`¿Eliminar a "${deletingEmployee?.name}"? Esta acción no se puede deshacer.`}
+        onConfirm={async () => {
+          if (!deletingEmployee) return
+          await deleteEmployee(deletingEmployee.id)
+          setRefreshKey((k) => k + 1)
+        }}
       />
     </div>
   )

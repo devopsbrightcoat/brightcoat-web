@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { ArrowDown, ArrowUp, ArrowUpDown, Pencil, Plus, Search } from 'lucide-react'
+import { ArrowDown, ArrowUp, ArrowUpDown, Pencil, Plus, Search, Trash2 } from 'lucide-react'
 import {
   createColumnHelper,
   flexRender,
@@ -11,10 +11,11 @@ import {
 } from '@tanstack/react-table'
 import { AddPropertyModal } from '../components/propiedades/AddPropertyModal'
 import { EditPropertyModal } from '../components/propiedades/EditPropertyModal'
+import { ConfirmModal } from '../components/common/ConfirmModal'
 import { PageHeader } from '../components/common/PageHeader'
 import { Pagination } from '../components/common/Pagination'
 import { StatusPill } from '../components/common/StatusPill'
-import { fetchProperties } from '../lib/api'
+import { deleteProperty, fetchProperties } from '../lib/api'
 import { useSupabaseQuery } from '../lib/useSupabaseQuery'
 import type { Property } from '../types'
 
@@ -46,6 +47,7 @@ export const Propiedades = () => {
   const [pageIndex, setPageIndex] = useState(0)
   const [addOpen, setAddOpen] = useState(false)
   const [editingProperty, setEditingProperty] = useState<Property | null>(null)
+  const [deletingProperty, setDeletingProperty] = useState<Property | null>(null)
 
   const filteredProperties = useMemo(() => {
     const q = searchText.trim().toLowerCase()
@@ -81,14 +83,24 @@ export const Propiedades = () => {
         id: 'actions',
         header: '',
         cell: (info) => (
-          <button
-            type="button"
-            onClick={() => setEditingProperty(info.row.original)}
-            className="flex items-center gap-1.5 rounded-lg border border-white/10 px-2.5 py-1.5 text-xs font-medium text-ink-300 hover:bg-white/5"
-          >
-            <Pencil className="h-3.5 w-3.5" />
-            Editar
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setEditingProperty(info.row.original)}
+              className="flex items-center gap-1.5 rounded-lg border border-white/10 px-2.5 py-1.5 text-xs font-medium text-ink-300 hover:bg-white/5"
+            >
+              <Pencil className="h-3.5 w-3.5" />
+              Editar
+            </button>
+            <button
+              type="button"
+              onClick={() => setDeletingProperty(info.row.original)}
+              className="flex items-center gap-1.5 rounded-lg border border-white/10 px-2.5 py-1.5 text-xs font-medium text-red-400 hover:bg-red-500/10"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+              Eliminar
+            </button>
+          </div>
         ),
       }),
     ],
@@ -205,6 +217,18 @@ export const Propiedades = () => {
         property={editingProperty}
         onClose={() => setEditingProperty(null)}
         onSaved={() => setRefreshKey((k) => k + 1)}
+      />
+
+      <ConfirmModal
+        open={deletingProperty !== null}
+        onClose={() => setDeletingProperty(null)}
+        title="Eliminar propiedad"
+        message={`¿Eliminar "${deletingProperty?.name}"? Esta acción no se puede deshacer.`}
+        onConfirm={async () => {
+          if (!deletingProperty) return
+          await deleteProperty(deletingProperty.id)
+          setRefreshKey((k) => k + 1)
+        }}
       />
     </div>
   )

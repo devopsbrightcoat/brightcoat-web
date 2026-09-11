@@ -148,7 +148,7 @@ export const ScheduleActionModal = ({ schedule, onClose, onSaved }: ScheduleActi
             </div>
 
             {extras.length === 0 ? (
-              <p className="text-xs text-ink-500">Sin extras — usa "Agregar extra" si hay algo adicional que cobrar.</p>
+              <p className="text-xs text-ink-500">Sin extras — usa "Agregar extra" si quieres desglosar en qué se compone el costo total (no se suma aparte).</p>
             ) : (
               <div className="space-y-2.5">
                 {extras.map((extra) => (

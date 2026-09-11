@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { ArrowDown, ArrowUp, ArrowUpDown, Pencil, Plus } from 'lucide-react'
+import { ArrowDown, ArrowUp, ArrowUpDown, Pencil, Plus, Trash2 } from 'lucide-react'
 import {
   createColumnHelper,
   flexRender,
@@ -9,11 +9,12 @@ import {
   useReactTable,
   type SortingState,
 } from '@tanstack/react-table'
+import { ConfirmModal } from '../components/common/ConfirmModal'
 import { PageHeader } from '../components/common/PageHeader'
 import { Pagination } from '../components/common/Pagination'
 import { AddServiceTypeModal } from '../components/servicios/AddServiceTypeModal'
 import { EditServiceTypeModal } from '../components/servicios/EditServiceTypeModal'
-import { fetchServiceTypes } from '../lib/api'
+import { deleteServiceType, fetchServiceTypes } from '../lib/api'
 import { useSupabaseQuery } from '../lib/useSupabaseQuery'
 import type { ServiceType } from '../types'
 
@@ -42,6 +43,7 @@ export const ConfiguracionServicios = () => {
   const [refreshKey, setRefreshKey] = useState(0)
   const [addOpen, setAddOpen] = useState(false)
   const [editingServiceType, setEditingServiceType] = useState<ServiceType | null>(null)
+  const [deletingServiceType, setDeletingServiceType] = useState<ServiceType | null>(null)
   const { data: serviceTypes, loading, error } = useSupabaseQuery(fetchServiceTypes, [refreshKey])
 
   const [sorting, setSorting] = useState<SortingState>([])
@@ -61,14 +63,24 @@ export const ConfiguracionServicios = () => {
         id: 'actions',
         header: 'Acciones',
         cell: (info) => (
-          <button
-            type="button"
-            onClick={() => setEditingServiceType(info.row.original)}
-            className="flex items-center gap-1.5 rounded-lg border border-white/10 px-2.5 py-1.5 text-xs font-medium text-ink-300 hover:bg-white/5"
-          >
-            <Pencil className="h-3.5 w-3.5" />
-            Editar
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setEditingServiceType(info.row.original)}
+              className="flex items-center gap-1.5 rounded-lg border border-white/10 px-2.5 py-1.5 text-xs font-medium text-ink-300 hover:bg-white/5"
+            >
+              <Pencil className="h-3.5 w-3.5" />
+              Editar
+            </button>
+            <button
+              type="button"
+              onClick={() => setDeletingServiceType(info.row.original)}
+              className="flex items-center gap-1.5 rounded-lg border border-white/10 px-2.5 py-1.5 text-xs font-medium text-red-400 hover:bg-red-500/10"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+              Eliminar
+            </button>
+          </div>
         ),
       }),
     ],
@@ -170,6 +182,18 @@ export const ConfiguracionServicios = () => {
         serviceType={editingServiceType}
         onClose={() => setEditingServiceType(null)}
         onSaved={() => setRefreshKey((k) => k + 1)}
+      />
+
+      <ConfirmModal
+        open={deletingServiceType !== null}
+        onClose={() => setDeletingServiceType(null)}
+        title="Eliminar tipo de servicio"
+        message={`¿Eliminar "${deletingServiceType?.name}"? Esta acción no se puede deshacer.`}
+        onConfirm={async () => {
+          if (!deletingServiceType) return
+          await deleteServiceType(deletingServiceType.id)
+          setRefreshKey((k) => k + 1)
+        }}
       />
     </div>
   )

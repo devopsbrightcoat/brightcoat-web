@@ -60,6 +60,20 @@ export const updateServiceType = async (
   if (error) throw error
 }
 
+// `charges.service_type_id` es SET NULL (un cobro puede quedar sin tipo de
+// servicio si se borra), pero `schedules.service_type_id` es RESTRICT — si
+// el tipo de servicio tiene horarios asociados, Postgres rechaza el delete
+// con 23503, que traducimos a un mensaje claro.
+export const deleteServiceType = async (id: string): Promise<void> => {
+  const { error } = await supabase.from('service_types').delete().eq('id', id)
+  if (error) {
+    if (error.code === '23503') {
+      throw new Error('Este tipo de servicio tiene horarios asociados — no se puede eliminar.')
+    }
+    throw error
+  }
+}
+
 const mapEmployee = (row: EmployeeRow): Employee => ({
   id: row.id,
   name: row.name,
@@ -337,6 +351,19 @@ export const createEmployee = async (data: {
   if (error) throw error
 }
 
+// Un empleado con horarios o planillas asociadas está protegido por
+// RESTRICT en esas dos tablas — Postgres rechaza el delete con 23503, que
+// traducimos a un mensaje claro en vez del error crudo de Postgres.
+export const deleteEmployee = async (id: string): Promise<void> => {
+  const { error } = await supabase.from('employees').delete().eq('id', id)
+  if (error) {
+    if (error.code === '23503') {
+      throw new Error('Este empleado tiene horarios o planillas asociadas — no se puede eliminar.')
+    }
+    throw error
+  }
+}
+
 export const createProperty = async (data: {
   name: string
   address: string
@@ -352,6 +379,19 @@ export const createProperty = async (data: {
     status: data.status,
   })
   if (error) throw error
+}
+
+// Una propiedad con horarios, cobros o planillas asociadas está protegida
+// por RESTRICT en esas tres tablas — Postgres rechaza el delete con 23503,
+// que traducimos a un mensaje claro en vez del error crudo de Postgres.
+export const deleteProperty = async (id: string): Promise<void> => {
+  const { error } = await supabase.from('properties').delete().eq('id', id)
+  if (error) {
+    if (error.code === '23503') {
+      throw new Error('Esta propiedad tiene horarios, cobros o planillas asociadas — no se puede eliminar.')
+    }
+    throw error
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -447,6 +487,27 @@ export const updateScheduleStatus = async (id: string, status: Schedule['status'
   if (error) throw error
 }
 
+// Igual que updateSchedule: un horario ya entregado tiene un cobro
+// asociado en `charges` — borrarlo dejaría ese cobro huérfano de su
+// horario de origen. El filtro `.neq('status', 'delivered')` bloquea el
+// delete a nivel de base de datos: si ya está entregado, ninguna fila hace
+// match y `.single()` lanza PGRST116, que traducimos a un mensaje claro.
+export const deleteSchedule = async (id: string): Promise<void> => {
+  const { error } = await supabase
+    .from('schedules')
+    .delete()
+    .eq('id', id)
+    .neq('status', 'delivered')
+    .select('id')
+    .single()
+  if (error) {
+    if (error.code === 'PGRST116') {
+      throw new Error('Este horario ya fue entregado y cobrado — no se puede eliminar.')
+    }
+    throw error
+  }
+}
+
 // Crea (o reutiliza) el cobro de un horario finalizado directamente en
 // `charges` — ver 20260912000000_unify_charges.sql. Un cobro queda
 // identificado de forma única por propiedad + unidad + tipo de servicio +
@@ -470,7 +531,10 @@ export const createScheduleCharge = async (
     .single()
   if (scheduleError) throw scheduleError
 
-  const amount = data.totalCost + data.extras.reduce((sum, e) => sum + e.amount, 0)
+  // El "costo de servicio total" ya es el monto final a cobrar — los
+  // extras son solo un desglose de qué compone ese total (pedido de
+  // David: no deben sumarse aparte, es solo un desglose del precio).
+  const amount = data.totalCost
 
   const { error } = await supabase.from('charges').insert({
     property_id: schedule.property_id,

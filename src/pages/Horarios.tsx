@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
-import { ChevronLeft, ChevronRight, Download, Filter, Pencil, Plus } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Download, Filter, Pencil, Plus, Trash2 } from 'lucide-react'
+import { ConfirmModal } from '../components/common/ConfirmModal'
 import { PageHeader } from '../components/common/PageHeader'
 import { StatusPill } from '../components/common/StatusPill'
 import { AddScheduleModal } from '../components/horarios/AddScheduleModal'
@@ -7,7 +8,7 @@ import { EditScheduleModal } from '../components/horarios/EditScheduleModal'
 import { ScheduleActionModal } from '../components/horarios/ScheduleActionModal'
 import { ScheduleDetailModal } from '../components/horarios/ScheduleDetailModal'
 import { ScheduleFiltersModal } from '../components/horarios/ScheduleFiltersModal'
-import { fetchEmployees, fetchProperties, fetchSchedules, fetchServiceTypes } from '../lib/api'
+import { deleteSchedule, fetchEmployees, fetchProperties, fetchSchedules, fetchServiceTypes } from '../lib/api'
 import { useSupabaseQuery } from '../lib/useSupabaseQuery'
 import { exportSchedulesToExcel } from '../lib/exportSchedules'
 import { getErrorMessage } from '../lib/errors'
@@ -44,6 +45,7 @@ export const Horarios = () => {
   const [addOpen, setAddOpen] = useState(false)
   const [actionSchedule, setActionSchedule] = useState<Schedule | null>(null)
   const [editingSchedule, setEditingSchedule] = useState<Schedule | null>(null)
+  const [deletingSchedule, setDeletingSchedule] = useState<Schedule | null>(null)
   const [detailSchedule, setDetailSchedule] = useState<Schedule | null>(null)
   const [exporting, setExporting] = useState(false)
   const [exportError, setExportError] = useState<string | null>(null)
@@ -261,19 +263,34 @@ export const Horarios = () => {
                       </button>
                     </td>
                     <td className="px-5 py-3">
-                      <button
-                        type="button"
-                        disabled={row.status === 'delivered'}
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          setEditingSchedule(row)
-                        }}
-                        title={row.status === 'delivered' ? 'Ya entregado y cobrado — no se puede editar.' : undefined}
-                        className="flex items-center gap-1.5 rounded-lg border border-white/10 px-2.5 py-1.5 text-xs font-medium text-ink-300 hover:bg-white/5 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
-                      >
-                        <Pencil className="h-3.5 w-3.5" />
-                        Editar
-                      </button>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          disabled={row.status === 'delivered'}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setEditingSchedule(row)
+                          }}
+                          title={row.status === 'delivered' ? 'Ya entregado y cobrado — no se puede editar.' : undefined}
+                          className="flex items-center gap-1.5 rounded-lg border border-white/10 px-2.5 py-1.5 text-xs font-medium text-ink-300 hover:bg-white/5 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                          Editar
+                        </button>
+                        <button
+                          type="button"
+                          disabled={row.status === 'delivered'}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setDeletingSchedule(row)
+                          }}
+                          title={row.status === 'delivered' ? 'Ya entregado y cobrado — no se puede eliminar.' : undefined}
+                          className="flex items-center gap-1.5 rounded-lg border border-white/10 px-2.5 py-1.5 text-xs font-medium text-red-400 hover:bg-red-500/10 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                          Eliminar
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -325,6 +342,24 @@ export const Horarios = () => {
         employeeId={filterEmployeeId}
         onPropertyChange={setFilterPropertyId}
         onEmployeeChange={setFilterEmployeeId}
+      />
+
+      <ConfirmModal
+        open={deletingSchedule !== null}
+        onClose={() => setDeletingSchedule(null)}
+        title="Eliminar horario"
+        message={
+          deletingSchedule
+            ? `¿Eliminar el horario de "${propertyMap.get(deletingSchedule.propertyId) ?? '—'}"${
+                deletingSchedule.unitLabel ? ` (${deletingSchedule.unitLabel})` : ''
+              } del ${deletingSchedule.scheduledDate}? Esta acción no se puede deshacer.`
+            : ''
+        }
+        onConfirm={async () => {
+          if (!deletingSchedule) return
+          await deleteSchedule(deletingSchedule.id)
+          setRefreshKey((k) => k + 1)
+        }}
       />
     </div>
   )
