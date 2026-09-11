@@ -18,6 +18,7 @@ type ScheduleDetailModalProps = {
   propertyMap: Map<string, string>
   serviceTypeMap: Map<string, string>
   employeeMap: Map<string, string>
+  allSchedules: Schedule[]
   onClose: () => void
 }
 
@@ -26,8 +27,18 @@ export const ScheduleDetailModal = ({
   propertyMap,
   serviceTypeMap,
   employeeMap,
+  allSchedules,
   onClose,
 }: ScheduleDetailModalProps) => {
+  // Si este horario fue reagendado, rescheduledTo es el horario nuevo (con
+  // la fecha nueva); si este horario ES el resultado de reagendar otro,
+  // rescheduledFrom es ese horario viejo — ver rescheduleSchedule() en
+  // src/lib/api.ts.
+  const rescheduledTo = schedule?.rescheduledToId
+    ? allSchedules.find((s) => s.id === schedule.rescheduledToId)
+    : undefined
+  const rescheduledFrom = schedule ? allSchedules.find((s) => s.rescheduledToId === schedule.id) : undefined
+
   return (
     <Modal open={schedule !== null} onClose={onClose} title="Detalle del horario">
       {schedule && (
@@ -38,6 +49,8 @@ export const ScheduleDetailModal = ({
           <Field label="Empleado" value={employeeMap.get(schedule.employeeId) ?? '—'} />
           <Field label="Fecha" value={schedule.scheduledDate} />
           <Field label="Estatus" value={<StatusPill status={schedule.status} />} />
+          {rescheduledTo && <Field label="Reagendado para" value={rescheduledTo.scheduledDate} />}
+          {rescheduledFrom && <Field label="Reagendado desde" value={rescheduledFrom.scheduledDate} />}
         </div>
       )}
     </Modal>

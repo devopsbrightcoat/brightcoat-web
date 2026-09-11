@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Plus, X } from 'lucide-react'
 import { Modal } from '../common/Modal'
-import { createScheduleCharge, updateScheduleStatus } from '../../lib/api'
+import { createScheduleCharge, rescheduleSchedule, updateScheduleStatus } from '../../lib/api'
 import type { Schedule, ScheduleStatus } from '../../types'
 import { getErrorMessage } from '../../lib/errors'
 
@@ -14,6 +14,7 @@ const STATUS_OPTIONS: { value: ScheduleStatus; label: string; className: string 
   { value: 'in_progress', label: 'En proceso', className: 'bg-sky-500/10 text-sky-400 ring-sky-500/20' },
   { value: 'delivered', label: 'Entregado / Finalizado', className: 'bg-emerald-500/10 text-emerald-400 ring-emerald-500/20' },
   { value: 'cancelled', label: 'Cancelado', className: 'bg-red-500/10 text-red-400 ring-red-500/20' },
+  { value: 'rescheduled', label: 'Reagendar', className: 'bg-white/5 text-ink-300 ring-white/10' },
 ]
 
 type ExtraLine = { key: number; description: string; amount: string }
@@ -27,10 +28,11 @@ type ScheduleActionModalProps = {
 }
 
 export const ScheduleActionModal = ({ schedule, onClose, onSaved }: ScheduleActionModalProps) => {
-  const [step, setStep] = useState<'status' | 'charge'>('status')
+  const [step, setStep] = useState<'status' | 'charge' | 'reschedule'>('status')
   const [totalCost, setTotalCost] = useState('')
   const [notes, setNotes] = useState('')
   const [extras, setExtras] = useState<ExtraLine[]>([])
+  const [newDate, setNewDate] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -39,6 +41,7 @@ export const ScheduleActionModal = ({ schedule, onClose, onSaved }: ScheduleActi
     setTotalCost('')
     setNotes('')
     setExtras([])
+    setNewDate('')
     setError(null)
   }, [schedule])
 
@@ -46,6 +49,10 @@ export const ScheduleActionModal = ({ schedule, onClose, onSaved }: ScheduleActi
     if (!schedule) return
     if (status === 'delivered') {
       setStep('charge')
+      return
+    }
+    if (status === 'rescheduled') {
+      setStep('reschedule')
       return
     }
     setSaving(true)
@@ -101,6 +108,70 @@ export const ScheduleActionModal = ({ schedule, onClose, onSaved }: ScheduleActi
     } finally {
       setSaving(false)
     }
+  }
+
+  const handleReschedule = async () => {
+    if (!schedule) return
+    if (!newDate) {
+      setError('Selecciona la nueva fecha.')
+      return
+    }
+    setSaving(true)
+    setError(null)
+    try {
+      await rescheduleSchedule(schedule.id, newDate)
+      onSaved()
+      onClose()
+    } catch (err) {
+      setError(getErrorMessage(err, 'No se pudo reagendar el horario.'))
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  if (step === 'reschedule') {
+    return (
+      <Modal open={schedule !== null} onClose={onClose} title="Reagendar horario">
+        <div className="space-y-4">
+          <div>
+            <label htmlFor="resched-date" className={labelClass}>
+              Nueva fecha
+            </label>
+            <input
+              id="resched-date"
+              type="date"
+              value={newDate}
+              onChange={(e) => setNewDate(e.target.value)}
+              className={inputClass}
+            />
+          </div>
+
+          <p className="text-xs text-ink-500">
+            El horario actual queda marcado como "Reagendado" y bloqueado (no se puede editar, eliminar ni volver a cambiar de estatus); se crea un horario nuevo con la fecha elegida.
+          </p>
+
+          {error && <p className="rounded-lg bg-red-500/10 px-3 py-2 text-sm text-red-400">{error}</p>}
+
+          <div className="flex justify-end gap-3 pt-2">
+            <button
+              type="button"
+              onClick={() => setStep('status')}
+              className="rounded-lg border border-white/10 px-4 py-2 text-sm font-medium text-ink-300 hover:bg-white/5"
+            >
+              Atrás
+            </button>
+            <button
+              type="button"
+              disabled={saving}
+              onClick={handleReschedule}
+              className="rounded-lg bg-gold-500 px-4 py-2 text-sm font-semibold text-brand-900 transition hover:bg-gold-400 disabled:opacity-60"
+            >
+              {saving ? 'Guardando…' : 'Confirmar reagendo'}
+            </button>
+          </div>
+        </div>
+      </Modal>
+    )
   }
 
   if (step === 'charge') {

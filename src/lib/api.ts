@@ -411,6 +411,7 @@ const mapSchedule = (row: ScheduleRow): Schedule => ({
   employeeId: row.employee_id,
   scheduledDate: row.scheduled_date,
   status: row.status,
+  rescheduledToId: row.rescheduled_to_id ?? undefined,
 })
 
 export const fetchSchedules = async (): Promise<Schedule[]> => {
@@ -472,11 +473,12 @@ export const updateSchedule = async (
     })
     .eq('id', id)
     .neq('status', 'delivered')
+    .neq('status', 'rescheduled')
     .select('id')
     .single()
   if (error) {
     if (error.code === 'PGRST116') {
-      throw new Error('Este horario ya fue entregado y cobrado — no se puede editar.')
+      throw new Error('Este horario ya fue entregado/cobrado o reagendado — no se puede editar.')
     }
     throw error
   }
@@ -487,22 +489,67 @@ export const updateScheduleStatus = async (id: string, status: Schedule['status'
   if (error) throw error
 }
 
+// Reagendar: el horario viejo se queda como registro histórico con status
+// 'rescheduled' (bloqueado — no se puede editar, eliminar ni volver a
+// cambiar de estatus, ver updateSchedule/deleteSchedule) y apunta al
+// horario nuevo vía rescheduled_to_id. El horario nuevo es una copia con
+// la fecha nueva y el resto de los datos (propiedad/unidad/servicio/
+// empleado) igual, arrancando en 'pending' — ver
+// 20260922000000_schedule_reschedule.sql.
+export const rescheduleSchedule = async (id: string, newDate: string): Promise<void> => {
+  const { data: schedule, error: fetchError } = await supabase
+    .from('schedules')
+    .select('property_id, employee_id, unit_label, service_type_id')
+    .eq('id', id)
+    .neq('status', 'delivered')
+    .neq('status', 'rescheduled')
+    .single()
+  if (fetchError) {
+    if (fetchError.code === 'PGRST116') {
+      throw new Error('Este horario ya fue entregado/cobrado o ya fue reagendado — no se puede reagendar de nuevo.')
+    }
+    throw fetchError
+  }
+
+  const { data: newSchedule, error: insertError } = await supabase
+    .from('schedules')
+    .insert({
+      property_id: schedule.property_id,
+      employee_id: schedule.employee_id,
+      unit_label: schedule.unit_label,
+      service_type_id: schedule.service_type_id,
+      scheduled_date: newDate,
+    })
+    .select('id')
+    .single()
+  if (insertError) throw insertError
+
+  const { error: updateError } = await supabase
+    .from('schedules')
+    .update({ status: 'rescheduled', rescheduled_to_id: newSchedule.id })
+    .eq('id', id)
+  if (updateError) throw updateError
+}
+
 // Igual que updateSchedule: un horario ya entregado tiene un cobro
 // asociado en `charges` — borrarlo dejaría ese cobro huérfano de su
-// horario de origen. El filtro `.neq('status', 'delivered')` bloquea el
-// delete a nivel de base de datos: si ya está entregado, ninguna fila hace
-// match y `.single()` lanza PGRST116, que traducimos a un mensaje claro.
+// horario de origen. Un horario reagendado se conserva como registro
+// histórico (ver rescheduleSchedule). El filtro `.neq('status', ...)`
+// bloquea el delete a nivel de base de datos: si ya está entregado o
+// reagendado, ninguna fila hace match y `.single()` lanza PGRST116, que
+// traducimos a un mensaje claro.
 export const deleteSchedule = async (id: string): Promise<void> => {
   const { error } = await supabase
     .from('schedules')
     .delete()
     .eq('id', id)
     .neq('status', 'delivered')
+    .neq('status', 'rescheduled')
     .select('id')
     .single()
   if (error) {
     if (error.code === 'PGRST116') {
-      throw new Error('Este horario ya fue entregado y cobrado — no se puede eliminar.')
+      throw new Error('Este horario ya fue entregado/cobrado o reagendado — no se puede eliminar.')
     }
     throw error
   }

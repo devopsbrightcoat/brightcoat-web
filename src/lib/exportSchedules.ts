@@ -11,6 +11,7 @@ const STATUS_LABELS: Record<Schedule['status'], string> = {
   in_progress: 'En proceso',
   delivered: 'Entregado',
   cancelled: 'Cancelado',
+  rescheduled: 'Reagendado',
 }
 
 export const exportSchedulesToExcel = async (

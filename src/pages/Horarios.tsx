@@ -238,7 +238,9 @@ export const Horarios = () => {
                 </tr>
               </thead>
               <tbody>
-                {dayRows.map((row) => (
+                {dayRows.map((row) => {
+                  const locked = row.status === 'delivered' || row.status === 'rescheduled'
+                  return (
                   <tr
                     key={row.id}
                     onClick={() => setDetailSchedule(row)}
@@ -251,13 +253,13 @@ export const Horarios = () => {
                     <td className="px-5 py-3">
                       <button
                         type="button"
-                        disabled={row.status === 'delivered'}
+                        disabled={locked}
                         onClick={(e) => {
                           e.stopPropagation()
                           setActionSchedule(row)
                         }}
                         className="disabled:cursor-not-allowed"
-                        title={row.status === 'delivered' ? 'Ya entregado y cobrado — el estatus no se puede cambiar.' : undefined}
+                        title={locked ? 'Ya entregado/cobrado o reagendado — el estatus no se puede cambiar.' : undefined}
                       >
                         <StatusPill status={row.status} />
                       </button>
@@ -266,12 +268,12 @@ export const Horarios = () => {
                       <div className="flex items-center gap-2">
                         <button
                           type="button"
-                          disabled={row.status === 'delivered'}
+                          disabled={locked}
                           onClick={(e) => {
                             e.stopPropagation()
                             setEditingSchedule(row)
                           }}
-                          title={row.status === 'delivered' ? 'Ya entregado y cobrado — no se puede editar.' : undefined}
+                          title={locked ? 'Ya entregado/cobrado o reagendado — no se puede editar.' : undefined}
                           className="flex items-center gap-1.5 rounded-lg border border-white/10 px-2.5 py-1.5 text-xs font-medium text-ink-300 hover:bg-white/5 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
                         >
                           <Pencil className="h-3.5 w-3.5" />
@@ -279,12 +281,12 @@ export const Horarios = () => {
                         </button>
                         <button
                           type="button"
-                          disabled={row.status === 'delivered'}
+                          disabled={locked}
                           onClick={(e) => {
                             e.stopPropagation()
                             setDeletingSchedule(row)
                           }}
-                          title={row.status === 'delivered' ? 'Ya entregado y cobrado — no se puede eliminar.' : undefined}
+                          title={locked ? 'Ya entregado/cobrado o reagendado — no se puede eliminar.' : undefined}
                           className="flex items-center gap-1.5 rounded-lg border border-white/10 px-2.5 py-1.5 text-xs font-medium text-red-400 hover:bg-red-500/10 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
                         >
                           <Trash2 className="h-3.5 w-3.5" />
@@ -293,7 +295,8 @@ export const Horarios = () => {
                       </div>
                     </td>
                   </tr>
-                ))}
+                  )
+                })}
               </tbody>
             </table>
           </div>
@@ -330,6 +333,7 @@ export const Horarios = () => {
         propertyMap={propertyMap}
         serviceTypeMap={serviceTypeMap}
         employeeMap={employeeMap}
+        allSchedules={schedules ?? []}
         onClose={() => setDetailSchedule(null)}
       />
 

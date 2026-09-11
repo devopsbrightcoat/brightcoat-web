@@ -116,7 +116,7 @@ export type CompanySettings = {
   defaultHourlyRate?: number
 }
 
-export type ScheduleStatus = 'pending' | 'in_progress' | 'delivered' | 'cancelled'
+export type ScheduleStatus = 'pending' | 'in_progress' | 'delivered' | 'cancelled' | 'rescheduled'
 
 export type Schedule = {
   id: string
@@ -126,5 +126,6 @@ export type Schedule = {
   employeeId: string
   scheduledDate: string
   status: ScheduleStatus
+  rescheduledToId?: string
 }
 

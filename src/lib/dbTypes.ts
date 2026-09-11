@@ -80,7 +80,8 @@ export type ScheduleRow = {
   service_type_id: string
   employee_id: string
   scheduled_date: string
-  status: 'pending' | 'in_progress' | 'delivered' | 'cancelled'
+  status: 'pending' | 'in_progress' | 'delivered' | 'cancelled' | 'rescheduled'
+  rescheduled_to_id: string | null
 }
 
 export type CompanySettingsRow = {
