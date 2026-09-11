@@ -125,7 +125,6 @@ export type Schedule = {
   serviceTypeId: string
   employeeId: string
   scheduledDate: string
-  scheduledTime: string
   status: ScheduleStatus
 }
 

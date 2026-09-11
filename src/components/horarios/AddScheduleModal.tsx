@@ -13,10 +13,9 @@ type Line = {
   key: number
   unitLabel: string
   serviceTypeId: string
-  scheduledTime: string
 }
 
-const emptyLine = (key: number): Line => ({ key, unitLabel: '', serviceTypeId: '', scheduledTime: '' })
+const emptyLine = (key: number): Line => ({ key, unitLabel: '', serviceTypeId: '' })
 
 type AddScheduleModalProps = {
   open: boolean
@@ -83,10 +82,6 @@ export const AddScheduleModal = ({
         setError('Cada unidad necesita un tipo de servicio.')
         return
       }
-      if (!line.scheduledTime) {
-        setError('Cada unidad necesita una hora.')
-        return
-      }
     }
 
     setSaving(true)
@@ -99,7 +94,6 @@ export const AddScheduleModal = ({
           scheduledDate: date,
           unitLabel: line.unitLabel,
           serviceTypeId: line.serviceTypeId,
-          scheduledTime: line.scheduledTime,
         })),
       )
       onSaved()
@@ -194,7 +188,7 @@ export const AddScheduleModal = ({
                     </button>
                   )}
                 </div>
-                <div className="grid grid-cols-3 gap-2.5">
+                <div className="grid grid-cols-2 gap-2.5">
                   <input
                     type="text"
                     placeholder="Unidad (ej. L303)"
@@ -214,12 +208,6 @@ export const AddScheduleModal = ({
                       </option>
                     ))}
                   </select>
-                  <input
-                    type="time"
-                    value={line.scheduledTime}
-                    onChange={(e) => updateLine(line.key, { scheduledTime: e.target.value })}
-                    className={inputClass}
-                  />
                 </div>
               </div>
             ))}

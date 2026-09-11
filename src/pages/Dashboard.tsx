@@ -52,7 +52,6 @@ import {
   computeTodaySchedules,
   type DashboardDateRangeKey,
 } from '../lib/dashboardMetrics'
-import { formatTime } from '../lib/scheduleDates'
 import { useSupabaseQuery } from '../lib/useSupabaseQuery'
 
 // Paleta categórica validada (dataviz skill, pasos "dark") — azul, naranja,
@@ -254,7 +253,7 @@ export const Dashboard = () => {
                       <div className="min-w-0">
                         <p className="truncate text-sm text-ink-200">{propertyName(s.propertyId)}</p>
                         <p className="truncate text-xs text-ink-500">
-                          {serviceTypeName(s.serviceTypeId)} · {employeeName(s.employeeId)} · {formatTime(s.scheduledTime)}
+                          {serviceTypeName(s.serviceTypeId)} · {employeeName(s.employeeId)}
                         </p>
                       </div>
                       <StatusPill status={s.status} />

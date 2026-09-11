@@ -15,7 +15,6 @@ import {
   DAY_LABELS,
   addDays,
   formatMonthLabel,
-  formatTime,
   formatWeekLabel,
   getWeeksInMonth,
   parseISODate,
@@ -83,7 +82,6 @@ export const Horarios = () => {
     .filter((s) => s.scheduledDate === selectedDateIso)
     .filter((s) => filterPropertyId === 'all' || s.propertyId === filterPropertyId)
     .filter((s) => filterEmployeeId === 'all' || s.employeeId === filterEmployeeId)
-    .sort((a, b) => a.scheduledTime.localeCompare(b.scheduledTime))
 
   const activeFilterCount = (filterPropertyId !== 'all' ? 1 : 0) + (filterEmployeeId !== 'all' ? 1 : 0)
 
@@ -233,7 +231,6 @@ export const Horarios = () => {
                   <th className="px-5 py-3 font-medium">Unidad</th>
                   <th className="px-5 py-3 font-medium">Servicio</th>
                   <th className="px-5 py-3 font-medium">Empleado</th>
-                  <th className="px-5 py-3 font-medium">Horario</th>
                   <th className="px-5 py-3 font-medium">Estatus</th>
                   <th className="px-5 py-3 font-medium">Acciones</th>
                 </tr>
@@ -249,7 +246,6 @@ export const Horarios = () => {
                     <td className="px-5 py-3 text-ink-400">{row.unitLabel || '—'}</td>
                     <td className="px-5 py-3 text-ink-400">{serviceTypeMap.get(row.serviceTypeId) ?? '—'}</td>
                     <td className="px-5 py-3 text-ink-400">{employeeMap.get(row.employeeId) ?? '—'}</td>
-                    <td className="px-5 py-3 tabular-nums text-ink-400">{formatTime(row.scheduledTime)}</td>
                     <td className="px-5 py-3">
                       <button
                         type="button"

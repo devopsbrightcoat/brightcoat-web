@@ -370,7 +370,6 @@ const mapSchedule = (row: ScheduleRow): Schedule => ({
   serviceTypeId: row.service_type_id,
   employeeId: row.employee_id,
   scheduledDate: row.scheduled_date,
-  scheduledTime: row.scheduled_time,
   status: row.status,
 })
 
@@ -379,7 +378,7 @@ export const fetchSchedules = async (): Promise<Schedule[]> => {
     .from('schedules')
     .select('*')
     .order('scheduled_date', { ascending: true })
-    .order('scheduled_time', { ascending: true })
+    .order('created_at', { ascending: true })
   if (error) throw error
   return ((data ?? []) as ScheduleRow[]).map(mapSchedule)
 }
@@ -391,7 +390,6 @@ export const createSchedules = async (
     scheduledDate: string
     unitLabel: string
     serviceTypeId: string
-    scheduledTime: string
   }[],
 ): Promise<void> => {
   const { error } = await supabase.from('schedules').insert(
@@ -401,7 +399,6 @@ export const createSchedules = async (
       scheduled_date: r.scheduledDate,
       unit_label: r.unitLabel || null,
       service_type_id: r.serviceTypeId,
-      scheduled_time: r.scheduledTime,
     })),
   )
   if (error) throw error
@@ -422,7 +419,6 @@ export const updateSchedule = async (
     scheduledDate: string
     unitLabel: string
     serviceTypeId: string
-    scheduledTime: string
   },
 ): Promise<void> => {
   const { error } = await supabase
@@ -433,7 +429,6 @@ export const updateSchedule = async (
       scheduled_date: patch.scheduledDate,
       unit_label: patch.unitLabel || null,
       service_type_id: patch.serviceTypeId,
-      scheduled_time: patch.scheduledTime,
     })
     .eq('id', id)
     .neq('status', 'delivered')

@@ -209,7 +209,7 @@ export const computeEmployeeProductivity = (
 
 export const computeTodaySchedules = (schedules: Schedule[]): Schedule[] => {
   const today = toISODate(new Date())
-  return schedules.filter((s) => s.scheduledDate === today).sort((a, b) => a.scheduledTime.localeCompare(b.scheduledTime))
+  return schedules.filter((s) => s.scheduledDate === today)
 }
 
 // "Overdue" no es un status propio de Schedule — es cualquier trabajo cuya

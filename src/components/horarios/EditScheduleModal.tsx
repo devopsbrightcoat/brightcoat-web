@@ -30,7 +30,6 @@ export const EditScheduleModal = ({
   const [date, setDate] = useState('')
   const [unitLabel, setUnitLabel] = useState('')
   const [serviceTypeId, setServiceTypeId] = useState('')
-  const [scheduledTime, setScheduledTime] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -41,7 +40,6 @@ export const EditScheduleModal = ({
     setDate(schedule.scheduledDate)
     setUnitLabel(schedule.unitLabel ?? '')
     setServiceTypeId(schedule.serviceTypeId)
-    setScheduledTime(schedule.scheduledTime)
     setError(null)
   }, [schedule])
 
@@ -63,10 +61,6 @@ export const EditScheduleModal = ({
       setError('Selecciona un tipo de servicio.')
       return
     }
-    if (!scheduledTime) {
-      setError('Selecciona una hora.')
-      return
-    }
 
     setSaving(true)
     setError(null)
@@ -77,7 +71,6 @@ export const EditScheduleModal = ({
         scheduledDate: date,
         unitLabel,
         serviceTypeId,
-        scheduledTime,
       })
       onSaved()
       onClose()
@@ -144,8 +137,8 @@ export const EditScheduleModal = ({
         </div>
 
         <div>
-          <label className={labelClass}>Unidad, servicio y hora</label>
-          <div className="grid grid-cols-3 gap-2.5">
+          <label className={labelClass}>Unidad y servicio</label>
+          <div className="grid grid-cols-2 gap-2.5">
             <input
               type="text"
               placeholder="Unidad (ej. L303)"
@@ -161,12 +154,6 @@ export const EditScheduleModal = ({
                 </option>
               ))}
             </select>
-            <input
-              type="time"
-              value={scheduledTime}
-              onChange={(e) => setScheduledTime(e.target.value)}
-              className={inputClass}
-            />
           </div>
         </div>
 

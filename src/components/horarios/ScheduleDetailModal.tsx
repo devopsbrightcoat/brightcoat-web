@@ -1,6 +1,5 @@
 import { Modal } from '../common/Modal'
 import { StatusPill } from '../common/StatusPill'
-import { formatTime } from '../../lib/scheduleDates'
 import type { Schedule } from '../../types'
 
 const Field = ({ label, value }: { label: string; value: React.ReactNode }) => (
@@ -38,7 +37,6 @@ export const ScheduleDetailModal = ({
           <Field label="Servicio" value={serviceTypeMap.get(schedule.serviceTypeId) ?? '—'} />
           <Field label="Empleado" value={employeeMap.get(schedule.employeeId) ?? '—'} />
           <Field label="Fecha" value={schedule.scheduledDate} />
-          <Field label="Horario" value={formatTime(schedule.scheduledTime)} />
           <Field label="Estatus" value={<StatusPill status={schedule.status} />} />
         </div>
       )}

@@ -5,7 +5,6 @@
 
 import ExcelJS from 'exceljs'
 import type { Schedule } from '../types'
-import { formatTime } from './scheduleDates'
 
 const STATUS_LABELS: Record<Schedule['status'], string> = {
   pending: 'Pendiente',
@@ -29,7 +28,6 @@ export const exportSchedulesToExcel = async (
     { header: 'Unidad', key: 'unit', width: 14 },
     { header: 'Servicio', key: 'service', width: 22 },
     { header: 'Empleado', key: 'employee', width: 22 },
-    { header: 'Horario', key: 'time', width: 12 },
     { header: 'Estatus', key: 'status', width: 16 },
   ]
   sheet.getRow(1).font = { bold: true }
@@ -40,7 +38,6 @@ export const exportSchedulesToExcel = async (
       unit: s.unitLabel || '—',
       service: serviceTypeMap.get(s.serviceTypeId) ?? '—',
       employee: employeeMap.get(s.employeeId) ?? '—',
-      time: formatTime(s.scheduledTime),
       status: STATUS_LABELS[s.status],
     })
   }
