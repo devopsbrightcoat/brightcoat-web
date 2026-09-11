@@ -39,6 +39,8 @@ const navItems: NavItem[] = [
     children: [
       { to: '/reportes/financiero', label: 'Financiero' },
       { to: '/reportes/cobros', label: 'Cobros' },
+      { to: '/reportes/gastos', label: 'Gastos' },
+      { to: '/reportes/planilla', label: 'Planilla' },
     ],
   },
   {

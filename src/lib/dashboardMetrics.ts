@@ -148,11 +148,13 @@ export const computeMonthlyFinancials = (
   }))
 }
 
-// --- Revenue by Period (granularidad elegible) ---------------------------
+// --- Revenue/Expenses by Period (granularidad elegible) -------------------
 // A diferencia de computeMonthlyFinancials (fijo a 12 meses, independiente
-// del filtro de fecha de la pantalla), esto agrupa los charges del rango
-// de fecha SELECCIONADO por día, semana, mes, trimestre o año — para
-// "Ingresos por período" del catálogo de reportes (Reportes › Financiero).
+// del filtro de fecha de la pantalla), esto agrupa por día, semana, mes,
+// trimestre o año el rango de fecha SELECCIONADO — para "Ingresos por
+// período" (Reportes › Financiero) y "Gastos por período" (Reportes ›
+// Gastos). Mismo bucketing para ambos (bucketByPeriod), solo cambia la
+// fuente de datos.
 
 export type RevenuePeriodGranularity = 'day' | 'week' | 'month' | 'quarter' | 'year'
 
@@ -165,6 +167,7 @@ export const REVENUE_PERIOD_GRANULARITY_OPTIONS: { value: RevenuePeriodGranulari
 ]
 
 export type RevenueByPeriod = { key: string; label: string; revenue: number }
+export type ExpensesByPeriod = { key: string; label: string; total: number }
 
 // Lunes de la semana que contiene `d` — mismo criterio "semana lunes a
 // domingo" que scheduleDates.ts usa para Horarios.
@@ -173,28 +176,25 @@ const startOfWeek = (d: Date): Date => {
   return addDays(d, -day)
 }
 
-export const computeRevenueByPeriod = (
-  charges: Charge[],
-  range: DateRange,
+const bucketByPeriod = (
+  items: { date: string; amount: number }[],
   granularity: RevenuePeriodGranularity,
-): RevenueByPeriod[] => {
-  const period = filterChargesByRange(charges, range)
-  const totals = new Map<string, { label: string; revenue: number }>()
+): { key: string; label: string; total: number }[] => {
+  const totals = new Map<string, { label: string; total: number }>()
 
-  for (const c of period) {
-    if (!c.generatedDate) continue
-    const d = parseISODate(c.generatedDate)
+  for (const item of items) {
+    const d = parseISODate(item.date)
     let key: string
     let label: string
 
     if (granularity === 'day') {
-      key = c.generatedDate
-      label = c.generatedDate
+      key = item.date
+      label = item.date
     } else if (granularity === 'week') {
       key = toISODate(startOfWeek(d))
       label = `Sem. ${key}`
     } else if (granularity === 'month') {
-      key = monthKey(c.generatedDate)
+      key = monthKey(item.date)
       label = `${MONTH_LABELS[d.getMonth()]} ${d.getFullYear()}`
     } else if (granularity === 'quarter') {
       const q = Math.floor(d.getMonth() / 3) + 1
@@ -206,12 +206,32 @@ export const computeRevenueByPeriod = (
     }
 
     const existing = totals.get(key)
-    totals.set(key, { label, revenue: (existing?.revenue ?? 0) + c.amount })
+    totals.set(key, { label, total: (existing?.total ?? 0) + item.amount })
   }
 
   return Array.from(totals.entries())
-    .map(([key, v]) => ({ key, label: v.label, revenue: v.revenue }))
+    .map(([key, v]) => ({ key, label: v.label, total: v.total }))
     .sort((a, b) => a.key.localeCompare(b.key))
+}
+
+export const computeRevenueByPeriod = (
+  charges: Charge[],
+  range: DateRange,
+  granularity: RevenuePeriodGranularity,
+): RevenueByPeriod[] => {
+  const items = filterChargesByRange(charges, range)
+    .filter((c) => c.generatedDate)
+    .map((c) => ({ date: c.generatedDate as string, amount: c.amount }))
+  return bucketByPeriod(items, granularity).map((b) => ({ key: b.key, label: b.label, revenue: b.total }))
+}
+
+export const computeExpensesByPeriod = (
+  expenses: Expense[],
+  range: DateRange,
+  granularity: RevenuePeriodGranularity,
+): ExpensesByPeriod[] => {
+  const items = filterExpensesByRange(expenses, range).map((e) => ({ date: e.date, amount: e.amount }))
+  return bucketByPeriod(items, granularity)
 }
 
 // --- Revenue by Service --------------------------------------------------
@@ -352,6 +372,98 @@ export const computeOutstandingAging = (charges: Charge[]): AgingBucket[] => {
   }
   return buckets
 }
+
+// --- Planilla agrupada (por propiedad / por empleado) ---------------------
+// Para "Planilla por propiedad y por empleado" (Reportes › Planilla) — el
+// mismo total de planillas pagadas, agrupado por cada dimensión. Las
+// planillas sin monto definido (amount == null, ver PayrollEntry en
+// types.ts) cuentan como pendientes, no se suman a totalPaid.
+
+export type PayrollGroupSummary = {
+  id: string
+  name: string
+  totalPaid: number
+  paidCount: number
+  pendingCount: number
+}
+
+const summarizePayrollBy = (
+  entries: PayrollEntry[],
+  keyOf: (e: PayrollEntry) => string,
+  nameOf: (id: string) => string,
+): PayrollGroupSummary[] => {
+  const groups = new Map<string, PayrollGroupSummary>()
+  for (const e of entries) {
+    const id = keyOf(e)
+    const existing = groups.get(id) ?? { id, name: nameOf(id), totalPaid: 0, paidCount: 0, pendingCount: 0 }
+    if (e.amount == null) {
+      existing.pendingCount += 1
+    } else {
+      existing.totalPaid += e.amount
+      existing.paidCount += 1
+    }
+    groups.set(id, existing)
+  }
+  return Array.from(groups.values()).sort((a, b) => b.totalPaid - a.totalPaid)
+}
+
+export const computePayrollByProperty = (
+  payrollEntries: PayrollEntry[],
+  properties: Property[],
+  range: DateRange,
+): PayrollGroupSummary[] =>
+  summarizePayrollBy(
+    filterPayrollByRange(payrollEntries, range),
+    (e) => e.propertyId,
+    (id) => properties.find((p) => p.id === id)?.name ?? '—',
+  )
+
+export const computePayrollByEmployee = (
+  payrollEntries: PayrollEntry[],
+  employees: Employee[],
+  range: DateRange,
+): PayrollGroupSummary[] =>
+  summarizePayrollBy(
+    filterPayrollByRange(payrollEntries, range),
+    (e) => e.employeeId,
+    (id) => employees.find((emp) => emp.id === id)?.name ?? '—',
+  )
+
+export type PendingPayrollRow = {
+  id: string
+  propertyId: string
+  propertyName: string
+  unitLabel: string
+  employeeId: string
+  employeeName: string
+  serviceName: string
+  date: string
+  sales: number
+}
+
+// Trabajo ya hecho (tiene fecha, propiedad, empleado y servicio) cuyo pago
+// todavía no se definió — ver PayrollEntry.amount en types.ts. Igual que
+// Antigüedad de cartera (Reportes › Cobros), es sobre toda la planilla
+// pendiente ahora mismo, no solo el período seleccionado en pantalla.
+export const computePendingPayroll = (
+  payrollEntries: PayrollEntry[],
+  properties: Property[],
+  employees: Employee[],
+): PendingPayrollRow[] =>
+  payrollEntries
+    .filter((e) => e.amount == null)
+    .map((e) => ({
+      id: e.id,
+      propertyId: e.propertyId,
+      propertyName: properties.find((p) => p.id === e.propertyId)?.name ?? '—',
+      unitLabel: e.unitLabel,
+      employeeId: e.employeeId,
+      employeeName: employees.find((emp) => emp.id === e.employeeId)?.name ?? '—',
+      serviceName: e.serviceName,
+      date: e.date,
+      sales: e.items.reduce((sum, item) => sum + item.amount, 0),
+    }))
+    .sort((a, b) => b.date.localeCompare(a.date))
 
 // --- Alertas ---------------------------------------------------------------
 

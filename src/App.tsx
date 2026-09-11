@@ -14,6 +14,8 @@ import { Planillas } from './pages/Planillas'
 import { Propiedades } from './pages/Propiedades'
 import { ReportesCobros } from './pages/reportes/ReportesCobros'
 import { ReportesFinanciero } from './pages/reportes/ReportesFinanciero'
+import { ReportesGastos } from './pages/reportes/ReportesGastos'
+import { ReportesPlanilla } from './pages/reportes/ReportesPlanilla'
 
 const App = () => {
   return (
@@ -41,6 +43,8 @@ const App = () => {
           <Route index element={<Navigate to="financiero" replace />} />
           <Route path="financiero" element={<ReportesFinanciero />} />
           <Route path="cobros" element={<ReportesCobros />} />
+          <Route path="gastos" element={<ReportesGastos />} />
+          <Route path="planilla" element={<ReportesPlanilla />} />
         </Route>
         <Route path="configuracion">
           <Route index element={<Navigate to="general" replace />} />
