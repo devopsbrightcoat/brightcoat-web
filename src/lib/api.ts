@@ -4,13 +4,14 @@
 // para que las páginas no tengan que cambiar al pasar de mock a real.
 // ---------------------------------------------------------------------------
 
-import type { Charge, CompanySettings, Employee, Expense, PayrollEntry, Property, Schedule, ServiceType } from '../types'
+import type { Charge, CompanySettings, Employee, Expense, ExpenseTemplate, PayrollEntry, Property, Schedule, ServiceType } from '../types'
 import { supabase } from './supabase'
 import type {
   ChargeRow,
   CompanySettingsRow,
   EmployeeRow,
   ExpenseRow,
+  ExpenseTemplateRow,
   PayrollEntryRow,
   PropertyRow,
   ScheduleRow,
@@ -133,6 +134,57 @@ export const updateExpense = async (
       description: patch.description.trim() || null,
     })
     .eq('id', id)
+  if (error) throw error
+}
+
+// ---------------------------------------------------------------------------
+// "Gastos fijos" — catálogo de plantillas para Agregar gasto (ver comentario
+// en types.ts). Tabla propia expense_templates, sin relación hacia expenses.
+// ---------------------------------------------------------------------------
+
+const mapExpenseTemplate = (row: ExpenseTemplateRow): ExpenseTemplate => ({
+  id: row.id,
+  name: row.name,
+  amount: row.amount == null ? undefined : Number(row.amount),
+  description: row.description ?? undefined,
+})
+
+export const fetchExpenseTemplates = async (): Promise<ExpenseTemplate[]> => {
+  const { data, error } = await supabase.from('expense_templates').select('*').order('name')
+  if (error) throw error
+  return ((data ?? []) as ExpenseTemplateRow[]).map(mapExpenseTemplate)
+}
+
+export const createExpenseTemplate = async (data: {
+  name: string
+  amount: number | null
+  description: string
+}): Promise<void> => {
+  const { error } = await supabase.from('expense_templates').insert({
+    name: data.name.trim(),
+    amount: data.amount,
+    description: data.description.trim() || null,
+  })
+  if (error) throw error
+}
+
+export const updateExpenseTemplate = async (
+  id: string,
+  patch: { name: string; amount: number | null; description: string },
+): Promise<void> => {
+  const { error } = await supabase
+    .from('expense_templates')
+    .update({
+      name: patch.name.trim(),
+      amount: patch.amount,
+      description: patch.description.trim() || null,
+    })
+    .eq('id', id)
+  if (error) throw error
+}
+
+export const deleteExpenseTemplate = async (id: string): Promise<void> => {
+  const { error } = await supabase.from('expense_templates').delete().eq('id', id)
   if (error) throw error
 }
 

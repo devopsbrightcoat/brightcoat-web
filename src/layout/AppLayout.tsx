@@ -51,6 +51,7 @@ const navItems: NavItem[] = [
     children: [
       { to: '/configuracion/general', label: 'General' },
       { to: '/configuracion/servicios', label: 'Servicios' },
+      { to: '/configuracion/gastos-fijos', label: 'Gastos fijos' },
     ],
   },
 ]

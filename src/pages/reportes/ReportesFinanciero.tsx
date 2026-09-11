@@ -15,14 +15,15 @@ import { DataTablePanel } from '../../components/common/DataTablePanel'
 import { DashboardPanel } from '../../components/dashboard/DashboardPanel'
 import { DashboardDateRangeSelect } from '../../components/dashboard/DashboardDateRangeSelect'
 import { RankingBars } from '../../components/dashboard/RankingBars'
+import { ServiceCategoryModal } from '../../components/dashboard/ServiceCategoryModal'
 import { fetchCharges, fetchExpenses, fetchPayrollEntries, fetchProperties, fetchSchedules, fetchServiceTypes } from '../../lib/api'
 import {
   computeDateRange,
   computeKpis,
   computeMonthlyFinancials,
   computePropertyProfitability,
+  computeRevenueByCategory,
   computeRevenueByPeriod,
-  computeRevenueByService,
   REVENUE_PERIOD_GRANULARITY_OPTIONS,
   type DashboardDateRangeKey,
   type PropertyProfitability,
@@ -70,6 +71,7 @@ export const ReportesFinanciero = () => {
   const [periodGranularity, setPeriodGranularity] = useState<RevenuePeriodGranularity>('day')
   const [sorting, setSorting] = useState<SortingState>([{ id: 'revenue', desc: true }])
   const [pageIndex, setPageIndex] = useState(0)
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null)
 
   const { data: charges, loading: loadingCharges, error: errorCharges } = useSupabaseQuery(fetchCharges, [])
   const { data: expenses, loading: loadingExpenses, error: errorExpenses } = useSupabaseQuery(fetchExpenses, [])
@@ -94,9 +96,14 @@ export const ReportesFinanciero = () => {
     [charges, expenses, payrollEntries],
   )
 
-  const revenueByService = useMemo(
-    () => computeRevenueByService(charges ?? [], serviceTypes ?? [], range),
+  const revenueByCategory = useMemo(
+    () => computeRevenueByCategory(charges ?? [], serviceTypes ?? [], range),
     [charges, serviceTypes, range],
+  )
+
+  const selectedCategory = useMemo(
+    () => revenueByCategory.find((c) => (c.category ?? c.label) === selectedCategoryId) ?? null,
+    [revenueByCategory, selectedCategoryId],
   )
 
   const revenueByPeriod = useMemo(
@@ -262,12 +269,13 @@ export const ReportesFinanciero = () => {
               </div>
             </DashboardPanel>
 
-            <DashboardPanel title="Ingresos por tipo de servicio" subtitle="Período seleccionado">
+            <DashboardPanel title="Ingresos por categoría de servicio" subtitle="Período seleccionado">
               <RankingBars
-                items={revenueByService.map((s) => ({ id: s.serviceTypeId ?? s.label, label: s.label, value: s.revenue }))}
+                items={revenueByCategory.map((c) => ({ id: c.category ?? c.label, label: c.label, value: c.revenue }))}
                 formatValue={currency}
                 color={COLOR_GOLD}
                 emptyText="No hay cobros en este período."
+                onItemPress={(item) => setSelectedCategoryId(item.id)}
               />
             </DashboardPanel>
           </div>
@@ -288,6 +296,8 @@ export const ReportesFinanciero = () => {
           />
         </>
       )}
+
+      <ServiceCategoryModal category={selectedCategory} onClose={() => setSelectedCategoryId(null)} />
     </div>
   )
 }

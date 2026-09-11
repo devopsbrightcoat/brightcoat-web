@@ -1,4 +1,4 @@
-import type { Charge, Employee, PayrollEntry, Expense, Property, Schedule, ServiceType } from '../types'
+import type { Charge, Employee, PayrollEntry, Expense, Property, Schedule, ServiceCategory, ServiceType } from '../types'
 import { addDays, parseISODate, toISODate } from './scheduleDates'
 
 // ---------------------------------------------------------------------------
@@ -249,6 +249,67 @@ export const computeRevenueByService = (charges: Charge[], serviceTypes: Service
     .map(([id, revenue]) => {
       const serviceType = id === '__none__' ? null : (serviceTypes.find((s) => s.id === id) ?? null)
       return { serviceTypeId: serviceType?.id ?? null, label: serviceType?.name ?? 'Sin servicio', revenue }
+    })
+    .sort((a, b) => b.revenue - a.revenue)
+}
+
+// --- Revenue by Category ---------------------------------------------------
+// "Ingresos por servicio" del Dashboard, agrupado por categoría de
+// servicio (ServiceType.category) en vez de por tipo de servicio
+// individual — con muchos tipos granulares (ej. "Full painting 1x1",
+// "Full Cleaning 2x2") el ranking por tipo se vuelve largo y repetitivo;
+// agrupar por categoría da una lectura más clara de un vistazo. Función
+// nueva y separada de computeRevenueByService (que se sigue usando en
+// Reportes › Financiero, donde sí interesa el detalle por tipo de
+// servicio).
+
+const SERVICE_CATEGORY_LABELS: Record<ServiceCategory, string> = {
+  painting: 'Pintura',
+  cleaning: 'Limpieza',
+  make_ready: 'Make Ready',
+  repair: 'Reparación',
+  other: 'Otro',
+}
+
+export type ServiceCategoryRevenue = {
+  category: ServiceCategory | null
+  label: string
+  revenue: number
+  services: ServiceRevenue[]
+}
+
+export const computeRevenueByCategory = (
+  charges: Charge[],
+  serviceTypes: ServiceType[],
+  range: DateRange,
+): ServiceCategoryRevenue[] => {
+  const period = filterChargesByRange(charges, range)
+  const totals = new Map<string, number>()
+  const serviceTotals = new Map<string, Map<string, number>>()
+  for (const c of period) {
+    const serviceType = c.serviceTypeId ? serviceTypes.find((s) => s.id === c.serviceTypeId) : undefined
+    const categoryKey = serviceType?.category ?? '__none__'
+    const serviceKey = c.serviceTypeId ?? '__none__'
+    totals.set(categoryKey, (totals.get(categoryKey) ?? 0) + c.amount)
+    const services = serviceTotals.get(categoryKey) ?? new Map<string, number>()
+    services.set(serviceKey, (services.get(serviceKey) ?? 0) + c.amount)
+    serviceTotals.set(categoryKey, services)
+  }
+  return Array.from(totals.entries())
+    .map(([key, revenue]) => {
+      const category = key === '__none__' ? null : (key as ServiceCategory)
+      const services: ServiceRevenue[] = Array.from((serviceTotals.get(key) ?? new Map<string, number>()).entries())
+        .map(([serviceKey, serviceRevenue]) => {
+          const serviceType = serviceKey === '__none__' ? null : (serviceTypes.find((s) => s.id === serviceKey) ?? null)
+          return { serviceTypeId: serviceType?.id ?? null, label: serviceType?.name ?? 'Sin servicio', revenue: serviceRevenue }
+        })
+        .sort((a, b) => b.revenue - a.revenue)
+      return {
+        category,
+        label: category ? SERVICE_CATEGORY_LABELS[category] : 'Sin categoría',
+        revenue,
+        services,
+      }
     })
     .sort((a, b) => b.revenue - a.revenue)
 }

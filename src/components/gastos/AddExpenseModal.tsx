@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { Modal } from '../common/Modal'
-import { createExpense } from '../../lib/api'
+import { createExpense, fetchExpenseTemplates } from '../../lib/api'
 import { getErrorMessage } from '../../lib/errors'
+import { useSupabaseQuery } from '../../lib/useSupabaseQuery'
 
 const inputClass =
   'w-full rounded-lg border border-white/10 bg-surface px-3 py-2.5 text-sm text-white outline-none focus:border-gold-500'
@@ -18,8 +19,11 @@ export const AddExpenseModal = ({ open, onClose, onSaved }: AddExpenseModalProps
   const [amount, setAmount] = useState('')
   const [date, setDate] = useState('')
   const [description, setDescription] = useState('')
+  const [templateId, setTemplateId] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  const { data: templates } = useSupabaseQuery(fetchExpenseTemplates, [open])
 
   useEffect(() => {
     if (!open) return
@@ -27,8 +31,19 @@ export const AddExpenseModal = ({ open, onClose, onSaved }: AddExpenseModalProps
     setAmount('')
     setDate('')
     setDescription('')
+    setTemplateId('')
     setError(null)
   }, [open])
+
+  // Elegir un gasto fijo solo precarga monto y descripción — no queda
+  // ningún vínculo guardado entre el gasto y la plantilla usada.
+  const handleTemplateChange = (id: string) => {
+    setTemplateId(id)
+    const template = (templates ?? []).find((t) => t.id === id)
+    if (!template) return
+    if (template.amount != null) setAmount(String(template.amount))
+    if (template.description) setDescription(template.description)
+  }
 
   const handleSave = async () => {
     const amountNum = Number(amount)
@@ -56,6 +71,27 @@ export const AddExpenseModal = ({ open, onClose, onSaved }: AddExpenseModalProps
   return (
     <Modal open={open} onClose={onClose} title="Agregar gasto">
       <div className="space-y-4">
+        {templates && templates.length > 0 && (
+          <div>
+            <label htmlFor="new-exp-template" className={labelClass}>
+              Gasto fijo (opcional)
+            </label>
+            <select
+              id="new-exp-template"
+              value={templateId}
+              onChange={(e) => handleTemplateChange(e.target.value)}
+              className={inputClass}
+            >
+              <option value="">Seleccionar plantilla…</option>
+              {templates.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+
         <div>
           <label htmlFor="new-exp-invoice" className={labelClass}>
             Número de factura

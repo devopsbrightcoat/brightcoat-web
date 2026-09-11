@@ -30,6 +30,7 @@ import { StatusPill } from '../components/common/StatusPill'
 import { DashboardPanel } from '../components/dashboard/DashboardPanel'
 import { DashboardDateRangeSelect } from '../components/dashboard/DashboardDateRangeSelect'
 import { RankingBars } from '../components/dashboard/RankingBars'
+import { ServiceCategoryModal } from '../components/dashboard/ServiceCategoryModal'
 import {
   fetchCharges,
   fetchEmployees,
@@ -47,8 +48,8 @@ import {
   computeMonthlyFinancials,
   computeOutstandingAging,
   computeOverdueSchedules,
+  computeRevenueByCategory,
   computeRevenueByProperty,
-  computeRevenueByService,
   computeTodaySchedules,
   type DashboardDateRangeKey,
 } from '../lib/dashboardMetrics'
@@ -79,6 +80,7 @@ const axisTick = { fontSize: 12, fill: '#94a3b8' }
 
 export const Dashboard = () => {
   const [rangeKey, setRangeKey] = useState<DashboardDateRangeKey>('this_month')
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null)
 
   const { data: charges, loading: loadingCharges, error: errorCharges } = useSupabaseQuery(fetchCharges, [])
   const { data: expenses, loading: loadingExpenses, error: errorExpenses } = useSupabaseQuery(fetchExpenses, [])
@@ -104,9 +106,14 @@ export const Dashboard = () => {
     [charges, expenses, payrollEntries],
   )
 
-  const revenueByService = useMemo(
-    () => computeRevenueByService(charges ?? [], serviceTypes ?? [], range),
+  const revenueByCategory = useMemo(
+    () => computeRevenueByCategory(charges ?? [], serviceTypes ?? [], range),
     [charges, serviceTypes, range],
+  )
+
+  const selectedCategory = useMemo(
+    () => revenueByCategory.find((c) => (c.category ?? c.label) === selectedCategoryId) ?? null,
+    [revenueByCategory, selectedCategoryId],
   )
 
   const revenueByProperty = useMemo(
@@ -212,10 +219,11 @@ export const Dashboard = () => {
 
             <DashboardPanel title="Ingresos por servicio" subtitle="Período seleccionado">
               <RankingBars
-                items={revenueByService.map((s) => ({ id: s.serviceTypeId ?? s.label, label: s.label, value: s.revenue }))}
+                items={revenueByCategory.map((c) => ({ id: c.category ?? c.label, label: c.label, value: c.revenue }))}
                 formatValue={currency}
                 color={COLOR_GOLD}
                 emptyText="No hay cobros en este período."
+                onItemPress={(item) => setSelectedCategoryId(item.id)}
               />
             </DashboardPanel>
           </div>
@@ -325,6 +333,8 @@ export const Dashboard = () => {
           </div>
         </>
       )}
+
+      <ServiceCategoryModal category={selectedCategory} onClose={() => setSelectedCategoryId(null)} />
     </div>
   )
 }

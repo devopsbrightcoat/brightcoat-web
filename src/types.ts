@@ -38,6 +38,18 @@ export type Expense = {
   description?: string
 }
 
+// "Gastos fijos" — catálogo de tipos de gasto recurrentes (renta, seguro,
+// internet, etc.) que se puede elegir como plantilla al agregar un gasto
+// real (ver AddExpenseModal). Precarga monto y descripción en el
+// formulario nada más — no crea gastos ni queda ligada a ellos de ninguna
+// forma, ni siquiera al elegirla.
+export type ExpenseTemplate = {
+  id: string
+  name: string
+  amount?: number
+  description?: string
+}
+
 // Planillas — pago de mano de obra por trabajo completo (propiedad +
 // unidad + empleado + servicio, todos obligatorios). Tabla propia
 // (payroll_entries), separada de expenses desde
