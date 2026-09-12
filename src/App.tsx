@@ -10,6 +10,7 @@ import { Dashboard } from './pages/Dashboard'
 import { Empleados } from './pages/Empleados'
 import { Gastos } from './pages/Gastos'
 import { Horarios } from './pages/Horarios'
+import { Impuestos } from './pages/Impuestos'
 import { Login } from './pages/Login'
 import { NotFound } from './pages/NotFound'
 import { Planillas } from './pages/Planillas'
@@ -40,6 +41,7 @@ const App = () => {
           <Route path="cobros" element={<Cobros />} />
           <Route path="gastos" element={<Gastos />} />
           <Route path="planillas" element={<Planillas />} />
+          <Route path="impuestos" element={<Impuestos />} />
         </Route>
         <Route path="empleados" element={<Empleados />} />
         <Route path="reportes">

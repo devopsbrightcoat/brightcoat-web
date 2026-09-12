@@ -78,6 +78,8 @@ export type ChargeRow = {
   notes: string | null
   extras: { description: string; amount: number }[] | null
   invoice_number: string | null
+  tax_paid: boolean
+  tax_paid_date: string | null
 }
 
 export type ScheduleRow = {

@@ -303,6 +303,8 @@ const mapCharge = (row: ChargeRow): Charge => ({
   notes: row.notes ?? undefined,
   extras: row.extras ?? [],
   invoiceNumber: row.invoice_number ?? undefined,
+  taxPaid: row.tax_paid,
+  taxPaidDate: row.tax_paid_date ?? undefined,
 })
 
 export const fetchCharges = async (): Promise<Charge[]> => {
@@ -324,6 +326,17 @@ export const updateChargeStatus = async (
     .from('charges')
     .update({ status: data.status, invoice_number: data.invoiceNumber?.trim() || null })
     .eq('id', id)
+  if (error) throw error
+}
+
+// Marca (o desmarca) el impuesto de ventas de uno o varios cobros como
+// remitido al estado — ver pages/Impuestos.tsx. `ids` puede ser un solo
+// cobro (toggle individual) o todos los de un mes (botón en bloque).
+export const updateChargesTaxPaid = async (ids: string[], taxPaid: boolean): Promise<void> => {
+  const { error } = await supabase
+    .from('charges')
+    .update({ tax_paid: taxPaid, tax_paid_date: taxPaid ? new Date().toISOString().slice(0, 10) : null })
+    .in('id', ids)
   if (error) throw error
 }
 

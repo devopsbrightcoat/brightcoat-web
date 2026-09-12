@@ -113,6 +113,10 @@ export type Charge = {
   notes?: string
   extras: ChargeExtra[]
   invoiceNumber?: string
+  // Impuesto de ventas (8.25% fijo, ver lib/tax.ts) YA incluido en `amount`
+  // — estos dos campos solo trackean si ya se remitió al estado.
+  taxPaid: boolean
+  taxPaidDate?: string
 }
 
 // Configuración general — tabla singleton (una sola fila) con los datos del

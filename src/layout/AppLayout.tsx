@@ -30,6 +30,7 @@ const navItems: NavItem[] = [
       { to: '/finanzas/cobros', label: 'Cobros' },
       { to: '/finanzas/gastos', label: 'Gastos' },
       { to: '/finanzas/planillas', label: 'Planillas' },
+      { to: '/finanzas/impuestos', label: 'Impuestos' },
     ],
   },
   { to: '/empleados', label: 'Empleados', icon: Users },

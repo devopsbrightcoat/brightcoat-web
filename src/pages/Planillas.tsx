@@ -20,6 +20,7 @@ import { useSupabaseQuery } from '../lib/useSupabaseQuery'
 import { formatFullDate } from '../lib/scheduleDates'
 import { exportPayrollToExcel } from '../lib/exportPayroll'
 import { getErrorMessage } from '../lib/errors'
+import { taxOnAmount, SALES_TAX_RATE } from '../lib/tax'
 import type { PayrollEntry } from '../types'
 
 const currency = (value: number) =>
@@ -27,7 +28,7 @@ const currency = (value: number) =>
 
 const PAGE_SIZE = 15
 
-type PayrollRow = PayrollEntry & { sales: number; profit: number | null }
+type PayrollRow = PayrollEntry & { sales: number; profit: number | null; tax: number | null }
 
 const columnHelper = createColumnHelper<PayrollRow>()
 
@@ -79,7 +80,14 @@ export const Planillas = () => {
       })
       .map((e) => {
         const sales = e.items.reduce((sum, item) => sum + item.amount, 0)
-        return { ...e, sales, profit: e.amount == null ? null : sales - e.amount }
+        return {
+          ...e,
+          sales,
+          profit: e.amount == null ? null : sales - e.amount,
+          // Informativo únicamente (8.25% fijo sobre el pago) — no se resta de
+          // nada ni se guarda en base de datos, ver lib/tax.ts.
+          tax: e.amount == null ? null : taxOnAmount(e.amount),
+        }
       })
     return rows
   }, [entries, properties, employees, propertyId, employeeId, dateFrom, dateTo, searchText])
@@ -124,6 +132,18 @@ export const Planillas = () => {
             <span className="text-ink-500">Pendiente</span>
           ) : (
             <span className="tabular-nums">{currency(value)}</span>
+          )
+        },
+      }),
+      columnHelper.accessor('tax', {
+        id: 'tax',
+        header: `Impuesto (${(SALES_TAX_RATE * 100).toFixed(2)}%)`,
+        cell: (info) => {
+          const value = info.getValue()
+          return value == null ? (
+            <span className="text-ink-500">Pendiente</span>
+          ) : (
+            <span className="tabular-nums text-gold-400">{currency(value)}</span>
           )
         },
       }),
