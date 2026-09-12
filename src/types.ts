@@ -141,3 +141,18 @@ export type Schedule = {
   rescheduledToId?: string
 }
 
+// Alertas entre usuarios (owner <-> no-owner) — ver
+// 20260924000000_add_notifications.sql. El nombre AppNotification (y no
+// Notification a secas) evita chocar con el tipo Notification del DOM.
+export type NotificationEntityType = 'property' | 'employee' | 'schedule' | 'expense' | 'payroll_entry' | 'charge'
+
+export type AppNotification = {
+  id: string
+  actorId?: string
+  entityType: NotificationEntityType
+  entityId?: string
+  message: string
+  readAt?: string
+  createdAt: string
+}
+

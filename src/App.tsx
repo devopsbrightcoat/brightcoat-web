@@ -2,6 +2,7 @@ import { Navigate, Route, Routes } from 'react-router-dom'
 import { ProtectedRoute } from './auth/ProtectedRoute'
 import { AppLayout } from './layout/AppLayout'
 import { Cobros } from './pages/Cobros'
+import { ConfiguracionAlertas } from './pages/ConfiguracionAlertas'
 import { ConfiguracionGastosFijos } from './pages/ConfiguracionGastosFijos'
 import { ConfiguracionGeneral } from './pages/ConfiguracionGeneral'
 import { ConfiguracionServicios } from './pages/ConfiguracionServicios'
@@ -52,6 +53,7 @@ const App = () => {
         <Route path="configuracion">
           <Route index element={<Navigate to="general" replace />} />
           <Route path="general" element={<ConfiguracionGeneral />} />
+          <Route path="alertas" element={<ConfiguracionAlertas />} />
           <Route path="servicios" element={<ConfiguracionServicios />} />
           <Route path="gastos-fijos" element={<ConfiguracionGastosFijos />} />
         </Route>

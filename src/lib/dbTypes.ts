@@ -100,3 +100,13 @@ export type CompanySettingsRow = {
   default_hourly_rate: number | string | null
 }
 
+export type NotificationRow = {
+  id: string
+  actor_id: string | null
+  entity_type: string
+  entity_id: string | null
+  message: string
+  read_at: string | null
+  created_at: string
+}
+

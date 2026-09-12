@@ -16,6 +16,7 @@ const roleLabel: Record<string, string> = {
   owner: 'Dueño',
   admin: 'Administrador',
   staff: 'Staff',
+  finance: 'Finanzas',
 }
 
 // Datos de la empresa (company_settings, tabla singleton — ver

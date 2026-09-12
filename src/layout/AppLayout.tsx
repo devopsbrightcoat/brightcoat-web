@@ -12,9 +12,10 @@ import {
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
-import { useAuth } from '../auth/AuthProvider'
+import { useAuth, type ProfileRole } from '../auth/AuthProvider'
+import { NotificationBell } from '../components/notifications/NotificationBell'
 
-type NavChild = { to: string; label: string }
+type NavChild = { to: string; label: string; hiddenForRoles?: ProfileRole[] }
 type NavItem = { to: string; label: string; icon: LucideIcon; end?: boolean; children?: NavChild[] }
 
 const navItems: NavItem[] = [
@@ -50,6 +51,8 @@ const navItems: NavItem[] = [
     icon: Settings,
     children: [
       { to: '/configuracion/general', label: 'General' },
+      // Sin esta pantalla para staff — ver ConfiguracionAlertas.tsx.
+      { to: '/configuracion/alertas', label: 'Alertas', hiddenForRoles: ['staff'] },
       { to: '/configuracion/servicios', label: 'Servicios' },
       { to: '/configuracion/gastos-fijos', label: 'Gastos fijos' },
     ],
@@ -60,6 +63,7 @@ const roleLabel: Record<string, string> = {
   owner: 'Dueño',
   admin: 'Administrador',
   staff: 'Staff',
+  finance: 'Finanzas',
 }
 
 export const AppLayout = () => {
@@ -79,14 +83,18 @@ export const AppLayout = () => {
       <aside className="flex h-screen w-64 shrink-0 flex-col bg-brand-900">
         <div className="flex items-center gap-2.5 border-b border-white/10 px-5 py-5">
           <img src="/favicon.png" alt="BrightCoat" className="h-9 w-9 shrink-0" />
-          <div>
-            <p className="text-sm font-semibold text-white">BrightCoat Ops</p>
-            <p className="text-xs text-brand-300">Panel interno</p>
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-semibold text-white">BrightCoat Ops</p>
+            <p className="truncate text-xs text-brand-300">Panel interno</p>
           </div>
+          {profile?.role !== 'staff' && <NotificationBell />}
         </div>
 
         <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4">
-          {navItems.map(({ to, label, icon: Icon, end, children }) => {
+          {navItems.map(({ to, label, icon: Icon, end, children: rawChildren }) => {
+            const children = rawChildren?.filter(
+              (child) => !profile || !child.hiddenForRoles?.includes(profile.role),
+            )
             if (!children) {
               return (
                 <NavLink
