@@ -69,6 +69,7 @@ export type PayrollEntryRow = {
   amount: number | string | null
   date: string
   notes: string | null
+  schedule_id: string | null
   payroll_entry_items?: PayrollEntryItemRow[]
 }
 
