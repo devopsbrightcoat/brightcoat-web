@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Modal } from '../common/Modal'
-import { updateExpense } from '../../lib/api'
+import { fetchVendors, updateExpense } from '../../lib/api'
+import { useSupabaseQuery } from '../../lib/useSupabaseQuery'
 import type { Expense } from '../../types'
 import { getErrorMessage } from '../../lib/errors'
 
@@ -19,8 +20,11 @@ export const EditExpenseModal = ({ expense, onClose, onSaved }: EditExpenseModal
   const [amount, setAmount] = useState('')
   const [date, setDate] = useState('')
   const [description, setDescription] = useState('')
+  const [vendorId, setVendorId] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  const { data: vendors } = useSupabaseQuery(fetchVendors, [expense])
 
   useEffect(() => {
     if (!expense) return
@@ -28,6 +32,7 @@ export const EditExpenseModal = ({ expense, onClose, onSaved }: EditExpenseModal
     setAmount(String(expense.amount))
     setDate(expense.date)
     setDescription(expense.description ?? '')
+    setVendorId(expense.vendorId ?? '')
     setError(null)
   }, [expense])
 
@@ -45,7 +50,7 @@ export const EditExpenseModal = ({ expense, onClose, onSaved }: EditExpenseModal
     setSaving(true)
     setError(null)
     try {
-      await updateExpense(expense.id, { invoiceNumber, amount: amountNum, date, description })
+      await updateExpense(expense.id, { invoiceNumber, amount: amountNum, date, description, vendorId: vendorId || undefined })
       onSaved()
       onClose()
     } catch (err) {
@@ -58,6 +63,25 @@ export const EditExpenseModal = ({ expense, onClose, onSaved }: EditExpenseModal
   return (
     <Modal open={expense !== null} onClose={onClose} title="Editar gasto">
       <div className="space-y-4">
+        <div>
+          <label htmlFor="exp-vendor" className={labelClass}>
+            Proveedor (opcional)
+          </label>
+          <select
+            id="exp-vendor"
+            value={vendorId}
+            onChange={(e) => setVendorId(e.target.value)}
+            className={inputClass}
+          >
+            <option value="">Sin proveedor</option>
+            {(vendors ?? []).map((v) => (
+              <option key={v.id} value={v.id}>
+                {v.name}
+              </option>
+            ))}
+          </select>
+        </div>
+
         <div>
           <label htmlFor="exp-invoice" className={labelClass}>
             Número de factura

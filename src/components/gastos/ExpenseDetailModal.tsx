@@ -17,10 +17,11 @@ const Field = ({ label, value }: { label: string; value: React.ReactNode }) => (
 // chocar con este modal (ver Gastos.tsx).
 type ExpenseDetailModalProps = {
   expense: Expense | null
+  vendorName?: string
   onClose: () => void
 }
 
-export const ExpenseDetailModal = ({ expense, onClose }: ExpenseDetailModalProps) => (
+export const ExpenseDetailModal = ({ expense, vendorName, onClose }: ExpenseDetailModalProps) => (
   <Modal open={expense !== null} onClose={onClose} title="Detalle del gasto">
     {expense && (
       <div className="space-y-5">
@@ -28,6 +29,7 @@ export const ExpenseDetailModal = ({ expense, onClose }: ExpenseDetailModalProps
           <Field label="Número de factura" value={expense.invoiceNumber || '—'} />
           <Field label="Monto" value={<span className="tabular-nums">{currency(expense.amount)}</span>} />
           <Field label="Fecha" value={expense.date || '—'} />
+          <Field label="Proveedor" value={vendorName || '—'} />
         </div>
 
         <Field label="Descripción" value={expense.description || '—'} />

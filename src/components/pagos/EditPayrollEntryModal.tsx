@@ -31,6 +31,7 @@ export const EditPayrollEntryModal = ({ entry, properties, employees, onClose, o
   const [serviceName, setServiceName] = useState('')
   const [amount, setAmount] = useState('')
   const [date, setDate] = useState('')
+  const [notes, setNotes] = useState('')
   const [items, setItems] = useState<ItemLine[]>([emptyItem(0)])
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -43,6 +44,7 @@ export const EditPayrollEntryModal = ({ entry, properties, employees, onClose, o
     setServiceName(entry.serviceName)
     setAmount(entry.amount == null ? '' : String(entry.amount))
     setDate(entry.date)
+    setNotes(entry.notes ?? '')
     setItems(
       entry.items.length > 0
         ? entry.items.map((item, i) => ({ key: i, description: item.description, amount: String(item.amount) }))
@@ -114,6 +116,7 @@ export const EditPayrollEntryModal = ({ entry, properties, employees, onClose, o
         serviceName: serviceName.trim(),
         amount: amountValue,
         date,
+        notes: notes.trim(),
         items: parsedItems,
       })
       onSaved()
@@ -221,6 +224,20 @@ export const EditPayrollEntryModal = ({ entry, properties, employees, onClose, o
             placeholder="Se define después si aún no se sabe"
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
+            className={inputClass}
+          />
+        </div>
+
+        <div>
+          <label htmlFor="pe-edit-notes" className={labelClass}>
+            Notas <span className="font-normal normal-case text-ink-500">(opcional)</span>
+          </label>
+          <textarea
+            id="pe-edit-notes"
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            rows={3}
+            placeholder="Opcional"
             className={inputClass}
           />
         </div>

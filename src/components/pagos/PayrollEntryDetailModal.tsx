@@ -62,6 +62,10 @@ export const PayrollEntryDetailModal = ({ entry, properties, employees, onClose 
             />
           </div>
 
+          {entry.notes && (
+            <Field label="Notas" value={<span className="whitespace-pre-wrap">{entry.notes}</span>} />
+          )}
+
           <div>
             <p className="mb-2 text-xs font-medium uppercase tracking-wide text-ink-500">Desglose del servicio</p>
             {entry.items.length === 0 ? (

@@ -1,4 +1,5 @@
 import { FilterPanel } from '../common/FilterPanel'
+import type { Vendor } from '../../types'
 
 const inputClass =
   'w-full rounded-lg border border-white/10 bg-surface px-3 py-2.5 text-sm text-white outline-none focus:border-gold-500'
@@ -20,6 +21,9 @@ type ExpenseFiltersModalProps = {
   onDateToChange: (value: string) => void
   onAmountMinChange: (value: string) => void
   onAmountMaxChange: (value: string) => void
+  vendorId: string
+  vendors: Vendor[]
+  onVendorIdChange: (value: string) => void
 }
 
 export const ExpenseFiltersModal = ({
@@ -33,8 +37,11 @@ export const ExpenseFiltersModal = ({
   onDateToChange,
   onAmountMinChange,
   onAmountMaxChange,
+  vendorId,
+  vendors,
+  onVendorIdChange,
 }: ExpenseFiltersModalProps) => {
-  const hasFilters = Boolean(dateFrom || dateTo || amountMin || amountMax)
+  const hasFilters = Boolean(dateFrom || dateTo || amountMin || amountMax || vendorId)
 
   return (
     <FilterPanel
@@ -46,6 +53,7 @@ export const ExpenseFiltersModal = ({
         onDateToChange('')
         onAmountMinChange('')
         onAmountMaxChange('')
+        onVendorIdChange('')
       }}
     >
       <div className="space-y-4">
@@ -105,6 +113,25 @@ export const ExpenseFiltersModal = ({
               className={inputClass}
             />
           </div>
+        </div>
+
+        <div>
+          <label htmlFor="exp-filter-vendor" className={labelClass}>
+            Proveedor
+          </label>
+          <select
+            id="exp-filter-vendor"
+            value={vendorId}
+            onChange={(e) => onVendorIdChange(e.target.value)}
+            className={inputClass}
+          >
+            <option value="">Todos</option>
+            {vendors.map((v) => (
+              <option key={v.id} value={v.id}>
+                {v.name}
+              </option>
+            ))}
+          </select>
         </div>
       </div>
     </FilterPanel>

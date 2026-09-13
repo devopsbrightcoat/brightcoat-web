@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Modal } from '../common/Modal'
-import { createExpense, fetchExpenseTemplates } from '../../lib/api'
+import { createExpense, fetchExpenseTemplates, fetchVendors } from '../../lib/api'
 import { getErrorMessage } from '../../lib/errors'
 import { useSupabaseQuery } from '../../lib/useSupabaseQuery'
 
@@ -20,10 +20,12 @@ export const AddExpenseModal = ({ open, onClose, onSaved }: AddExpenseModalProps
   const [date, setDate] = useState('')
   const [description, setDescription] = useState('')
   const [templateId, setTemplateId] = useState('')
+  const [vendorId, setVendorId] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const { data: templates } = useSupabaseQuery(fetchExpenseTemplates, [open])
+  const { data: vendors } = useSupabaseQuery(fetchVendors, [open])
 
   useEffect(() => {
     if (!open) return
@@ -32,6 +34,7 @@ export const AddExpenseModal = ({ open, onClose, onSaved }: AddExpenseModalProps
     setDate('')
     setDescription('')
     setTemplateId('')
+    setVendorId('')
     setError(null)
   }, [open])
 
@@ -58,7 +61,7 @@ export const AddExpenseModal = ({ open, onClose, onSaved }: AddExpenseModalProps
     setSaving(true)
     setError(null)
     try {
-      await createExpense({ invoiceNumber, amount: amountNum, date, description })
+      await createExpense({ invoiceNumber, amount: amountNum, date, description, vendorId: vendorId || undefined })
       onSaved()
       onClose()
     } catch (err) {
@@ -91,6 +94,25 @@ export const AddExpenseModal = ({ open, onClose, onSaved }: AddExpenseModalProps
             </select>
           </div>
         )}
+
+        <div>
+          <label htmlFor="new-exp-vendor" className={labelClass}>
+            Proveedor (opcional)
+          </label>
+          <select
+            id="new-exp-vendor"
+            value={vendorId}
+            onChange={(e) => setVendorId(e.target.value)}
+            className={inputClass}
+          >
+            <option value="">Sin proveedor</option>
+            {(vendors ?? []).map((v) => (
+              <option key={v.id} value={v.id}>
+                {v.name}
+              </option>
+            ))}
+          </select>
+        </div>
 
         <div>
           <label htmlFor="new-exp-invoice" className={labelClass}>

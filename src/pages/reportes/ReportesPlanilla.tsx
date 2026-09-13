@@ -229,7 +229,7 @@ export const ReportesPlanilla = () => {
           <p className="mx-8 mt-6 text-sm text-ink-400">
             El listado completo por planilla individual (con desglose de ventas y ganancia, y filtro por propiedad,
             empleado o fecha) ya está en{' '}
-            <Link to="/finanzas/planillas" className="text-gold-400 hover:underline">
+            <Link to="/planillas" className="text-gold-400 hover:underline">
               Finanzas · Planillas
             </Link>
             .

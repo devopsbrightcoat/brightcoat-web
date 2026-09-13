@@ -36,6 +36,7 @@ export type ExpenseRow = {
   amount: number | string
   date: string
   description: string | null
+  vendor_id: string | null
 }
 
 export type ExpenseTemplateRow = {
@@ -43,6 +44,12 @@ export type ExpenseTemplateRow = {
   name: string
   amount: number | string | null
   description: string | null
+}
+
+export type VendorRow = {
+  id: string
+  name: string
+  notes: string | null
 }
 
 export type PayrollEntryItemRow = {
@@ -61,6 +68,7 @@ export type PayrollEntryRow = {
   service_name: string
   amount: number | string | null
   date: string
+  notes: string | null
   payroll_entry_items?: PayrollEntryItemRow[]
 }
 

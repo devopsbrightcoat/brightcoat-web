@@ -16,7 +16,7 @@ import { EditExpenseModal } from '../components/gastos/EditExpenseModal'
 import { ExpenseDetailModal } from '../components/gastos/ExpenseDetailModal'
 import { ExpenseFiltersModal } from '../components/gastos/ExpenseFiltersModal'
 import { ImportExpensesModal } from '../components/gastos/ImportExpensesModal'
-import { fetchExpenses } from '../lib/api'
+import { fetchExpenses, fetchVendors } from '../lib/api'
 import { useSupabaseQuery } from '../lib/useSupabaseQuery'
 import { exportExpensesToExcel } from '../lib/exportExpenses'
 import { getErrorMessage } from '../lib/errors'
@@ -48,6 +48,10 @@ export const Gastos = () => {
   const [dateTo, setDateTo] = useState('')
   const [amountMin, setAmountMin] = useState('')
   const [amountMax, setAmountMax] = useState('')
+  const [vendorId, setVendorId] = useState('')
+
+  const { data: vendors } = useSupabaseQuery(fetchVendors, [refreshKey])
+  const vendorMap = new Map((vendors ?? []).map((v) => [v.id, v.name]))
 
   const [sorting, setSorting] = useState<SortingState>([])
   const [pageIndex, setPageIndex] = useState(0)
@@ -68,11 +72,12 @@ export const Gastos = () => {
       if (dateTo && e.date > dateTo) return false
       if (min != null && !Number.isNaN(min) && e.amount < min) return false
       if (max != null && !Number.isNaN(max) && e.amount > max) return false
+      if (vendorId && e.vendorId !== vendorId) return false
       return true
     })
-  }, [expenses, searchText, dateFrom, dateTo, amountMin, amountMax])
+  }, [expenses, searchText, dateFrom, dateTo, amountMin, amountMax, vendorId])
 
-  const activeFilterCount = [dateFrom, dateTo, amountMin, amountMax].filter(Boolean).length
+  const activeFilterCount = [dateFrom, dateTo, amountMin, amountMax, vendorId].filter(Boolean).length
   const totalAmount = filtered.reduce((sum, e) => sum + e.amount, 0)
 
   const handleExport = async () => {
@@ -99,6 +104,10 @@ export const Gastos = () => {
         cell: (info) => <span className="tabular-nums">{currency(info.getValue())}</span>,
       }),
       columnHelper.accessor('date', { id: 'date', header: 'Fecha' }),
+      columnHelper.accessor((row) => (row.vendorId ? vendorMap.get(row.vendorId) ?? '—' : '—'), {
+        id: 'vendor',
+        header: 'Proveedor',
+      }),
       columnHelper.accessor((row) => row.description || '—', {
         id: 'description',
         header: 'Descripción',
@@ -121,7 +130,7 @@ export const Gastos = () => {
         ),
       }),
     ],
-    [],
+    [vendorMap],
   )
 
   const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
@@ -241,7 +250,11 @@ export const Gastos = () => {
         onSaved={() => setRefreshKey((k) => k + 1)}
       />
 
-      <ExpenseDetailModal expense={detailExpense} onClose={() => setDetailExpense(null)} />
+      <ExpenseDetailModal
+        expense={detailExpense}
+        vendorName={detailExpense?.vendorId ? vendorMap.get(detailExpense.vendorId) : undefined}
+        onClose={() => setDetailExpense(null)}
+      />
 
       <ExpenseFiltersModal
         open={filtersOpen}
@@ -250,10 +263,13 @@ export const Gastos = () => {
         dateTo={dateTo}
         amountMin={amountMin}
         amountMax={amountMax}
+        vendorId={vendorId}
+        vendors={vendors ?? []}
         onDateFromChange={setDateFrom}
         onDateToChange={setDateTo}
         onAmountMinChange={setAmountMin}
         onAmountMaxChange={setAmountMax}
+        onVendorIdChange={setVendorId}
       />
 
       <ImportExpensesModal

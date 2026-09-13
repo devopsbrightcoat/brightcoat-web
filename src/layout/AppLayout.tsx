@@ -6,6 +6,7 @@ import {
   LayoutDashboard,
   LineChart,
   LogOut,
+  Receipt,
   Settings,
   Users,
   Wallet,
@@ -29,10 +30,11 @@ const navItems: NavItem[] = [
     children: [
       { to: '/finanzas/cobros', label: 'Cobros' },
       { to: '/finanzas/gastos', label: 'Gastos' },
-      { to: '/finanzas/planillas', label: 'Planillas' },
       { to: '/finanzas/impuestos', label: 'Impuestos' },
+      { to: '/finanzas/proveedores', label: 'Proveedores' },
     ],
   },
+  { to: '/planillas', label: 'Planillas', icon: Receipt },
   { to: '/empleados', label: 'Empleados', icon: Users },
   {
     to: '/reportes',
