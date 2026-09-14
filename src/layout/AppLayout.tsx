@@ -6,6 +6,8 @@ import {
   LayoutDashboard,
   LineChart,
   LogOut,
+  PanelLeftClose,
+  PanelLeftOpen,
   Receipt,
   Settings,
   Users,
@@ -69,10 +71,32 @@ const roleLabel: Record<string, string> = {
   finance: 'Finanzas',
 }
 
+const SIDEBAR_COLLAPSED_KEY = 'brightcoat-sidebar-collapsed'
+
 export const AppLayout = () => {
   const { profile, signOut } = useAuth()
   const location = useLocation()
   const [openMenu, setOpenMenu] = useState<string | null>(null)
+  // Colapsar la barra lateral a solo íconos — preferencia del usuario, se
+  // recuerda entre sesiones (localStorage, no hace falta guardarlo en la
+  // base de datos). Un item con submenu (Finanzas/Reportes/Configuración)
+  // al hacer clic estando colapsada expande la barra completa en vez de
+  // mostrar un flyout — más simple y sin sorpresas.
+  const [collapsed, setCollapsed] = useState(() => {
+    try {
+      return localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === '1'
+    } catch {
+      return false
+    }
+  })
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(SIDEBAR_COLLAPSED_KEY, collapsed ? '1' : '0')
+    } catch {
+      // localStorage no disponible (modo privado, etc.) — no es crítico.
+    }
+  }, [collapsed])
 
   // Si la ruta actual cae bajo un item con submenu (ej. /finanzas/gastos),
   // lo abrimos automáticamente para reflejar dónde está el usuario.
@@ -81,19 +105,56 @@ export const AppLayout = () => {
     if (match) setOpenMenu(match.to)
   }, [location.pathname])
 
+  const handleParentClick = (to: string) => {
+    if (collapsed) {
+      setCollapsed(false)
+      setOpenMenu(to)
+      return
+    }
+    setOpenMenu(openMenu === to ? null : to)
+  }
+
   return (
     <div className="flex h-screen bg-surface">
-      <aside className="flex h-screen w-64 shrink-0 flex-col bg-brand-900">
-        <div className="flex items-center gap-2.5 border-b border-white/10 px-5 py-5">
-          <img src="/favicon.png" alt="BrightCoat" className="h-9 w-9 shrink-0" />
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-semibold text-white">BrightCoat Ops</p>
-            <p className="truncate text-xs text-brand-300">Panel interno</p>
+      <aside
+        className={[
+          'flex h-screen shrink-0 flex-col bg-brand-900 transition-[width] duration-200',
+          collapsed ? 'w-[76px]' : 'w-64',
+        ].join(' ')}
+      >
+        {collapsed ? (
+          <div className="flex flex-col items-center gap-3 border-b border-white/10 px-2 py-5">
+            <img src="/favicon.png" alt="BrightCoat" className="h-9 w-9 shrink-0" />
+            {profile?.role !== 'staff' && <NotificationBell />}
+            <button
+              type="button"
+              onClick={() => setCollapsed(false)}
+              title="Expandir menú"
+              className="rounded-md p-1.5 text-brand-300 transition hover:bg-white/10 hover:text-white"
+            >
+              <PanelLeftOpen className="h-4 w-4" />
+            </button>
           </div>
-          {profile?.role !== 'staff' && <NotificationBell />}
-        </div>
+        ) : (
+          <div className="flex items-center gap-2.5 border-b border-white/10 px-5 py-5">
+            <img src="/favicon.png" alt="BrightCoat" className="h-9 w-9 shrink-0" />
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-semibold text-white">BrightCoat Ops</p>
+              <p className="truncate text-xs text-brand-300">Panel interno</p>
+            </div>
+            {profile?.role !== 'staff' && <NotificationBell />}
+            <button
+              type="button"
+              onClick={() => setCollapsed(true)}
+              title="Colapsar menú"
+              className="shrink-0 rounded-md p-1.5 text-brand-300 transition hover:bg-white/10 hover:text-white"
+            >
+              <PanelLeftClose className="h-4 w-4" />
+            </button>
+          </div>
+        )}
 
-        <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4">
+        <nav className="flex-1 space-y-1 overflow-y-auto overflow-x-hidden px-3 py-4">
           {navItems.map(({ to, label, icon: Icon, end, children: rawChildren }) => {
             const children = rawChildren?.filter(
               (child) => !profile || !child.hiddenForRoles?.includes(profile.role),
@@ -104,35 +165,43 @@ export const AppLayout = () => {
                   key={to}
                   to={to}
                   end={end}
+                  title={collapsed ? label : undefined}
                   className={({ isActive }) =>
                     [
                       'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition',
+                      collapsed ? 'justify-center' : '',
                       isActive ? 'bg-gold-500 text-brand-900' : 'text-brand-200 hover:bg-white/5 hover:text-white',
                     ].join(' ')
                   }
                 >
                   <Icon className="h-4 w-4 shrink-0" />
-                  {label}
+                  {!collapsed && label}
                 </NavLink>
               )
             }
 
             const isParentActive = location.pathname.startsWith(to)
-            const isOpen = openMenu === to
+            const isOpen = openMenu === to && !collapsed
 
             return (
               <div key={to}>
                 <button
                   type="button"
-                  onClick={() => setOpenMenu(isOpen ? null : to)}
+                  title={collapsed ? label : undefined}
+                  onClick={() => handleParentClick(to)}
                   className={[
                     'flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition',
+                    collapsed ? 'justify-center' : '',
                     isParentActive ? 'text-white' : 'text-brand-200 hover:bg-white/5 hover:text-white',
                   ].join(' ')}
                 >
                   <Icon className="h-4 w-4 shrink-0" />
-                  <span className="flex-1 text-left">{label}</span>
-                  <ChevronDown className={`h-4 w-4 shrink-0 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+                  {!collapsed && (
+                    <>
+                      <span className="flex-1 text-left">{label}</span>
+                      <ChevronDown className={`h-4 w-4 shrink-0 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+                    </>
+                  )}
                 </button>
                 {isOpen && (
                   <div className="mt-1 space-y-1 pl-8">
@@ -160,24 +229,43 @@ export const AppLayout = () => {
         </nav>
 
         <div className="border-t border-white/10 px-3 py-4">
-          <div className="flex items-center gap-2 rounded-lg bg-white/5 px-3 py-2.5">
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-xs font-medium text-brand-100">
-                {profile?.fullName || profile?.username || 'Usuario'}
-              </p>
-              <p className="truncate text-[11px] text-brand-400">
-                {profile ? roleLabel[profile.role] ?? profile.role : ''}
-              </p>
+          {collapsed ? (
+            <div className="flex flex-col items-center gap-2">
+              <div
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/10 text-xs font-semibold text-white"
+                title={profile?.fullName || profile?.username || 'Usuario'}
+              >
+                {(profile?.fullName || profile?.username || 'U').charAt(0).toUpperCase()}
+              </div>
+              <button
+                type="button"
+                onClick={() => signOut()}
+                title="Cerrar sesión"
+                className="rounded-md p-1.5 text-brand-300 transition hover:bg-white/10 hover:text-white"
+              >
+                <LogOut className="h-4 w-4" />
+              </button>
             </div>
-            <button
-              type="button"
-              onClick={() => signOut()}
-              title="Cerrar sesión"
-              className="rounded-md p-1.5 text-brand-300 transition hover:bg-white/10 hover:text-white"
-            >
-              <LogOut className="h-4 w-4" />
-            </button>
-          </div>
+          ) : (
+            <div className="flex items-center gap-2 rounded-lg bg-white/5 px-3 py-2.5">
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-xs font-medium text-brand-100">
+                  {profile?.fullName || profile?.username || 'Usuario'}
+                </p>
+                <p className="truncate text-[11px] text-brand-400">
+                  {profile ? roleLabel[profile.role] ?? profile.role : ''}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => signOut()}
+                title="Cerrar sesión"
+                className="rounded-md p-1.5 text-brand-300 transition hover:bg-white/10 hover:text-white"
+              >
+                <LogOut className="h-4 w-4" />
+              </button>
+            </div>
+          )}
         </div>
       </aside>
 
