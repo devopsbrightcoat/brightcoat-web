@@ -80,6 +80,13 @@ export const filterExpensesByRange = (expenses: Expense[], range: DateRange) => 
 export const filterPayrollByRange = (entries: PayrollEntry[], range: DateRange) => entries.filter((p) => inRange(p.date, range))
 export const filterSchedulesByRange = (schedules: Schedule[], range: DateRange) => schedules.filter((s) => inRange(s.scheduledDate, range))
 
+// Costo real de mano de obra de una planilla = suma de su desglose (el
+// "Pago" al empleado, ver Planillas.tsx) — NO `amount`, que desde el
+// refactor Cobro/Pago/Ganancia es el Cobro al cliente (un ingreso, no un
+// costo). Usarlo en vez de `p.amount` es lo que evita restar el mismo
+// ingreso dos veces en Estimated Profit / margen por propiedad.
+const payrollPago = (p: PayrollEntry) => p.items.reduce((sum, item) => sum + item.amount, 0)
+
 // --- 7 KPIs principales ------------------------------------------------
 
 export type DashboardKpis = {
@@ -105,7 +112,7 @@ export const computeKpis = (
   const revenue = periodCharges.reduce((sum, c) => sum + c.amount, 0)
   const collected = periodCharges.filter((c) => c.status === 'paid').reduce((sum, c) => sum + c.amount, 0)
   const outstanding = periodCharges.filter((c) => c.status === 'pending').reduce((sum, c) => sum + c.amount, 0)
-  const laborCost = filterPayrollByRange(payrollEntries, range).reduce((sum, p) => sum + (p.amount ?? 0), 0)
+  const laborCost = filterPayrollByRange(payrollEntries, range).reduce((sum, p) => sum + payrollPago(p), 0)
   const periodExpenses = filterExpensesByRange(expenses, range).reduce((sum, e) => sum + e.amount, 0)
   // Fórmula validada por el negocio (ver PDF): Estimated Profit = Revenue − Labor Cost − Expenses.
   const estimatedProfit = revenue - laborCost - periodExpenses
@@ -144,7 +151,7 @@ export const computeMonthlyFinancials = (
     month,
     revenue: charges.filter((c) => c.generatedDate && monthKey(c.generatedDate) === key).reduce((sum, c) => sum + c.amount, 0),
     expenses: expenses.filter((e) => monthKey(e.date) === key).reduce((sum, e) => sum + e.amount, 0),
-    labor: payrollEntries.filter((p) => monthKey(p.date) === key).reduce((sum, p) => sum + (p.amount ?? 0), 0),
+    labor: payrollEntries.filter((p) => monthKey(p.date) === key).reduce((sum, p) => sum + payrollPago(p), 0),
   }))
 }
 
@@ -701,7 +708,7 @@ export const computePropertyProfitability = (
   for (const c of periodCharges) revenueByProperty.set(c.propertyId, (revenueByProperty.get(c.propertyId) ?? 0) + c.amount)
 
   const laborByProperty = new Map<string, number>()
-  for (const p of periodPayroll) laborByProperty.set(p.propertyId, (laborByProperty.get(p.propertyId) ?? 0) + (p.amount ?? 0))
+  for (const p of periodPayroll) laborByProperty.set(p.propertyId, (laborByProperty.get(p.propertyId) ?? 0) + payrollPago(p))
 
   const propertyIds = new Set([...revenueByProperty.keys(), ...laborByProperty.keys()])
   const result: PropertyProfitability[] = []
@@ -768,8 +775,8 @@ export const computeAlerts = (
   if (pendingPayroll.length > 0) {
     alerts.push({
       key: 'payroll_pending',
-      title: 'Planillas sin monto definido',
-      detail: `${pendingPayroll.length} entrada(s) de planilla todavía sin el pago decidido.`,
+      title: 'Planillas sin cobro definido',
+      detail: `${pendingPayroll.length} entrada(s) de planilla con trabajo hecho pero todavía sin el cobro definido.`,
     })
   }
 

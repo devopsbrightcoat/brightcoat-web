@@ -70,6 +70,7 @@ export type PayrollEntryRow = {
   date: string
   notes: string | null
   schedule_id: string | null
+  taxable: boolean
   payroll_entry_items?: PayrollEntryItemRow[]
 }
 

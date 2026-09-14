@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Modal } from '../common/Modal'
 import { StatusPill } from '../common/StatusPill'
-import { extractTaxFromTotal } from '../../lib/tax'
+import { taxOnAmount } from '../../lib/tax'
 import { updateChargesTaxPaid } from '../../lib/api'
 import { getErrorMessage } from '../../lib/errors'
 import type { Charge, Property } from '../../types'
@@ -31,9 +31,10 @@ type ImpuestosMonthDetailModalProps = {
 }
 
 // Detalle de un mes del resumen de Impuestos — lista cada cobro que compone
-// ese mes con su impuesto individual (extraído del monto, ya que el
-// impuesto viene incluido) y permite marcar cobros sueltos como
-// pagados/pendientes, además del botón "en bloque" de la tabla principal.
+// ese mes con su impuesto individual (sumado sobre el monto, no extraído
+// de adentro — ver taxOnAmount en lib/tax.ts) y permite marcar cobros
+// sueltos como pagados/pendientes, además del botón "en bloque" de la
+// tabla principal.
 export const ImpuestosMonthDetailModal = ({ month, properties, onClose, onChanged }: ImpuestosMonthDetailModalProps) => {
   const [savingId, setSavingId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -77,7 +78,7 @@ export const ImpuestosMonthDetailModal = ({ month, properties, onClose, onChange
               <tbody>
                 {month.charges.map((charge) => {
                   const propertyName = properties.find((p) => p.id === charge.propertyId)?.name ?? '—'
-                  const tax = extractTaxFromTotal(charge.amount)
+                  const tax = taxOnAmount(charge.amount)
                   return (
                     <tr key={charge.id} className="border-b border-white/5 last:border-0">
                       <td className="px-4 py-2.5 text-ink-200">

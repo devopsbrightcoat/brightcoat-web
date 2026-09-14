@@ -6,6 +6,10 @@ type StatCardProps = {
   icon: LucideIcon
   tone?: 'default' | 'good' | 'warn'
   hint?: string
+  // 'compact' es para paneles donde el stat es un dato secundario junto a una
+  // tabla (ej. Planillas) y no debe competir en tamaño con las StatCard
+  // principales de un dashboard/reporte — mismo componente, menos presencia.
+  size?: 'default' | 'compact'
 }
 
 const toneClasses: Record<NonNullable<StatCardProps['tone']>, string> = {
@@ -14,16 +18,19 @@ const toneClasses: Record<NonNullable<StatCardProps['tone']>, string> = {
   warn: 'bg-amber-500/10 text-amber-400',
 }
 
-export const StatCard = ({ label, value, icon: Icon, tone = 'default', hint }: StatCardProps) => {
+export const StatCard = ({ label, value, icon: Icon, tone = 'default', hint, size = 'default' }: StatCardProps) => {
+  const compact = size === 'compact'
   return (
-    <div className="rounded-xl border border-white/10 bg-surface-alt p-5">
+    <div className={`rounded-xl border border-white/10 bg-surface-alt ${compact ? 'p-3' : 'p-5'}`}>
       <div className="flex items-center justify-between">
         <p className="text-xs font-medium uppercase tracking-wide text-ink-500">{label}</p>
-        <span className={`flex h-8 w-8 items-center justify-center rounded-lg ${toneClasses[tone]}`}>
-          <Icon className="h-4 w-4" />
+        <span
+          className={`flex items-center justify-center rounded-lg ${compact ? 'h-6 w-6' : 'h-8 w-8'} ${toneClasses[tone]}`}
+        >
+          <Icon className={compact ? 'h-3.5 w-3.5' : 'h-4 w-4'} />
         </span>
       </div>
-      <p className="mt-3 text-2xl font-bold tabular-nums text-white">{value}</p>
+      <p className={`font-bold tabular-nums text-white ${compact ? 'mt-1.5 text-lg' : 'mt-3 text-2xl'}`}>{value}</p>
       {hint && <p className="mt-1 text-xs text-ink-500">{hint}</p>}
     </div>
   )

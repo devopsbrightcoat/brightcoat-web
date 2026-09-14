@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Download, Filter, Pencil, Plus, Search, TrendingUp } from 'lucide-react'
+import { Download, Filter, Pencil, Plus, Search, Trash2, TrendingUp } from 'lucide-react'
 import {
   createColumnHelper,
   getCoreRowModel,
@@ -11,11 +11,12 @@ import {
 import { PageHeader } from '../components/common/PageHeader'
 import { StatCard } from '../components/common/StatCard'
 import { DataTablePanel } from '../components/common/DataTablePanel'
+import { ConfirmModal } from '../components/common/ConfirmModal'
 import { AddPayrollEntryModal } from '../components/pagos/AddPayrollEntryModal'
 import { EditPayrollEntryModal } from '../components/pagos/EditPayrollEntryModal'
 import { PayrollEntryDetailModal } from '../components/pagos/PayrollEntryDetailModal'
 import { PayrollFiltersModal } from '../components/pagos/PayrollFiltersModal'
-import { fetchEmployees, fetchPayrollEntries, fetchProperties } from '../lib/api'
+import { deletePayrollEntry, fetchEmployees, fetchPayrollEntries, fetchProperties } from '../lib/api'
 import { useSupabaseQuery } from '../lib/useSupabaseQuery'
 import { formatFullDate } from '../lib/scheduleDates'
 import { exportPayrollToExcel } from '../lib/exportPayroll'
@@ -35,11 +36,17 @@ const columnHelper = createColumnHelper<PayrollRow>()
 // Planillas — pago de mano de obra por trabajo completo (propiedad + unidad
 // + empleado + servicio, todos obligatorios). Cada planilla trae un
 // desglose del servicio (payroll_entry_items): descripción + costo de cada
-// sub-servicio. Ventas (suma del desglose) y Ganancia (Ventas - Pago) se
-// calculan aquí, no se guardan — ver 20260918000000_payroll_service_breakdown.sql.
-// La carga por Excel se ocultó (Excel import ya no aplica a Planillas — el
-// desglose solo se captura a mano desde la app), y el filtro/búsqueda sigue
-// el mismo patrón de searchbar + modal de Filtros que Cobros/Gastos.
+// sub-servicio. Cobro (amount, autocompletado desde `charges` al elegir un
+// horario relacionado — ver AddPayrollEntryModal) es lo que se le cobró al
+// cliente por el trabajo completo; Pago (suma del desglose) es lo que se le
+// paga al empleado; Ganancia (Cobro - Pago) se calcula aquí, no se guarda —
+// ver 20260918000000_payroll_service_breakdown.sql. El impuesto de ventas
+// (8.25%, ya incluido en Cobro) solo se muestra para los servicios donde se
+// marcó el checkbox correspondiente (payroll_entries.taxable) — no todos
+// los servicios lo llevan. La carga por Excel se ocultó (Excel import ya no
+// aplica a Planillas — el desglose solo se captura a mano desde la app), y
+// el filtro/búsqueda sigue el mismo patrón de searchbar + modal de Filtros
+// que Cobros/Gastos.
 export const Planillas = () => {
   const [refreshKey, setRefreshKey] = useState(0)
   const [searchText, setSearchText] = useState('')
@@ -51,6 +58,7 @@ export const Planillas = () => {
   const [addOpen, setAddOpen] = useState(false)
   const [editingEntry, setEditingEntry] = useState<PayrollEntry | null>(null)
   const [detailEntry, setDetailEntry] = useState<PayrollEntry | null>(null)
+  const [deletingEntry, setDeletingEntry] = useState<PayrollEntry | null>(null)
   const [sorting, setSorting] = useState<SortingState>([])
   const [pageIndex, setPageIndex] = useState(0)
   const [exporting, setExporting] = useState(false)
@@ -83,9 +91,14 @@ export const Planillas = () => {
         return {
           ...e,
           sales,
-          profit: e.amount == null ? null : sales - e.amount,
-          // Informativo únicamente (8.25% fijo sobre el pago) — no se resta de
-          // nada ni se guarda en base de datos, ver lib/tax.ts.
+          // Ganancia = Cobro - Pago (antes era al revés, cuando "amount" era
+          // el pago al empleado en vez del cobro al cliente).
+          profit: e.amount == null ? null : e.amount - sales,
+          // El impuesto (8.25%) se SUMA sobre el Cobro — Cobro + impuesto,
+          // no se extrae de adentro (ver taxOnAmount en lib/tax.ts). Solo
+          // aplica si se marcó el checkbox en el modal; la columna lo oculta
+          // por completo cuando no aplica (ver cell de la columna 'tax' más
+          // abajo).
           tax: e.amount == null ? null : taxOnAmount(e.amount),
         }
       })
@@ -125,7 +138,7 @@ export const Planillas = () => {
       columnHelper.accessor('serviceName', { id: 'service', header: 'Servicio' }),
       columnHelper.accessor('amount', {
         id: 'amount',
-        header: 'Pago',
+        header: 'Cobro',
         cell: (info) => {
           const value = info.getValue()
           return value == null ? (
@@ -139,6 +152,7 @@ export const Planillas = () => {
         id: 'tax',
         header: `Impuesto (${(SALES_TAX_RATE * 100).toFixed(2)}%)`,
         cell: (info) => {
+          if (!info.row.original.taxable) return <span className="text-ink-500">—</span>
           const value = info.getValue()
           return value == null ? (
             <span className="text-ink-500">Pendiente</span>
@@ -149,7 +163,7 @@ export const Planillas = () => {
       }),
       columnHelper.accessor('sales', {
         id: 'sales',
-        header: 'Ventas',
+        header: 'Pago',
         cell: (info) => <span className="tabular-nums text-emerald-400">{currency(info.getValue())}</span>,
       }),
       columnHelper.accessor('profit', {
@@ -165,17 +179,30 @@ export const Planillas = () => {
         id: 'actions',
         header: '',
         cell: (info) => (
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation()
-              setEditingEntry(info.row.original)
-            }}
-            className="flex items-center gap-1.5 rounded-lg border border-white/10 px-2.5 py-1.5 text-xs font-medium text-ink-300 hover:bg-white/5"
-          >
-            <Pencil className="h-3.5 w-3.5" />
-            Editar
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation()
+                setEditingEntry(info.row.original)
+              }}
+              className="flex items-center gap-1.5 rounded-lg border border-white/10 px-2.5 py-1.5 text-xs font-medium text-ink-300 hover:bg-white/5"
+            >
+              <Pencil className="h-3.5 w-3.5" />
+              Editar
+            </button>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation()
+                setDeletingEntry(info.row.original)
+              }}
+              className="flex items-center gap-1.5 rounded-lg border border-white/10 px-2.5 py-1.5 text-xs font-medium text-red-400 hover:bg-red-500/10"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+              Eliminar
+            </button>
+          </div>
         ),
       }),
     ],
@@ -215,7 +242,7 @@ export const Planillas = () => {
     <div className="h-screen overflow-hidden flex flex-col">
       <PageHeader
         title="Planillas"
-        subtitle="Pago de mano de obra por servicio, con desglose y ganancia"
+        subtitle="Cobro y pago de mano de obra por servicio, con desglose y ganancia"
         action={
           <button
             type="button"
@@ -269,10 +296,9 @@ export const Planillas = () => {
 
       {exportError && <p className="mx-8 mt-3 text-sm text-red-400">{exportError}</p>}
 
-      <div className="mx-8 mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3 lg:max-w-2xl">
-        <StatCard label="Ventas" value={currency(totalSales)} icon={TrendingUp} tone="good" />
-        <StatCard label="Ganancia" value={currency(totalProfit)} icon={TrendingUp} />
-        <StatCard label="Registros" value={String(filtered.length)} icon={TrendingUp} />
+      <div className="mx-8 mt-4 grid grid-cols-2 gap-3 sm:max-w-sm">
+        <StatCard label="Pago" value={currency(totalSales)} icon={TrendingUp} tone="good" size="compact" />
+        <StatCard label="Ganancia" value={currency(totalProfit)} icon={TrendingUp} size="compact" />
       </div>
 
       <DataTablePanel
@@ -307,6 +333,10 @@ export const Planillas = () => {
         properties={properties ?? []}
         employees={employees ?? []}
         onClose={() => setDetailEntry(null)}
+        onDelete={() => {
+          setDeletingEntry(detailEntry)
+          setDetailEntry(null)
+        }}
       />
 
       <PayrollFiltersModal
@@ -322,6 +352,22 @@ export const Planillas = () => {
         onEmployeeChange={setEmployeeId}
         onDateFromChange={setDateFrom}
         onDateToChange={setDateTo}
+      />
+
+      <ConfirmModal
+        open={deletingEntry !== null}
+        onClose={() => setDeletingEntry(null)}
+        title="Eliminar planilla"
+        message={
+          deletingEntry
+            ? `¿Eliminar la planilla de "${deletingEntry.serviceName}" del ${formatFullDate(deletingEntry.date)}? Esta acción no se puede deshacer. Si estaba ligada a un horario, ese horario vuelve a estar disponible para seleccionarse.`
+            : ''
+        }
+        onConfirm={async () => {
+          if (!deletingEntry) return
+          await deletePayrollEntry(deletingEntry.id)
+          setRefreshKey((k) => k + 1)
+        }}
       />
     </div>
   )

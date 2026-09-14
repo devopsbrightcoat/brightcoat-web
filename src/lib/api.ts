@@ -239,8 +239,10 @@ export const deleteVendor = async (id: string): Promise<void> => {
 // desde 20260917000000_split_expenses_payroll.sql, separada de expenses (que
 // ahora es un módulo independiente de facturas/gastos). El desglose del
 // servicio vive en payroll_entry_items — ver
-// 20260918000000_payroll_service_breakdown.sql. "Ventas" y "Ganancia" se
-// calculan en la UI a partir del desglose, no se guardan.
+// 20260918000000_payroll_service_breakdown.sql. "Cobro" (amount, autocompletado
+// desde `charges` al elegir un horario), "Pago" (suma del desglose) y
+// "Ganancia" (Cobro - Pago) se calculan en la UI, no se guardan — salvo
+// `taxable`, que sí se guarda (no todos los servicios llevan impuesto).
 // ---------------------------------------------------------------------------
 
 const mapPayrollEntry = (row: PayrollEntryRow): PayrollEntry => ({
@@ -253,6 +255,7 @@ const mapPayrollEntry = (row: PayrollEntryRow): PayrollEntry => ({
   date: row.date,
   notes: row.notes ?? undefined,
   scheduleId: row.schedule_id ?? undefined,
+  taxable: row.taxable,
   items: (row.payroll_entry_items ?? []).map((item) => ({
     id: item.id,
     description: item.description,
@@ -279,6 +282,7 @@ type PayrollEntryInput = {
   date: string
   notes?: string
   scheduleId?: string
+  taxable: boolean
   items: { description: string; amount: number }[]
 }
 
@@ -307,6 +311,7 @@ export const createPayrollEntry = async (data: PayrollEntryInput): Promise<void>
       date: data.date,
       notes: data.notes || null,
       schedule_id: data.scheduleId || null,
+      taxable: data.taxable,
     })
     .select('id')
     .single()
@@ -329,6 +334,7 @@ export const updatePayrollEntry = async (id: string, data: PayrollEntryInput): P
       amount: data.amount,
       date: data.date,
       notes: data.notes || null,
+      taxable: data.taxable,
     })
     .eq('id', id)
   if (error) throw error
@@ -337,6 +343,18 @@ export const updatePayrollEntry = async (id: string, data: PayrollEntryInput): P
   if (deleteError) throw deleteError
 
   await insertPayrollEntryItems(id, data.items)
+}
+
+// Pedido de Javier: poder borrar una planilla por si se cometió un error.
+// El desglose (payroll_entry_items) se borra solo por "on delete cascade".
+// Si la planilla estaba ligada a un horario (schedule_id), ese horario
+// vuelve a aparecer disponible en el selector "Horario relacionado" de
+// inmediato — fetchSchedulesForEmployee excluye por lo que hay en
+// payroll_entries en el momento de la consulta, así que no hace falta
+// tocar `schedules` para nada.
+export const deletePayrollEntry = async (id: string): Promise<void> => {
+  const { error } = await supabase.from('payroll_entries').delete().eq('id', id)
+  if (error) throw error
 }
 
 const mapCharge = (row: ChargeRow): Charge => ({
@@ -361,6 +379,33 @@ export const fetchCharges = async (): Promise<Charge[]> => {
   const { data, error } = await supabase.from('charges').select('*').order('created_at', { ascending: false })
   if (error) throw error
   return ((data ?? []) as ChargeRow[]).map(mapCharge)
+}
+
+// Usado por el selector "Horario relacionado" en Planillas para autocompletar
+// el nuevo campo "Cobro" con el total real cobrado por ese trabajo. `charges`
+// no tiene una columna schedule_id — se identifica con el mismo criterio que
+// usa el índice único charges_unique_identity (20260912000000_unify_charges.sql)
+// para no duplicar cobros: propiedad + unidad + tipo de servicio + fecha. El
+// filtro de unit_label se hace en JS (no en la consulta) porque en `charges`
+// puede venir como null o como '' según el origen del cobro, y acá se quiere
+// tratar ambos como "sin unidad". Si no hay un cobro capturado todavía para
+// ese horario, devuelve null y el campo se completa a mano.
+export const fetchChargeForSchedule = async (
+  propertyId: string,
+  unitLabel: string | undefined,
+  serviceTypeId: string,
+  date: string,
+): Promise<Charge | null> => {
+  const { data, error } = await supabase
+    .from('charges')
+    .select('*')
+    .eq('property_id', propertyId)
+    .eq('service_type_id', serviceTypeId)
+    .eq('generated_date', date)
+  if (error) throw error
+  const wanted = unitLabel ?? ''
+  const match = ((data ?? []) as ChargeRow[]).find((row) => (row.unit_label ?? '') === wanted)
+  return match ? mapCharge(match) : null
 }
 
 // Marca un cobro como pagado/subido a OPS junto con su invoice number — ver

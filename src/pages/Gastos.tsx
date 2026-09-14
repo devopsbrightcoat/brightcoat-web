@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { DollarSign, Download, Filter, Pencil, Plus, Receipt, Search, Upload } from 'lucide-react'
+import { DollarSign, Download, Filter, Pencil, Plus, Search, Upload } from 'lucide-react'
 import {
   createColumnHelper,
   getCoreRowModel,
@@ -226,9 +226,8 @@ export const Gastos = () => {
 
       {exportError && <p className="mx-8 mt-3 text-sm text-red-400">{exportError}</p>}
 
-      <div className="mx-8 mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:max-w-md">
-        <StatCard label="Total" value={currency(totalAmount)} icon={DollarSign} />
-        <StatCard label="Registros" value={String(filtered.length)} icon={Receipt} />
+      <div className="mx-8 mt-4 grid grid-cols-1 gap-3 sm:max-w-[11rem]">
+        <StatCard label="Total" value={currency(totalAmount)} icon={DollarSign} size="compact" />
       </div>
 
       <DataTablePanel

@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Clock, DollarSign, Download, Filter, Receipt, Search, Upload } from 'lucide-react'
+import { Clock, DollarSign, Download, Filter, Search, Upload } from 'lucide-react'
 import {
   createColumnHelper,
   getCoreRowModel,
@@ -222,10 +222,9 @@ export const Cobros = () => {
 
       {exportError && <p className="mx-8 mt-3 text-sm text-red-400">{exportError}</p>}
 
-      <div className="grid grid-cols-1 gap-4 px-8 pt-6 sm:grid-cols-3 lg:max-w-2xl">
-        <StatCard label="Cobrado" value={currency(totalPaid)} icon={DollarSign} tone="good" />
-        <StatCard label="Pendiente" value={currency(totalPending)} icon={Clock} tone="warn" />
-        <StatCard label="Registros" value={String(filtered.length)} icon={Receipt} />
+      <div className="grid grid-cols-2 gap-3 px-8 pt-6 sm:max-w-sm">
+        <StatCard label="Cobrado" value={currency(totalPaid)} icon={DollarSign} tone="good" size="compact" />
+        <StatCard label="Pendiente" value={currency(totalPending)} icon={Clock} tone="warn" size="compact" />
       </div>
 
       <DataTablePanel

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Plus, X } from 'lucide-react'
 import { Modal } from '../common/Modal'
 import { updatePayrollEntry } from '../../lib/api'
+import { SALES_TAX_RATE } from '../../lib/tax'
 import type { Employee, PayrollEntry, Property } from '../../types'
 import { getErrorMessage } from '../../lib/errors'
 
@@ -30,6 +31,7 @@ export const EditPayrollEntryModal = ({ entry, properties, employees, onClose, o
   const [employeeId, setEmployeeId] = useState('')
   const [serviceName, setServiceName] = useState('')
   const [amount, setAmount] = useState('')
+  const [taxable, setTaxable] = useState(false)
   const [date, setDate] = useState('')
   const [notes, setNotes] = useState('')
   const [items, setItems] = useState<ItemLine[]>([emptyItem(0)])
@@ -43,6 +45,7 @@ export const EditPayrollEntryModal = ({ entry, properties, employees, onClose, o
     setEmployeeId(entry.employeeId)
     setServiceName(entry.serviceName)
     setAmount(entry.amount == null ? '' : String(entry.amount))
+    setTaxable(entry.taxable)
     setDate(entry.date)
     setNotes(entry.notes ?? '')
     setItems(
@@ -83,7 +86,7 @@ export const EditPayrollEntryModal = ({ entry, properties, employees, onClose, o
     if (amount.trim()) {
       amountValue = Number(amount)
       if (Number.isNaN(amountValue) || amountValue < 0) {
-        setError('El pago no es un número válido.')
+        setError('El cobro no es un número válido.')
         return
       }
     }
@@ -117,6 +120,7 @@ export const EditPayrollEntryModal = ({ entry, properties, employees, onClose, o
         amount: amountValue,
         date,
         notes: notes.trim(),
+        taxable,
         items: parsedItems,
       })
       onSaved()
@@ -214,7 +218,7 @@ export const EditPayrollEntryModal = ({ entry, properties, employees, onClose, o
 
         <div>
           <label htmlFor="pe-edit-amount" className={labelClass}>
-            Pago al empleado <span className="font-normal normal-case text-ink-500">(opcional — se puede completar después)</span>
+            Cobro total del trabajo <span className="font-normal normal-case text-ink-500">(opcional — se puede completar después)</span>
           </label>
           <input
             id="pe-edit-amount"
@@ -226,6 +230,16 @@ export const EditPayrollEntryModal = ({ entry, properties, employees, onClose, o
             onChange={(e) => setAmount(e.target.value)}
             className={inputClass}
           />
+          <label htmlFor="pe-edit-taxable" className="mt-2 flex cursor-pointer items-center gap-2 text-sm text-ink-300">
+            <input
+              id="pe-edit-taxable"
+              type="checkbox"
+              checked={taxable}
+              onChange={(e) => setTaxable(e.target.checked)}
+              className="h-4 w-4 rounded border-white/20 bg-surface-alt accent-gold-500"
+            />
+            Este servicio lleva impuesto de ventas ({(SALES_TAX_RATE * 100).toFixed(2)}%)
+          </label>
         </div>
 
         <div>
@@ -287,7 +301,7 @@ export const EditPayrollEntryModal = ({ entry, properties, employees, onClose, o
           </div>
 
           <p className="mt-2 text-xs text-ink-500">
-            Venta del desglose: <span className="tabular-nums text-ink-300">{currency(salesTotal)}</span>
+            Pago del desglose: <span className="tabular-nums text-ink-300">{currency(salesTotal)}</span>
           </p>
         </div>
 

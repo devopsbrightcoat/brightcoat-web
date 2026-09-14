@@ -1,5 +1,7 @@
+import { Trash2 } from 'lucide-react'
 import { Modal } from '../common/Modal'
 import { formatFullDate } from '../../lib/scheduleDates'
+import { taxOnAmount, SALES_TAX_RATE } from '../../lib/tax'
 import type { Employee, PayrollEntry, Property } from '../../types'
 
 const currency = (value: number) =>
@@ -16,22 +18,27 @@ const Field = ({ label, value }: { label: string; value: React.ReactNode }) => (
 )
 
 // Vista de solo lectura de una planilla, con el desglose del servicio y los
-// cálculos de Ventas (suma del desglose) y Ganancia (Ventas - Pago) — se
-// abre al hacer clic en cualquier parte de una fila de la tabla de
-// Planillas (ver onRowClick en DataTablePanel.tsx). El botón "Editar"
-// detiene la propagación para no chocar con este modal (ver Planillas.tsx).
+// cálculos de Pago (suma del desglose) y Ganancia (Cobro - Pago) — se abre
+// al hacer clic en cualquier parte de una fila de la tabla de Planillas
+// (ver onRowClick en DataTablePanel.tsx). El botón "Editar" detiene la
+// propagación para no chocar con este modal (ver Planillas.tsx). El botón
+// "Eliminar planilla" avisa al padre (onDelete) — la confirmación real vive
+// en Planillas.tsx con el mismo ConfirmModal que usa el resto de la app.
 type PayrollEntryDetailModalProps = {
   entry: PayrollEntry | null
   properties: Property[]
   employees: Employee[]
   onClose: () => void
+  onDelete: () => void
 }
 
-export const PayrollEntryDetailModal = ({ entry, properties, employees, onClose }: PayrollEntryDetailModalProps) => {
+export const PayrollEntryDetailModal = ({ entry, properties, employees, onClose, onDelete }: PayrollEntryDetailModalProps) => {
   const propertyName = properties.find((p) => p.id === entry?.propertyId)?.name
   const employeeName = employees.find((e) => e.id === entry?.employeeId)?.name
   const sales = entry ? entry.items.reduce((sum, item) => sum + item.amount, 0) : 0
-  const profit = entry && entry.amount != null ? sales - entry.amount : null
+  const profit = entry && entry.amount != null ? entry.amount - sales : null
+  // Impuesto (8.25%) SUMADO sobre el Cobro, no extraído de adentro — ver taxOnAmount en lib/tax.ts.
+  const tax = entry && entry.taxable && entry.amount != null ? taxOnAmount(entry.amount) : null
 
   return (
     <Modal open={entry !== null} onClose={onClose} title="Detalle de la planilla" widthClassName="max-w-2xl">
@@ -46,8 +53,8 @@ export const PayrollEntryDetailModal = ({ entry, properties, employees, onClose 
           </div>
 
           <div className="grid grid-cols-3 gap-4 rounded-xl border border-white/10 bg-surface p-4">
-            <Field label="Pago" value={currencyOrPending(entry.amount)} />
-            <Field label="Venta" value={<span className="tabular-nums text-emerald-400">{currency(sales)}</span>} />
+            <Field label="Cobro" value={currencyOrPending(entry.amount)} />
+            <Field label="Pago" value={<span className="tabular-nums text-emerald-400">{currency(sales)}</span>} />
             <Field
               label="Ganancia"
               value={
@@ -60,6 +67,18 @@ export const PayrollEntryDetailModal = ({ entry, properties, employees, onClose 
                 )
               }
             />
+            {entry.taxable && (
+              <Field
+                label={`Impuesto (${(SALES_TAX_RATE * 100).toFixed(2)}%)`}
+                value={
+                  tax == null ? (
+                    <span className="text-ink-500">Pendiente</span>
+                  ) : (
+                    <span className="tabular-nums text-gold-400">{currency(tax)}</span>
+                  )
+                }
+              />
+            )}
           </div>
 
           {entry.notes && (
@@ -80,6 +99,17 @@ export const PayrollEntryDetailModal = ({ entry, properties, employees, onClose 
                 ))}
               </div>
             )}
+          </div>
+
+          <div className="flex justify-start border-t border-white/10 pt-4">
+            <button
+              type="button"
+              onClick={onDelete}
+              className="flex items-center gap-1.5 rounded-lg border border-red-500/30 px-3 py-2 text-sm font-medium text-red-400 hover:bg-red-500/10"
+            >
+              <Trash2 className="h-4 w-4" />
+              Eliminar planilla
+            </button>
           </div>
         </div>
       )}

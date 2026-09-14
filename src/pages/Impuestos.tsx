@@ -16,7 +16,7 @@ import { ImpuestosMonthDetailModal, type MonthGroup } from '../components/impues
 import { fetchCharges, fetchProperties, updateChargesTaxPaid } from '../lib/api'
 import { useSupabaseQuery } from '../lib/useSupabaseQuery'
 import { formatMonthLabel, parseISODate } from '../lib/scheduleDates'
-import { extractTaxFromTotal, SALES_TAX_RATE } from '../lib/tax'
+import { taxOnAmount, SALES_TAX_RATE } from '../lib/tax'
 import { getErrorMessage } from '../lib/errors'
 
 const currency = (value: number) =>
@@ -26,14 +26,14 @@ const PAGE_SIZE = 15
 
 const columnHelper = createColumnHelper<MonthGroup>()
 
-// Resumen del impuesto de ventas (8.25% fijo, ya incluido en el monto de
-// cada cobro — ver lib/tax.ts) agrupado por mes calendario. Solo cuenta
-// cobros con status='paid' ("subidos a OPS"): son los únicos con
-// generatedDate real, y representan el cobro ya finalizado — uno
-// "pendiente por cobrar" todavía no genera obligación de impuesto. Cada
-// mes se puede marcar como pagado/pendiente en bloque, o cobro por cobro
-// desde ImpuestosMonthDetailModal — ambos caminos solo tocan
-// charges.tax_paid/tax_paid_date, nunca amount.
+// Resumen del impuesto de ventas (8.25% fijo, SUMADO sobre el monto de
+// cada cobro — no incluido adentro, ver taxOnAmount en lib/tax.ts)
+// agrupado por mes calendario. Solo cuenta cobros con status='paid'
+// ("subidos a OPS"): son los únicos con generatedDate real, y representan
+// el cobro ya finalizado — uno "pendiente por cobrar" todavía no genera
+// obligación de impuesto. Cada mes se puede marcar como pagado/pendiente
+// en bloque, o cobro por cobro desde ImpuestosMonthDetailModal — ambos
+// caminos solo tocan charges.tax_paid/tax_paid_date, nunca amount.
 export const Impuestos = () => {
   const [refreshKey, setRefreshKey] = useState(0)
   const [sorting, setSorting] = useState<SortingState>([])
@@ -60,7 +60,7 @@ export const Impuestos = () => {
         let totalTax = 0
         let paidTax = 0
         for (const c of groupCharges) {
-          const tax = extractTaxFromTotal(c.amount)
+          const tax = taxOnAmount(c.amount)
           totalTax += tax
           if (c.taxPaid) paidTax += tax
         }
@@ -71,7 +71,9 @@ export const Impuestos = () => {
           key,
           label: formatMonthLabel(year, month - 1),
           charges: groupCharges,
-          totalBase: totalAmount - totalTax,
+          // El impuesto ya no se extrae del cobro — se suma aparte, así que
+          // la base (lo cobrado sin impuesto) es el monto del cobro tal cual.
+          totalBase: totalAmount,
           totalTax,
           paidTax,
           pendingTax: totalTax - paidTax,
@@ -188,15 +190,15 @@ export const Impuestos = () => {
     <div className="h-screen overflow-hidden flex flex-col">
       <PageHeader
         title="Impuestos"
-        subtitle={`Impuesto de ventas (${(SALES_TAX_RATE * 100).toFixed(2)}% fijo) incluido en los cobros — por mes`}
+        subtitle={`Impuesto de ventas (${(SALES_TAX_RATE * 100).toFixed(2)}% fijo) sobre los cobros subidos a OPS — por mes`}
       />
 
       {actionError && <p className="mx-8 mt-4 text-sm text-red-400">{actionError}</p>}
 
-      <div className="mx-8 mt-6 grid grid-cols-1 gap-4 sm:grid-cols-3 lg:max-w-2xl">
-        <StatCard label="Impuesto total" value={currency(totalTax)} icon={Receipt} />
-        <StatCard label="Pagado" value={currency(totalPaid)} icon={CheckCircle2} tone="good" />
-        <StatCard label="Pendiente" value={currency(totalPending)} icon={Clock} tone="warn" />
+      <div className="mx-8 mt-6 grid grid-cols-3 gap-3 sm:max-w-lg">
+        <StatCard label="Impuesto total" value={currency(totalTax)} icon={Receipt} size="compact" />
+        <StatCard label="Pagado" value={currency(totalPaid)} icon={CheckCircle2} tone="good" size="compact" />
+        <StatCard label="Pendiente" value={currency(totalPending)} icon={Clock} tone="warn" size="compact" />
       </div>
 
       <DataTablePanel

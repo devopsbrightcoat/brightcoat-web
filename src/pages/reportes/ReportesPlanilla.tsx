@@ -63,7 +63,7 @@ const PENDING_COLUMNS = [
   pendingColumnHelper.accessor('serviceName', { id: 'service', header: 'Servicio' }),
   pendingColumnHelper.accessor('sales', {
     id: 'sales',
-    header: 'Ventas',
+    header: 'Pago',
     cell: (info) => <span className="tabular-nums text-emerald-400">{currency(info.getValue())}</span>,
   }),
 ]
@@ -184,7 +184,7 @@ export const ReportesPlanilla = () => {
       ) : (
         <>
           <div className="grid grid-cols-2 gap-4 px-8 pt-6 sm:grid-cols-4">
-            <StatCard label="Total pagado" value={currency(totalPaid)} icon={Banknote} tone="good" />
+            <StatCard label="Total cobrado" value={currency(totalPaid)} icon={Banknote} tone="good" />
             <StatCard label="Planillas pagadas" value={String(paidCount)} icon={CheckCircle2} />
             <StatCard label="Pendientes en el período" value={String(pendingCountPeriod)} icon={Clock} tone="warn" />
             <StatCard label="Pendientes (todo el tiempo)" value={String(pendingAll.length)} icon={Users} tone="warn" />
@@ -213,8 +213,8 @@ export const ReportesPlanilla = () => {
           />
 
           <p className="mx-8 mt-6 text-sm text-ink-400">
-            Planilla pendiente — trabajo ya hecho cuyo pago todavía no se definió (toda la cartera, no solo el
-            período seleccionado arriba)
+            Planilla pendiente — trabajo ya hecho cuyo cobro todavía no se ha definido (toda la cartera, no solo
+            el período seleccionado arriba)
           </p>
           <DataTablePanel
             title="Planilla pendiente"

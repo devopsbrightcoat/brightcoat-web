@@ -1,7 +1,7 @@
 // ---------------------------------------------------------------------------
 // Genera un Excel con las planillas que estén visibles según el buscador y
 // los filtros aplicados en ese momento (ver botón "Exportar a Excel" en
-// Planillas.tsx) y dispara su descarga en el navegador. Incluye Ventas y
+// Planillas.tsx) y dispara su descarga en el navegador. Incluye Pago y
 // Ganancia ya calculadas (a partir del desglose), más el desglose mismo como
 // texto en una columna aparte — igual que Cobros hace con sus "extras".
 // ---------------------------------------------------------------------------
@@ -27,8 +27,8 @@ export const exportPayrollToExcel = async (
     { header: 'Servicio', key: 'service', width: 30 },
     { header: 'Desglose', key: 'breakdown', width: 40 },
     { header: 'Notas', key: 'notes', width: 30 },
-    { header: 'Pago', key: 'amount', width: 14 },
-    { header: 'Ventas', key: 'sales', width: 14 },
+    { header: 'Cobro', key: 'amount', width: 14 },
+    { header: 'Pago', key: 'sales', width: 14 },
     { header: 'Ganancia', key: 'profit', width: 14 },
   ]
   sheet.getRow(1).font = { bold: true }

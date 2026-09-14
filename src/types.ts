@@ -87,6 +87,7 @@ export type PayrollEntry = {
   items: PayrollEntryItem[]
   notes?: string
   scheduleId?: string
+  taxable: boolean
 }
 
 export type W2Status = 'approved' | 'pending'

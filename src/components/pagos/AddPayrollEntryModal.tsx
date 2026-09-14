@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react'
 import { ChevronDown, ChevronUp, Plus, X } from 'lucide-react'
 import { Modal } from '../common/Modal'
-import { createPayrollEntry, fetchSchedulesForEmployee, fetchServiceTypes } from '../../lib/api'
+import { createPayrollEntry, fetchChargeForSchedule, fetchSchedulesForEmployee, fetchServiceTypes } from '../../lib/api'
 import { useSupabaseQuery } from '../../lib/useSupabaseQuery'
 import { formatFullDate } from '../../lib/scheduleDates'
+import { SALES_TAX_RATE } from '../../lib/tax'
 import type { Employee, Property, Schedule } from '../../types'
 import { getErrorMessage } from '../../lib/errors'
 
@@ -28,14 +29,16 @@ const SCHEDULE_STATUS_LABELS: Record<Schedule['status'], string> = {
 }
 
 // Blanca recibe de un empleado "hoy trabajé en tal unidad, tal propiedad,
-// tal servicio" — con el pago completo del servicio y un desglose de los
-// sub-servicios que lo componen (cada uno con su propia descripción y
-// costo). El desglose se usa para calcular Ventas/Ganancia en Planillas.tsx
-// (ver lib/api.ts createPayrollEntry).
+// tal servicio" — con el Cobro total del trabajo (autocompletado desde
+// Cobros al elegir un horario relacionado, ver fetchChargeForSchedule) y un
+// desglose de los sub-servicios que lo componen, cuya suma es el Pago al
+// empleado. La Ganancia (Cobro - Pago) se calcula en Planillas.tsx (ver
+// lib/api.ts createPayrollEntry).
 //
 // Formulario dividido en tres secciones, a pedido de Javier: 1) Empleado
 // (con el buscador de horarios relacionados, colapsable, justo debajo) 2)
-// Propiedad — propiedad/unidad/fecha/servicio y 3) Pago — pago/notas/desglose.
+// Propiedad — propiedad/unidad/fecha/servicio y 3) Cobro — cobro/impuesto
+// (checkbox, no todos los servicios lo llevan)/notas/desglose (= Pago).
 type AddPayrollEntryModalProps = {
   open: boolean
   properties: Property[]
@@ -50,6 +53,7 @@ export const AddPayrollEntryModal = ({ open, properties, employees, onClose, onS
   const [employeeId, setEmployeeId] = useState('')
   const [serviceName, setServiceName] = useState('')
   const [amount, setAmount] = useState('')
+  const [taxable, setTaxable] = useState(false)
   const [date, setDate] = useState('')
   const [notes, setNotes] = useState('')
   const [items, setItems] = useState<ItemLine[]>([emptyItem(0)])
@@ -59,6 +63,7 @@ export const AddPayrollEntryModal = ({ open, properties, employees, onClose, onS
   const [scheduleFrom, setScheduleFrom] = useState('')
   const [scheduleTo, setScheduleTo] = useState('')
   const [selectedScheduleId, setSelectedScheduleId] = useState('')
+  const [chargeNotFound, setChargeNotFound] = useState(false)
 
   // Sin rango de fechas no se pide nada al servidor — el select de
   // horarios se queda vacío hasta que Desde y Hasta estén completos.
@@ -78,6 +83,7 @@ export const AddPayrollEntryModal = ({ open, properties, employees, onClose, onS
     setEmployeeId('')
     setServiceName('')
     setAmount('')
+    setTaxable(false)
     setDate('')
     setNotes('')
     setItems([emptyItem(0)])
@@ -86,6 +92,7 @@ export const AddPayrollEntryModal = ({ open, properties, employees, onClose, onS
     setScheduleFrom('')
     setScheduleTo('')
     setSelectedScheduleId('')
+    setChargeNotFound(false)
   }, [open])
 
   const updateItem = (key: number, patch: Partial<ItemLine>) =>
@@ -94,20 +101,23 @@ export const AddPayrollEntryModal = ({ open, properties, employees, onClose, onS
   const removeItem = (key: number) => setItems((prev) => (prev.length > 1 ? prev.filter((item) => item.key !== key) : prev))
 
   // Atajo de Javier: elegir un horario ya trabajado por este empleado
-  // precarga Propiedad/Unidad/Fecha/Servicio — el resto de la planilla
-  // (Pago, Notas, Desglose) se sigue llenando a mano. fetchSchedulesForEmployee
-  // ya viene filtrado por empleado + rango desde el servidor, así que acá no
-  // hace falta volver a filtrar.
+  // precarga Propiedad/Unidad/Fecha/Servicio Y el Cobro (buscado en Cobros
+  // por esa misma propiedad+unidad+servicio+fecha) — el resto de la
+  // planilla (Notas, Desglose) se sigue llenando a mano.
+  // fetchSchedulesForEmployee ya viene filtrado por empleado + rango desde
+  // el servidor, así que acá no hace falta volver a filtrar.
   const employeeSchedules = schedules ?? []
 
   const handleEmployeeChange = (id: string) => {
     setEmployeeId(id)
     setSelectedScheduleId('')
     setScheduleOpen(true)
+    setChargeNotFound(false)
   }
 
-  const handleScheduleSelect = (id: string) => {
+  const handleScheduleSelect = async (id: string) => {
     setSelectedScheduleId(id)
+    setChargeNotFound(false)
     const schedule = employeeSchedules.find((s) => s.id === id)
     if (!schedule) return
     setPropertyId(schedule.propertyId)
@@ -115,6 +125,24 @@ export const AddPayrollEntryModal = ({ open, properties, employees, onClose, onS
     setDate(schedule.scheduledDate)
     const serviceType = (serviceTypes ?? []).find((st) => st.id === schedule.serviceTypeId)
     if (serviceType) setServiceName(serviceType.name)
+
+    try {
+      const charge = await fetchChargeForSchedule(
+        schedule.propertyId,
+        schedule.unitLabel,
+        schedule.serviceTypeId,
+        schedule.scheduledDate,
+      )
+      if (charge) {
+        setAmount(String(charge.amount))
+      } else {
+        setChargeNotFound(true)
+      }
+    } catch {
+      // Si falla la búsqueda del cobro no bloquea el resto del prefill — el
+      // Cobro se puede completar a mano.
+      setChargeNotFound(true)
+    }
   }
 
   const filledItems = items.filter((item) => item.description.trim() || item.amount.trim())
@@ -141,7 +169,7 @@ export const AddPayrollEntryModal = ({ open, properties, employees, onClose, onS
     if (amount.trim()) {
       amountValue = Number(amount)
       if (Number.isNaN(amountValue) || amountValue < 0) {
-        setError('El pago no es un número válido.')
+        setError('El cobro no es un número válido.')
         return
       }
     }
@@ -176,6 +204,7 @@ export const AddPayrollEntryModal = ({ open, properties, employees, onClose, onS
         date,
         notes: notes.trim(),
         scheduleId: selectedScheduleId || undefined,
+        taxable,
         items: parsedItems,
       })
       onSaved()
@@ -281,8 +310,14 @@ export const AddPayrollEntryModal = ({ open, properties, employees, onClose, onS
                       })}
                     </select>
                     <p className="text-xs text-ink-500">
-                      Al elegir un horario se llenan Propiedad, Unidad, Fecha y Servicio — puedes editarlos después.
+                      Al elegir un horario se llenan Propiedad, Unidad, Fecha, Servicio y Cobro — puedes editarlos
+                      después.
                     </p>
+                    {chargeNotFound && selectedScheduleId && (
+                      <p className="text-xs text-amber-400">
+                        No se encontró un cobro registrado en Cobros para este horario — ingresa el Cobro a mano.
+                      </p>
+                    )}
                   </>
                 )}
               </div>
@@ -357,11 +392,11 @@ export const AddPayrollEntryModal = ({ open, properties, employees, onClose, onS
         </div>
 
         <div className="space-y-3 border-t border-white/10 pt-4">
-          <p className={sectionLabelClass}>Pago</p>
+          <p className={sectionLabelClass}>Cobro</p>
 
           <div>
             <label htmlFor="pe-amount" className={labelClass}>
-              Pago al empleado <span className="font-normal normal-case text-ink-500">(opcional — se puede completar después)</span>
+              Cobro total del trabajo <span className="font-normal normal-case text-ink-500">(opcional — se puede completar después)</span>
             </label>
             <input
               id="pe-amount"
@@ -373,6 +408,16 @@ export const AddPayrollEntryModal = ({ open, properties, employees, onClose, onS
               onChange={(e) => setAmount(e.target.value)}
               className={inputClass}
             />
+            <label htmlFor="pe-taxable" className="mt-2 flex cursor-pointer items-center gap-2 text-sm text-ink-300">
+              <input
+                id="pe-taxable"
+                type="checkbox"
+                checked={taxable}
+                onChange={(e) => setTaxable(e.target.checked)}
+                className="h-4 w-4 rounded border-white/20 bg-surface-alt accent-gold-500"
+              />
+              Este servicio lleva impuesto de ventas ({(SALES_TAX_RATE * 100).toFixed(2)}%)
+            </label>
           </div>
 
           <div>
@@ -434,7 +479,7 @@ export const AddPayrollEntryModal = ({ open, properties, employees, onClose, onS
             </div>
 
             <p className="mt-2 text-xs text-ink-500">
-              Venta del desglose: <span className="tabular-nums text-ink-300">{currency(salesTotal)}</span>
+              Pago del desglose: <span className="tabular-nums text-ink-300">{currency(salesTotal)}</span>
             </p>
           </div>
         </div>
