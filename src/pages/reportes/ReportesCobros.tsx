@@ -26,7 +26,7 @@ import { useSupabaseQuery } from '../../lib/useSupabaseQuery'
 import type { Charge } from '../../types'
 
 const currency = (value: number) =>
-  value.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 })
+  value.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 2 })
 
 const percent = (value: number) => `${value.toFixed(1)}%`
 

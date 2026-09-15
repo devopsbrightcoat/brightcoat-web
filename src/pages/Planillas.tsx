@@ -25,7 +25,7 @@ import { taxOnAmount, SALES_TAX_RATE } from '../lib/tax'
 import type { PayrollEntry } from '../types'
 
 const currency = (value: number) =>
-  value.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 })
+  value.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 2 })
 
 const PAGE_SIZE = 15
 

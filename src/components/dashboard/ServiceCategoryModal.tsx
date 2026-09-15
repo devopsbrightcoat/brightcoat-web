@@ -5,7 +5,7 @@ import type { ServiceCategoryRevenue } from '../../lib/dashboardMetrics'
 const COLOR_GOLD = '#e3a730'
 
 const currency = (value: number) =>
-  value.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 })
+  value.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 2 })
 
 type ServiceCategoryModalProps = {
   category: ServiceCategoryRevenue | null

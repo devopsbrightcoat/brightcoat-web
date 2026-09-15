@@ -2,7 +2,7 @@ import { Modal } from '../common/Modal'
 import type { Expense } from '../../types'
 
 const currency = (value: number) =>
-  value.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 })
+  value.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 2 })
 
 const Field = ({ label, value }: { label: string; value: React.ReactNode }) => (
   <div>

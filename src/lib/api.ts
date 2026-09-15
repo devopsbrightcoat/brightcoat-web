@@ -435,6 +435,103 @@ export const updateChargesTaxPaid = async (ids: string[], taxPaid: boolean): Pro
   if (error) throw error
 }
 
+// Edita los campos generales de un cobro — todo excepto estatus/invoice
+// number, que siguen su propio flujo en ChargeInvoiceModal (ver
+// updateChargeStatus). Si el cobro coincide con un horario 'delivered' bajo
+// el mismo criterio que usa charges_unique_identity (propiedad + unidad +
+// tipo de servicio + fecha, ver fetchChargeForSchedule/createScheduleCharge)
+// y la edición cambia alguno de esos 4 campos, el horario se actualiza en
+// cascada con los valores nuevos para que sigan enlazados. Esta es a
+// propósito la única vía que sí puede tocar un horario 'delivered' — el
+// objetivo es sincronizarlo con el cobro editado, no volverlo editable en
+// general (ver el guard `.neq('status', 'delivered')` en updateSchedule,
+// pensado para el caso contrario: evitar que editar el horario deje al
+// cobro ya generado desincronizado). Si tras la edición ya no se puede
+// identificar un horario coincidente (se vació servicio o fecha) no se
+// toca nada más — el cobro igual se guarda.
+export const updateCharge = async (
+  id: string,
+  patch: {
+    propertyId: string
+    unitLabel?: string
+    serviceTypeId?: string
+    generatedDate?: string
+    description?: string
+    amount: number
+    responsible?: string
+    payrollPeriod?: string
+    notes?: string
+    extras: { description: string; amount: number }[]
+  },
+): Promise<void> => {
+  const { data: existing, error: fetchError } = await supabase
+    .from('charges')
+    .select('property_id, unit_label, service_type_id, generated_date')
+    .eq('id', id)
+    .single()
+  if (fetchError) throw fetchError
+
+  const newUnitLabel = patch.unitLabel?.trim() || null
+  const newServiceTypeId = patch.serviceTypeId || null
+  const newDate = patch.generatedDate || null
+
+  const { error } = await supabase
+    .from('charges')
+    .update({
+      property_id: patch.propertyId,
+      unit_label: newUnitLabel,
+      service_type_id: newServiceTypeId,
+      generated_date: newDate,
+      description: patch.description?.trim() || null,
+      amount: patch.amount,
+      responsible: patch.responsible?.trim() || null,
+      payroll_period: patch.payrollPeriod?.trim() || null,
+      notes: patch.notes?.trim() || null,
+      extras: patch.extras,
+    })
+    .eq('id', id)
+  if (error) {
+    if (error.code === '23505') {
+      throw new Error('Ya existe otro cobro para esa misma propiedad, unidad, servicio y fecha.')
+    }
+    throw error
+  }
+
+  const identityChanged =
+    existing.property_id !== patch.propertyId ||
+    (existing.unit_label ?? null) !== newUnitLabel ||
+    existing.service_type_id !== newServiceTypeId ||
+    existing.generated_date !== newDate
+
+  if (!identityChanged || !existing.service_type_id || !existing.generated_date || !newServiceTypeId || !newDate) {
+    return
+  }
+
+  const { data: schedules, error: schedError } = await supabase
+    .from('schedules')
+    .select('id, unit_label')
+    .eq('property_id', existing.property_id)
+    .eq('service_type_id', existing.service_type_id)
+    .eq('scheduled_date', existing.generated_date)
+    .eq('status', 'delivered')
+  if (schedError) throw schedError
+
+  const wantedOld = existing.unit_label ?? ''
+  const match = (schedules ?? []).find((s) => (s.unit_label ?? '') === wantedOld)
+  if (!match) return
+
+  const { error: schedUpdateError } = await supabase
+    .from('schedules')
+    .update({
+      property_id: patch.propertyId,
+      unit_label: newUnitLabel,
+      service_type_id: newServiceTypeId,
+      scheduled_date: newDate,
+    })
+    .eq('id', match.id)
+  if (schedUpdateError) throw schedUpdateError
+}
+
 
 // ---------------------------------------------------------------------------
 // Updates — usados por los formularios de edición (Propiedades, Empleados).

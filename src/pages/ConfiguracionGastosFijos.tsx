@@ -21,7 +21,7 @@ import type { ExpenseTemplate } from '../types'
 const PAGE_SIZE = 15
 
 const currency = (value: number) =>
-  value.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 })
+  value.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 2 })
 
 const columnHelper = createColumnHelper<ExpenseTemplate>()
 

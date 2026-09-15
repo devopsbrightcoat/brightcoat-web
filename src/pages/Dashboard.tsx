@@ -64,7 +64,7 @@ const COLOR_ORANGE = '#d95926'
 const COLOR_AQUA = '#199e70'
 
 const currency = (value: number) =>
-  value.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 })
+  value.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 2 })
 
 const percent = (value: number) => `${value.toFixed(1)}%`
 

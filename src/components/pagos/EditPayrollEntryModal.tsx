@@ -15,7 +15,7 @@ type ItemLine = { key: number; description: string; amount: string }
 const emptyItem = (key: number): ItemLine => ({ key, description: '', amount: '' })
 
 const currency = (value: number) =>
-  value.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 })
+  value.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 2 })
 
 type EditPayrollEntryModalProps = {
   entry: PayrollEntry | null

@@ -44,7 +44,7 @@ import type { Charge, Schedule } from '../../types'
 const COLOR_GOLD = '#e3a730'
 
 const currency = (value: number) =>
-  value.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 })
+  value.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 2 })
 
 const chartTooltipStyle = {
   fontSize: 12,

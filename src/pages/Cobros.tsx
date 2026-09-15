@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Clock, DollarSign, Download, Filter, Search, Upload } from 'lucide-react'
+import { Clock, DollarSign, Download, Filter, Pencil, Search, Upload } from 'lucide-react'
 import {
   createColumnHelper,
   getCoreRowModel,
@@ -14,6 +14,7 @@ import { DataTablePanel } from '../components/common/DataTablePanel'
 import { ImportChargesModal } from '../components/cobros/ImportChargesModal'
 import { ChargeInvoiceModal } from '../components/cobros/ChargeInvoiceModal'
 import { ChargeDetailModal } from '../components/cobros/ChargeDetailModal'
+import { EditChargeModal } from '../components/cobros/EditChargeModal'
 import { ChargeFiltersModal } from '../components/cobros/ChargeFiltersModal'
 import { StatusPill } from '../components/common/StatusPill'
 import { fetchCharges, fetchProperties, fetchServiceTypes } from '../lib/api'
@@ -23,7 +24,7 @@ import { getErrorMessage } from '../lib/errors'
 import type { Charge } from '../types'
 
 const currency = (value: number) =>
-  value.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 })
+  value.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 2 })
 
 const PAGE_SIZE = 15
 
@@ -38,6 +39,7 @@ export const Cobros = () => {
   const [importOpen, setImportOpen] = useState(false)
   const [invoiceCharge, setInvoiceCharge] = useState<Charge | null>(null)
   const [detailCharge, setDetailCharge] = useState<Charge | null>(null)
+  const [editingCharge, setEditingCharge] = useState<Charge | null>(null)
   const [propertyId, setPropertyId] = useState('all')
   const [status, setStatus] = useState<'all' | 'paid' | 'pending'>('all')
   const [serviceTypeId, setServiceTypeId] = useState('all')
@@ -130,6 +132,23 @@ export const Cobros = () => {
         ),
       }),
       columnHelper.accessor((row) => row.invoiceNumber || '—', { id: 'invoiceNumber', header: 'Invoice #' }),
+      columnHelper.display({
+        id: 'actions',
+        header: '',
+        cell: (info) => (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation()
+              setEditingCharge(info.row.original)
+            }}
+            className="flex items-center gap-1.5 rounded-lg border border-white/10 px-2.5 py-1.5 text-xs font-medium text-ink-300 hover:bg-white/5"
+          >
+            <Pencil className="h-3.5 w-3.5" />
+            Editar
+          </button>
+        ),
+      }),
     ],
     [properties, serviceTypes],
   )
@@ -255,6 +274,14 @@ export const Cobros = () => {
         properties={properties ?? []}
         serviceTypes={serviceTypes ?? []}
         onClose={() => setDetailCharge(null)}
+      />
+
+      <EditChargeModal
+        charge={editingCharge}
+        properties={properties ?? []}
+        serviceTypes={serviceTypes ?? []}
+        onClose={() => setEditingCharge(null)}
+        onSaved={() => setRefreshKey((k) => k + 1)}
       />
 
       <ChargeFiltersModal

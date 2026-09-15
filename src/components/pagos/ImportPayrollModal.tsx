@@ -14,7 +14,7 @@ import {
 type Stage = 'idle' | 'parsed' | 'importing' | 'done'
 
 const currency = (value: number) =>
-  value.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 })
+  value.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 2 })
 
 type ImportPayrollModalProps = {
   open: boolean

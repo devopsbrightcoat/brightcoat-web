@@ -27,7 +27,7 @@ import {
 import { useSupabaseQuery } from '../../lib/useSupabaseQuery'
 
 const currency = (value: number) =>
-  value.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 })
+  value.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 2 })
 
 const PAGE_SIZE = 10
 

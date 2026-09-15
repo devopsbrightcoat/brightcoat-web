@@ -5,7 +5,7 @@ import { taxOnAmount, SALES_TAX_RATE } from '../../lib/tax'
 import type { Employee, PayrollEntry, Property } from '../../types'
 
 const currency = (value: number) =>
-  value.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 })
+  value.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 2 })
 
 const currencyOrPending = (value: number | null) =>
   value == null ? <span className="text-ink-500">Pendiente</span> : <span className="tabular-nums">{currency(value)}</span>

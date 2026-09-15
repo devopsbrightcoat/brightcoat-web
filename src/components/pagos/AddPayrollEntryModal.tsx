@@ -18,7 +18,7 @@ type ItemLine = { key: number; description: string; amount: string }
 const emptyItem = (key: number): ItemLine => ({ key, description: '', amount: '' })
 
 const currency = (value: number) =>
-  value.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 })
+  value.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 2 })
 
 const SCHEDULE_STATUS_LABELS: Record<Schedule['status'], string> = {
   pending: 'Pendiente',
