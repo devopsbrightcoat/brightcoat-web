@@ -57,7 +57,8 @@ export const AddPayrollEntryModal = ({ open, properties, employees, onClose, onS
   const [date, setDate] = useState('')
   const [notes, setNotes] = useState('')
   const [items, setItems] = useState<ItemLine[]>([emptyItem(0)])
-  const [saving, setSaving] = useState(false)
+  const [savingMode, setSavingMode] = useState<'add' | 'finalize' | null>(null)
+  const [addedCount, setAddedCount] = useState(0)
   const [error, setError] = useState<string | null>(null)
   const [scheduleOpen, setScheduleOpen] = useState(true)
   const [scheduleFrom, setScheduleFrom] = useState('')
@@ -93,6 +94,8 @@ export const AddPayrollEntryModal = ({ open, properties, employees, onClose, onS
     setScheduleTo('')
     setSelectedScheduleId('')
     setChargeNotFound(false)
+    setSavingMode(null)
+    setAddedCount(0)
   }, [open])
 
   const updateItem = (key: number, patch: Partial<ItemLine>) =>
@@ -148,54 +151,50 @@ export const AddPayrollEntryModal = ({ open, properties, employees, onClose, onS
   const filledItems = items.filter((item) => item.description.trim() || item.amount.trim())
   const salesTotal = filledItems.reduce((sum, item) => sum + (Number(item.amount) || 0), 0)
 
-  const handleSave = async () => {
-    if (!propertyId) {
-      setError('Selecciona una propiedad.')
-      return
-    }
-    if (!unitLabel.trim()) {
-      setError('La unidad es obligatoria.')
-      return
-    }
-    if (!employeeId) {
-      setError('Selecciona un empleado.')
-      return
-    }
-    if (!serviceName.trim()) {
-      setError('El nombre del servicio es obligatorio.')
-      return
-    }
+  // Validación + armado del payload, compartidos entre "Agregar planilla"
+  // (guarda y sigue en el modal, para capturar varias planillas seguidas
+  // del mismo empleado/propiedad sin volver a llenarlos) y "Finalizar
+  // planilla" (guarda esta última y cierra) — ver comentario más abajo,
+  // junto a los botones.
+  const buildPayload = ():
+    | { error: string }
+    | {
+        payload: {
+          propertyId: string
+          unitLabel: string
+          employeeId: string
+          serviceName: string
+          amount: number | null
+          date: string
+          notes: string
+          scheduleId?: string
+          taxable: boolean
+          items: { description: string; amount: number }[]
+        }
+      } => {
+    if (!propertyId) return { error: 'Selecciona una propiedad.' }
+    if (!unitLabel.trim()) return { error: 'La unidad es obligatoria.' }
+    if (!employeeId) return { error: 'Selecciona un empleado.' }
+    if (!serviceName.trim()) return { error: 'El nombre del servicio es obligatorio.' }
     let amountValue: number | null = null
     if (amount.trim()) {
       amountValue = Number(amount)
-      if (Number.isNaN(amountValue) || amountValue < 0) {
-        setError('El cobro no es un número válido.')
-        return
-      }
+      if (Number.isNaN(amountValue) || amountValue < 0) return { error: 'El cobro no es un número válido.' }
     }
-    if (!date) {
-      setError('La fecha es obligatoria.')
-      return
-    }
+    if (!date) return { error: 'La fecha es obligatoria.' }
 
     const parsedItems: { description: string; amount: number }[] = []
     for (const item of filledItems) {
       const itemAmount = Number(item.amount)
-      if (!item.description.trim()) {
-        setError('Cada línea del desglose necesita una descripción.')
-        return
-      }
+      if (!item.description.trim()) return { error: 'Cada línea del desglose necesita una descripción.' }
       if (!item.amount || Number.isNaN(itemAmount) || itemAmount < 0) {
-        setError(`El costo de "${item.description}" no es un número válido.`)
-        return
+        return { error: `El costo de "${item.description}" no es un número válido.` }
       }
       parsedItems.push({ description: item.description.trim(), amount: itemAmount })
     }
 
-    setSaving(true)
-    setError(null)
-    try {
-      await createPayrollEntry({
+    return {
+      payload: {
         propertyId,
         unitLabel: unitLabel.trim(),
         employeeId,
@@ -206,13 +205,62 @@ export const AddPayrollEntryModal = ({ open, properties, employees, onClose, onS
         scheduleId: selectedScheduleId || undefined,
         taxable,
         items: parsedItems,
-      })
+      },
+    }
+  }
+
+  // Limpia solo el Horario relacionado, el Cobro y el Desglose — Empleado y
+  // la sección Propiedad (propiedad/unidad/fecha/servicio) se dejan tal
+  // cual, a pedido de Javier: son los datos que más se repiten entre
+  // planillas seguidas del mismo trabajo/empleado.
+  const resetForNextEntry = () => {
+    setScheduleOpen(true)
+    setScheduleFrom('')
+    setScheduleTo('')
+    setSelectedScheduleId('')
+    setChargeNotFound(false)
+    setAmount('')
+    setTaxable(false)
+    setNotes('')
+    setItems([emptyItem(0)])
+  }
+
+  const handleAddAndContinue = async () => {
+    const result = buildPayload()
+    if ('error' in result) {
+      setError(result.error)
+      return
+    }
+    setSavingMode('add')
+    setError(null)
+    try {
+      await createPayrollEntry(result.payload)
+      onSaved()
+      resetForNextEntry()
+      setAddedCount((c) => c + 1)
+    } catch (err) {
+      setError(getErrorMessage(err, 'No se pudo guardar la planilla.'))
+    } finally {
+      setSavingMode(null)
+    }
+  }
+
+  const handleFinalize = async () => {
+    const result = buildPayload()
+    if ('error' in result) {
+      setError(result.error)
+      return
+    }
+    setSavingMode('finalize')
+    setError(null)
+    try {
+      await createPayrollEntry(result.payload)
       onSaved()
       onClose()
     } catch (err) {
       setError(getErrorMessage(err, 'No se pudo guardar la planilla.'))
     } finally {
-      setSaving(false)
+      setSavingMode(null)
     }
   }
 
@@ -498,22 +546,37 @@ export const AddPayrollEntryModal = ({ open, properties, employees, onClose, onS
 
         {error && <p className="rounded-lg bg-red-500/10 px-3 py-2 text-sm text-red-400">{error}</p>}
 
-        <div className="flex justify-end gap-3 pt-2">
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-lg border border-white/10 px-4 py-2 text-sm font-medium text-ink-300 hover:bg-white/5"
-          >
-            Cancelar
-          </button>
-          <button
-            type="button"
-            disabled={saving}
-            onClick={handleSave}
-            className="rounded-lg bg-gold-500 px-4 py-2 text-sm font-semibold text-brand-900 transition hover:bg-gold-400 disabled:opacity-60"
-          >
-            {saving ? 'Guardando…' : 'Guardar planilla'}
-          </button>
+        <div className="flex items-center justify-between gap-3 pt-2">
+          <p className="text-xs text-ink-500">
+            {addedCount > 0
+              ? `${addedCount} planilla${addedCount === 1 ? '' : 's'} agregada${addedCount === 1 ? '' : 's'} en esta sesión — empleado y propiedad se mantienen para la siguiente.`
+              : 'Empleado y Propiedad se mantienen entre planillas — usa "Agregar planilla" para capturar varias seguidas sin volver a llenarlos.'}
+          </p>
+          <div className="flex shrink-0 justify-end gap-3">
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-lg border border-white/10 px-4 py-2 text-sm font-medium text-ink-300 hover:bg-white/5"
+            >
+              Cancelar
+            </button>
+            <button
+              type="button"
+              disabled={savingMode !== null}
+              onClick={handleAddAndContinue}
+              className="rounded-lg border border-gold-500/40 px-4 py-2 text-sm font-semibold text-gold-400 transition hover:bg-gold-500/10 disabled:opacity-60"
+            >
+              {savingMode === 'add' ? 'Agregando…' : 'Agregar planilla'}
+            </button>
+            <button
+              type="button"
+              disabled={savingMode !== null}
+              onClick={handleFinalize}
+              className="rounded-lg bg-gold-500 px-4 py-2 text-sm font-semibold text-brand-900 transition hover:bg-gold-400 disabled:opacity-60"
+            >
+              {savingMode === 'finalize' ? 'Guardando…' : 'Finalizar planilla'}
+            </button>
+          </div>
         </div>
       </div>
     </Modal>
