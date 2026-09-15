@@ -452,7 +452,8 @@ export const AddPayrollEntryModal = ({ open, properties, employees, onClose, onS
                 <div key={item.key} className="grid grid-cols-[1fr_7rem_auto] items-center gap-2.5">
                   <input
                     type="text"
-                    placeholder="Descripción (ej. 5X1 en cocina)"
+                    list="pe-item-service-types"
+                    placeholder="Descripción (ej. 5X1 en cocina) — o elige un servicio"
                     value={item.description}
                     onChange={(e) => updateItem(item.key, { description: e.target.value })}
                     className={`${inputClass} min-w-0`}
@@ -481,6 +482,17 @@ export const AddPayrollEntryModal = ({ open, properties, employees, onClose, onS
             <p className="mt-2 text-xs text-ink-500">
               Pago del desglose: <span className="tabular-nums text-ink-300">{currency(salesTotal)}</span>
             </p>
+
+            {/* Cada línea del desglose es un input de texto libre con este
+               datalist — el navegador ofrece los servicios existentes como
+               sugerencias desplegables, pero el usuario puede escribir
+               cualquier otro texto y se guarda tal cual (no es un select
+               cerrado). */}
+            <datalist id="pe-item-service-types">
+              {(serviceTypes ?? []).map((t) => (
+                <option key={t.id} value={t.name} />
+              ))}
+            </datalist>
           </div>
         </div>
 

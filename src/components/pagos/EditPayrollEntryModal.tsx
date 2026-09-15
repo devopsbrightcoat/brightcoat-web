@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { Plus, X } from 'lucide-react'
 import { Modal } from '../common/Modal'
-import { updatePayrollEntry } from '../../lib/api'
+import { fetchServiceTypes, updatePayrollEntry } from '../../lib/api'
+import { useSupabaseQuery } from '../../lib/useSupabaseQuery'
 import { SALES_TAX_RATE } from '../../lib/tax'
 import type { Employee, PayrollEntry, Property } from '../../types'
 import { getErrorMessage } from '../../lib/errors'
@@ -26,6 +27,7 @@ type EditPayrollEntryModalProps = {
 }
 
 export const EditPayrollEntryModal = ({ entry, properties, employees, onClose, onSaved }: EditPayrollEntryModalProps) => {
+  const { data: serviceTypes } = useSupabaseQuery(fetchServiceTypes, [entry?.id])
   const [propertyId, setPropertyId] = useState('')
   const [unitLabel, setUnitLabel] = useState('')
   const [employeeId, setEmployeeId] = useState('')
@@ -274,7 +276,8 @@ export const EditPayrollEntryModal = ({ entry, properties, employees, onClose, o
               <div key={item.key} className="grid grid-cols-[1fr_7rem_auto] items-center gap-2.5">
                 <input
                   type="text"
-                  placeholder="Descripción (ej. 5X1 en cocina)"
+                  list="pe-edit-item-service-types"
+                  placeholder="Descripción (ej. 5X1 en cocina) — o elige un servicio"
                   value={item.description}
                   onChange={(e) => updateItem(item.key, { description: e.target.value })}
                   className={`${inputClass} min-w-0`}
@@ -303,6 +306,15 @@ export const EditPayrollEntryModal = ({ entry, properties, employees, onClose, o
           <p className="mt-2 text-xs text-ink-500">
             Pago del desglose: <span className="tabular-nums text-ink-300">{currency(salesTotal)}</span>
           </p>
+
+          {/* Ver el mismo comentario en AddPayrollEntryModal — datalist,
+             no select cerrado: sugiere servicios existentes pero acepta
+             cualquier texto libre. */}
+          <datalist id="pe-edit-item-service-types">
+            {(serviceTypes ?? []).map((t) => (
+              <option key={t.id} value={t.name} />
+            ))}
+          </datalist>
         </div>
 
         {error && <p className="rounded-lg bg-red-500/10 px-3 py-2 text-sm text-red-400">{error}</p>}
