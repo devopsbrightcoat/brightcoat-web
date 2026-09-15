@@ -209,16 +209,20 @@ export const AddPayrollEntryModal = ({ open, properties, employees, onClose, onS
     }
   }
 
-  // Limpia solo el Horario relacionado, el Cobro y el Desglose — Empleado y
-  // la sección Propiedad (propiedad/unidad/fecha/servicio) se dejan tal
-  // cual, a pedido de Javier: son los datos que más se repiten entre
-  // planillas seguidas del mismo trabajo/empleado.
+  // Empleado y el rango Desde/Hasta del buscador de horarios se dejan tal
+  // cual — a pedido de Javier: es el filtro que arma la lista de horarios
+  // de ese empleado, y se reutiliza para ir eligiendo uno por uno sin
+  // volver a escribirlo. Lo que sí se limpia: cuál horario estaba
+  // seleccionado (para forzar a elegir el siguiente), la sección Propiedad
+  // (propiedad/unidad/fecha/servicio — se vuelve a llenar sola al elegir
+  // el próximo horario) y el Cobro + Desglose.
   const resetForNextEntry = () => {
-    setScheduleOpen(true)
-    setScheduleFrom('')
-    setScheduleTo('')
     setSelectedScheduleId('')
     setChargeNotFound(false)
+    setPropertyId('')
+    setUnitLabel('')
+    setDate('')
+    setServiceName('')
     setAmount('')
     setTaxable(false)
     setNotes('')
@@ -549,8 +553,8 @@ export const AddPayrollEntryModal = ({ open, properties, employees, onClose, onS
         <div className="flex items-center justify-between gap-3 pt-2">
           <p className="text-xs text-ink-500">
             {addedCount > 0
-              ? `${addedCount} planilla${addedCount === 1 ? '' : 's'} agregada${addedCount === 1 ? '' : 's'} en esta sesión — empleado y propiedad se mantienen para la siguiente.`
-              : 'Empleado y Propiedad se mantienen entre planillas — usa "Agregar planilla" para capturar varias seguidas sin volver a llenarlos.'}
+              ? `${addedCount} planilla${addedCount === 1 ? '' : 's'} agregada${addedCount === 1 ? '' : 's'} en esta sesión — elige el siguiente horario para continuar.`
+              : 'Empleado y el rango de fechas del horario se mantienen entre planillas — usa "Agregar planilla" para ir capturando varios horarios seguidos.'}
           </p>
           <div className="flex shrink-0 justify-end gap-3">
             <button

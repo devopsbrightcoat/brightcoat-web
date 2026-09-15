@@ -439,16 +439,29 @@ export const updateChargesTaxPaid = async (ids: string[], taxPaid: boolean): Pro
 // number, que siguen su propio flujo en ChargeInvoiceModal (ver
 // updateChargeStatus). Si el cobro coincide con un horario 'delivered' bajo
 // el mismo criterio que usa charges_unique_identity (propiedad + unidad +
-// tipo de servicio + fecha, ver fetchChargeForSchedule/createScheduleCharge)
-// y la edición cambia alguno de esos 4 campos, el horario se actualiza en
-// cascada con los valores nuevos para que sigan enlazados. Esta es a
-// propósito la única vía que sí puede tocar un horario 'delivered' — el
-// objetivo es sincronizarlo con el cobro editado, no volverlo editable en
-// general (ver el guard `.neq('status', 'delivered')` en updateSchedule,
-// pensado para el caso contrario: evitar que editar el horario deje al
-// cobro ya generado desincronizado). Si tras la edición ya no se puede
-// identificar un horario coincidente (se vació servicio o fecha) no se
-// toca nada más — el cobro igual se guarda.
+// tipo de servicio + fecha, ver fetchChargeForSchedule/createScheduleCharge),
+// la edición cascadea en dos niveles:
+//   1. Horario: si cambia propiedad/unidad/servicio/fecha, el horario se
+//      actualiza con los valores nuevos para que sigan enlazados. Esta es a
+//      propósito la única vía que sí puede tocar un horario 'delivered' —
+//      el objetivo es sincronizarlo con el cobro editado, no volverlo
+//      editable en general (ver el guard `.neq('status', 'delivered')` en
+//      updateSchedule, pensado para el caso contrario: evitar que editar
+//      el horario deje al cobro ya generado desincronizado).
+//   2. Planilla: si ese horario tiene una planilla generada a partir de él
+//      (payroll_entries.schedule_id, ver "Horario relacionado" en
+//      AddPayrollEntryModal), el Cobro de la planilla — que se copió una
+//      sola vez del cobro al elegir el horario (fetchChargeForSchedule) y
+//      desde entonces es solo un valor guardado, sin referencia viva — se
+//      actualiza también al nuevo monto. Si además cambió la identidad, se
+//      actualizan igual propiedad/unidad/fecha de la planilla. El nombre
+//      del servicio de la planilla NO se toca: es texto libre que Blanca
+//      escribe a mano (puede traer más detalle que el tipo de servicio del
+//      cobro) y sobreescribirlo borraría ese detalle sin que nadie lo haya
+//      pedido.
+// Si tras la edición ya no se puede identificar un horario coincidente (se
+// vació servicio o fecha en la identidad vieja) no se toca nada más — el
+// cobro igual se guarda.
 export const updateCharge = async (
   id: string,
   patch: {
@@ -497,15 +510,10 @@ export const updateCharge = async (
     throw error
   }
 
-  const identityChanged =
-    existing.property_id !== patch.propertyId ||
-    (existing.unit_label ?? null) !== newUnitLabel ||
-    existing.service_type_id !== newServiceTypeId ||
-    existing.generated_date !== newDate
-
-  if (!identityChanged || !existing.service_type_id || !existing.generated_date || !newServiceTypeId || !newDate) {
-    return
-  }
+  // Sin servicio/fecha en la identidad VIEJA no hay forma de haber
+  // emparejado nunca un horario (cobros de Excel, sin horario) — no hay
+  // nada más que cascadear.
+  if (!existing.service_type_id || !existing.generated_date) return
 
   const { data: schedules, error: schedError } = await supabase
     .from('schedules')
@@ -520,16 +528,58 @@ export const updateCharge = async (
   const match = (schedules ?? []).find((s) => (s.unit_label ?? '') === wantedOld)
   if (!match) return
 
-  const { error: schedUpdateError } = await supabase
-    .from('schedules')
-    .update({
-      property_id: patch.propertyId,
-      unit_label: newUnitLabel,
-      service_type_id: newServiceTypeId,
-      scheduled_date: newDate,
-    })
-    .eq('id', match.id)
-  if (schedUpdateError) throw schedUpdateError
+  const identityChanged =
+    existing.property_id !== patch.propertyId ||
+    (existing.unit_label ?? null) !== newUnitLabel ||
+    existing.service_type_id !== newServiceTypeId ||
+    existing.generated_date !== newDate
+
+  // La identidad del horario solo se toca si de verdad cambió Y los
+  // valores nuevos siguen siendo válidos (con servicio y fecha presentes
+  // — si se vaciaron, no hay con qué identificar el horario, así que se
+  // deja tal cual en vez de romper la relación).
+  const canRelinkIdentity = identityChanged && !!newServiceTypeId && !!newDate
+
+  if (canRelinkIdentity) {
+    const { error: schedUpdateError } = await supabase
+      .from('schedules')
+      .update({
+        property_id: patch.propertyId,
+        unit_label: newUnitLabel,
+        service_type_id: newServiceTypeId,
+        scheduled_date: newDate,
+      })
+      .eq('id', match.id)
+    if (schedUpdateError) throw schedUpdateError
+  }
+
+  // El monto se empuja a la(s) planilla(s) enlazadas a este horario
+  // siempre que exista alguna — es independiente de si cambió la
+  // identidad, ya que la corrección más común es solo el monto.
+  // `unit_label` en payroll_entries es obligatorio (a diferencia de
+  // charges/schedules, donde puede ser null) — el formulario de Planillas
+  // siempre exige una unidad, ver AddPayrollEntryModal. Por eso la
+  // identidad solo se cascadea a la planilla cuando además hay un
+  // newUnitLabel real; si se vació la unidad en el cobro, la planilla se
+  // deja con su unidad tal cual (el monto sí se actualiza igual).
+  const canRelinkPlanillaIdentity = canRelinkIdentity && !!newUnitLabel
+  const payrollUpdate: {
+    amount: number
+    property_id?: string
+    unit_label?: string
+    date?: string
+  } = { amount: patch.amount }
+  if (canRelinkPlanillaIdentity) {
+    payrollUpdate.property_id = patch.propertyId
+    payrollUpdate.unit_label = newUnitLabel
+    payrollUpdate.date = newDate
+  }
+
+  const { error: payrollError } = await supabase
+    .from('payroll_entries')
+    .update(payrollUpdate)
+    .eq('schedule_id', match.id)
+  if (payrollError) throw payrollError
 }
 
 
