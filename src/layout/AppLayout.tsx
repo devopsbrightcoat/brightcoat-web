@@ -60,6 +60,7 @@ const navItems: NavItem[] = [
       { to: '/configuracion/alertas', label: 'Alertas', hiddenForRoles: ['staff'] },
       { to: '/configuracion/servicios', label: 'Servicios' },
       { to: '/configuracion/gastos-fijos', label: 'Gastos fijos' },
+      { to: '/configuracion/cobros-fijos', label: 'Cobros fijos' },
     ],
   },
 ]

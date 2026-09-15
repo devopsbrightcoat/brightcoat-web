@@ -23,6 +23,7 @@ import { StatCard } from '../../components/common/StatCard'
 import { DataTablePanel } from '../../components/common/DataTablePanel'
 import { DashboardPanel } from '../../components/dashboard/DashboardPanel'
 import { RankingBars } from '../../components/dashboard/RankingBars'
+import { ReportDateRangeBar } from '../../components/dashboard/ReportDateRangeBar'
 import { StatusPill } from '../../components/common/StatusPill'
 import { fetchCharges, fetchEmployees, fetchProperties, fetchSchedules, fetchServiceTypes } from '../../lib/api'
 import {
@@ -32,7 +33,10 @@ import {
   computeScheduleActivity,
   computeScheduleStatusBreakdown,
   computeServiceTypeActivity,
+  filterChargesByRange,
+  filterSchedulesByRange,
   SCHEDULE_ACTIVITY_GRANULARITY_OPTIONS,
+  type DateRange,
   type EmployeeActivity,
   type PropertyActivity,
   type ScheduleActivityGranularity,
@@ -83,6 +87,7 @@ const scheduleColumnHelper = createColumnHelper<Schedule>()
 // selector de propiedad que también se puede fijar haciendo clic en una
 // fila de "Actividad por propiedad".
 export const ReportesOperaciones = () => {
+  const [appliedRange, setAppliedRange] = useState<DateRange | null>(null)
   const [granularity, setGranularity] = useState<ScheduleActivityGranularity>('week')
   const [propertyFilter, setPropertyFilter] = useState<PropertyFilterKey>('all')
   const [selectedPropertyId, setSelectedPropertyId] = useState('all')
@@ -112,10 +117,17 @@ export const ReportesOperaciones = () => {
   const loading = loadingSchedules || loadingProperties || loadingEmployees || loadingServiceTypes || loadingCharges
   const error = errorSchedules ?? errorProperties ?? errorEmployees ?? errorServiceTypes ?? errorCharges
 
+  const range = appliedRange ?? { start: '', end: '' }
+  const rangedSchedules = useMemo(() => filterSchedulesByRange(schedules ?? [], range), [schedules, range])
+  const rangedCharges = useMemo(() => filterChargesByRange(charges ?? [], range), [charges, range])
+
   // --- Trabajos por estatus -------------------------------------------------
-  const breakdown = useMemo(() => computeScheduleStatusBreakdown(schedules ?? []), [schedules])
+  const breakdown = useMemo(() => computeScheduleStatusBreakdown(rangedSchedules), [rangedSchedules])
+  // Atrasados es "a día de hoy", no del rango seleccionado — igual que la
+  // antigüedad de cartera en Reportes · Cobros: un trabajo atrasado lo
+  // sigue estando sin importar qué período estés revisando.
   const overdueCount = useMemo(() => computeOverdueSchedules(schedules ?? []).length, [schedules])
-  const activity = useMemo(() => computeScheduleActivity(schedules ?? [], granularity), [schedules, granularity])
+  const activity = useMemo(() => computeScheduleActivity(rangedSchedules, granularity), [rangedSchedules, granularity])
 
   const countOf = (status: string) => breakdown.find((b) => b.status === status)?.count ?? 0
   const pendingCount = countOf('pending') + countOf('in_progress')
@@ -125,9 +137,9 @@ export const ReportesOperaciones = () => {
 
   // --- Actividad por propiedad ----------------------------------------------
   const propertyActivity = useMemo(() => {
-    const all = computePropertyActivity(schedules ?? [], properties ?? [])
+    const all = computePropertyActivity(rangedSchedules, properties ?? [])
     return propertyFilter === 'all' ? all : all.filter((r) => r.status === propertyFilter)
-  }, [schedules, properties, propertyFilter])
+  }, [rangedSchedules, properties, propertyFilter])
 
   const propertyColumns = useMemo(
     () => [
@@ -159,7 +171,7 @@ export const ReportesOperaciones = () => {
   })
 
   // --- Actividad por empleado ------------------------------------------------
-  const employeeActivity = useMemo(() => computeEmployeeActivity(schedules ?? [], employees ?? []), [schedules, employees])
+  const employeeActivity = useMemo(() => computeEmployeeActivity(rangedSchedules, employees ?? []), [rangedSchedules, employees])
 
   const employeeColumns = useMemo(
     () => [
@@ -194,8 +206,8 @@ export const ReportesOperaciones = () => {
 
   // --- Servicios realizados ---------------------------------------------------
   const serviceActivity = useMemo(
-    () => computeServiceTypeActivity(schedules ?? [], serviceTypes ?? [], properties ?? []),
-    [schedules, serviceTypes, properties],
+    () => computeServiceTypeActivity(rangedSchedules, serviceTypes ?? [], properties ?? []),
+    [rangedSchedules, serviceTypes, properties],
   )
 
   const serviceColumns = useMemo(
@@ -233,17 +245,17 @@ export const ReportesOperaciones = () => {
 
   const filteredCharges = useMemo(
     () =>
-      (charges ?? [])
+      rangedCharges
         .filter((c) => selectedPropertyId === 'all' || c.propertyId === selectedPropertyId)
         .sort((a, b) => (b.generatedDate ?? '').localeCompare(a.generatedDate ?? '')),
-    [charges, selectedPropertyId],
+    [rangedCharges, selectedPropertyId],
   )
   const filteredSchedules = useMemo(
     () =>
-      (schedules ?? [])
+      rangedSchedules
         .filter((s) => selectedPropertyId === 'all' || s.propertyId === selectedPropertyId)
         .sort((a, b) => b.scheduledDate.localeCompare(a.scheduledDate)),
-    [schedules, selectedPropertyId],
+    [rangedSchedules, selectedPropertyId],
   )
   const totalRevenue = filteredCharges.reduce((sum, c) => sum + c.amount, 0)
   const collected = filteredCharges.filter((c) => c.status === 'paid').reduce((sum, c) => sum + c.amount, 0)
@@ -331,7 +343,13 @@ export const ReportesOperaciones = () => {
     <div className="pb-10">
       <PageHeader title="Reportes · Operaciones" subtitle="Trabajos, actividad por propiedad y por empleado, servicios realizados" />
 
-      {error ? (
+      <ReportDateRangeBar onGenerate={setAppliedRange} generated={appliedRange !== null} />
+
+      {!appliedRange ? (
+        <p className="mx-8 mt-10 text-center text-sm text-ink-500">
+          Elige un rango de fechas y dale "Generar reporte" para ver la información.
+        </p>
+      ) : error ? (
         <p className="mx-8 mt-6 text-sm text-red-400">No se pudieron cargar los datos: {error}</p>
       ) : loading ? (
         <p className="mx-8 mt-6 text-sm text-ink-500">Cargando…</p>

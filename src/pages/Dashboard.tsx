@@ -165,7 +165,7 @@ export const Dashboard = () => {
             <StatCard label="Ingresos" value={currency(kpis.revenue)} icon={DollarSign} hint={revenueHint} />
             <StatCard label="Cobrado" value={currency(kpis.collected)} icon={Wallet} tone="good" />
             <StatCard label="Pendiente" value={currency(kpis.outstanding)} icon={Clock} tone="warn" />
-            <StatCard label="Costo de mano de obra" value={currency(kpis.laborCost)} icon={Banknote} />
+            <StatCard label="Pago a empleados" value={currency(kpis.laborCost)} icon={Banknote} />
             <StatCard label="Gastos" value={currency(kpis.expenses)} icon={TrendingDown} />
             <StatCard
               label="Ganancia estimada"
@@ -198,9 +198,9 @@ export const Dashboard = () => {
             </DashboardPanel>
           </div>
 
-          {/* Fila B — Ingresos vs. gastos vs. mano de obra | Ingresos por servicio */}
+          {/* Fila B — Ingresos vs. gastos vs. pago a empleados | Ingresos por servicio */}
           <div className="grid grid-cols-1 gap-4 px-8 pt-4 lg:grid-cols-2">
-            <DashboardPanel title="Ingresos vs. gastos vs. mano de obra" subtitle="Últimos 12 meses">
+            <DashboardPanel title="Ingresos vs. gastos vs. pago a empleados" subtitle="Últimos 12 meses">
               <div className="h-72">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={monthlyFinancials} margin={{ left: -20, right: 10 }}>
@@ -211,7 +211,7 @@ export const Dashboard = () => {
                     <Legend wrapperStyle={{ fontSize: 12, color: '#94a3b8' }} />
                     <Bar dataKey="revenue" name="Ingresos" fill={COLOR_BLUE} radius={[4, 4, 0, 0]} />
                     <Bar dataKey="expenses" name="Gastos" fill={COLOR_ORANGE} radius={[4, 4, 0, 0]} />
-                    <Bar dataKey="labor" name="Mano de obra" fill={COLOR_AQUA} radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="labor" name="Pago a empleados" fill={COLOR_AQUA} radius={[4, 4, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>

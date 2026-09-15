@@ -242,7 +242,7 @@ export const Planillas = () => {
     <div className="h-screen overflow-hidden flex flex-col">
       <PageHeader
         title="Planillas"
-        subtitle="Cobro y pago de mano de obra por servicio, con desglose y ganancia"
+        subtitle="Cobro y pago a empleados por servicio, con desglose y ganancia"
         action={
           <button
             type="button"

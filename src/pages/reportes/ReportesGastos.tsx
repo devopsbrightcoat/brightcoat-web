@@ -5,16 +5,15 @@ import { Bar, BarChart, CartesianGrid, Line, LineChart, ResponsiveContainer, Too
 import { PageHeader } from '../../components/common/PageHeader'
 import { StatCard } from '../../components/common/StatCard'
 import { DashboardPanel } from '../../components/dashboard/DashboardPanel'
-import { DashboardDateRangeSelect } from '../../components/dashboard/DashboardDateRangeSelect'
+import { ReportDateRangeBar } from '../../components/dashboard/ReportDateRangeBar'
 import { fetchExpenses } from '../../lib/api'
 import {
-  computeDateRange,
   computeExpensesByPeriod,
   computeMonthlyFinancials,
   filterExpensesByRange,
   previousPeriod,
   REVENUE_PERIOD_GRANULARITY_OPTIONS,
-  type DashboardDateRangeKey,
+  type DateRange,
   type RevenuePeriodGranularity,
 } from '../../lib/dashboardMetrics'
 import { useSupabaseQuery } from '../../lib/useSupabaseQuery'
@@ -43,12 +42,12 @@ const axisTick = { fontSize: 12, fill: '#94a3b8' }
 // gasto por período con granularidad elegible, y la comparación mes actual
 // vs. meses anteriores que el catálogo pide explícitamente.
 export const ReportesGastos = () => {
-  const [rangeKey, setRangeKey] = useState<DashboardDateRangeKey>('this_month')
+  const [appliedRange, setAppliedRange] = useState<DateRange | null>(null)
   const [granularity, setGranularity] = useState<RevenuePeriodGranularity>('day')
 
   const { data: expenses, loading, error } = useSupabaseQuery(fetchExpenses, [])
 
-  const range = useMemo(() => computeDateRange(rangeKey), [rangeKey])
+  const range = appliedRange ?? { start: '', end: '' }
 
   const periodExpenses = useMemo(() => filterExpensesByRange(expenses ?? [], range), [expenses, range])
   const total = useMemo(() => periodExpenses.reduce((sum, e) => sum + e.amount, 0), [periodExpenses])
@@ -72,13 +71,15 @@ export const ReportesGastos = () => {
 
   return (
     <div className="pb-10">
-      <PageHeader
-        title="Reportes · Gastos"
-        subtitle="Evolución del gasto del negocio y comparación mensual"
-        action={<DashboardDateRangeSelect value={rangeKey} onChange={setRangeKey} />}
-      />
+      <PageHeader title="Reportes · Gastos" subtitle="Evolución del gasto del negocio y comparación mensual" />
 
-      {error ? (
+      <ReportDateRangeBar onGenerate={setAppliedRange} generated={appliedRange !== null} />
+
+      {!appliedRange ? (
+        <p className="mx-8 mt-10 text-center text-sm text-ink-500">
+          Elige un rango de fechas y dale "Generar reporte" para ver la información.
+        </p>
+      ) : error ? (
         <p className="mx-8 mt-6 text-sm text-red-400">No se pudieron cargar los gastos: {error}</p>
       ) : loading ? (
         <p className="mx-8 mt-6 text-sm text-ink-500">Cargando…</p>

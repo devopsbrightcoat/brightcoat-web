@@ -12,15 +12,14 @@ import {
 import { PageHeader } from '../../components/common/PageHeader'
 import { StatCard } from '../../components/common/StatCard'
 import { DataTablePanel } from '../../components/common/DataTablePanel'
-import { DashboardDateRangeSelect } from '../../components/dashboard/DashboardDateRangeSelect'
+import { ReportDateRangeBar } from '../../components/dashboard/ReportDateRangeBar'
 import { fetchEmployees, fetchPayrollEntries, fetchProperties } from '../../lib/api'
 import {
-  computeDateRange,
   computePayrollByEmployee,
   computePayrollByProperty,
   computePendingPayroll,
   filterPayrollByRange,
-  type DashboardDateRangeKey,
+  type DateRange,
   type PayrollGroupSummary,
   type PendingPayrollRow,
 } from '../../lib/dashboardMetrics'
@@ -75,7 +74,7 @@ const PENDING_COLUMNS = [
 // pagado agrupado por cada dimensión, y una vista dedicada de "trabajo
 // hecho, pago sin definir" (hoy solo se ve fila por fila como "Pendiente").
 export const ReportesPlanilla = () => {
-  const [rangeKey, setRangeKey] = useState<DashboardDateRangeKey>('this_month')
+  const [appliedRange, setAppliedRange] = useState<DateRange | null>(null)
   const [propertySorting, setPropertySorting] = useState<SortingState>([{ id: 'totalPaid', desc: true }])
   const [propertyPageIndex, setPropertyPageIndex] = useState(0)
   const [employeeSorting, setEmployeeSorting] = useState<SortingState>([{ id: 'totalPaid', desc: true }])
@@ -90,7 +89,7 @@ export const ReportesPlanilla = () => {
   const loading = loadingEntries || loadingProperties || loadingEmployees
   const error = errorEntries ?? errorProperties ?? errorEmployees
 
-  const range = useMemo(() => computeDateRange(rangeKey), [rangeKey])
+  const range = appliedRange ?? { start: '', end: '' }
 
   const periodEntries = useMemo(() => filterPayrollByRange(entries ?? [], range), [entries, range])
   const totalPaid = useMemo(
@@ -174,10 +173,15 @@ export const ReportesPlanilla = () => {
       <PageHeader
         title="Reportes · Planilla"
         subtitle="Planilla por período, por propiedad, por empleado y pendiente de pago"
-        action={<DashboardDateRangeSelect value={rangeKey} onChange={setRangeKey} />}
       />
 
-      {error ? (
+      <ReportDateRangeBar onGenerate={setAppliedRange} generated={appliedRange !== null} />
+
+      {!appliedRange ? (
+        <p className="mx-8 mt-10 text-center text-sm text-ink-500">
+          Elige un rango de fechas y dale "Generar reporte" para ver la información.
+        </p>
+      ) : error ? (
         <p className="mx-8 mt-6 text-sm text-red-400">No se pudieron cargar las planillas: {error}</p>
       ) : loading ? (
         <p className="mx-8 mt-6 text-sm text-ink-500">Cargando…</p>

@@ -5,10 +5,11 @@
 // ---------------------------------------------------------------------------
 
 import type { ProfileRole } from '../auth/AuthProvider'
-import type { AppNotification, Charge, CompanySettings, Employee, Expense, ExpenseTemplate, PayrollEntry, Property, Schedule, ServiceType, Vendor } from '../types'
+import type { AppNotification, Charge, ChargeTemplate, CompanySettings, Employee, Expense, ExpenseTemplate, PayrollEntry, Property, Schedule, ServiceType, Vendor } from '../types'
 import { supabase } from './supabase'
 import type {
   ChargeRow,
+  ChargeTemplateRow,
   CompanySettingsRow,
   EmployeeRow,
   ExpenseRow,
@@ -373,12 +374,84 @@ const mapCharge = (row: ChargeRow): Charge => ({
   invoiceNumber: row.invoice_number ?? undefined,
   taxPaid: row.tax_paid,
   taxPaidDate: row.tax_paid_date ?? undefined,
+  isFixed: row.is_fixed,
 })
 
 export const fetchCharges = async (): Promise<Charge[]> => {
   const { data, error } = await supabase.from('charges').select('*').order('created_at', { ascending: false })
   if (error) throw error
   return ((data ?? []) as ChargeRow[]).map(mapCharge)
+}
+
+// "Cobro fijo" — único caso donde Cobros permite crear un cobro a mano (ver
+// AddFixedChargeModal.tsx). Nunca lleva unit_label ni service_type_id, así
+// que nunca choca con el índice único charges_unique_identity (que solo
+// aplica cuando ambos están presentes) — no hace falta ningún chequeo de
+// duplicados acá. Queda siempre en status='pending', igual que cualquier
+// cobro recién capturado.
+export const createFixedCharge = async (data: {
+  propertyId: string
+  amount: number
+  generatedDate: string
+  description?: string
+}): Promise<void> => {
+  const { error } = await supabase.from('charges').insert({
+    property_id: data.propertyId,
+    amount: data.amount,
+    generated_date: data.generatedDate,
+    description: data.description || null,
+    status: 'pending',
+    is_fixed: true,
+  })
+  if (error) throw error
+}
+
+// ---------------------------------------------------------------------------
+// "Cobros fijos" — catálogo de plantillas OBLIGATORIO para "Agregar cobro
+// fijo" en Cobros (ver comentario en types.ts). Tabla propia
+// charge_templates, sin relación hacia charges.
+// ---------------------------------------------------------------------------
+
+const mapChargeTemplate = (row: ChargeTemplateRow): ChargeTemplate => ({
+  id: row.id,
+  propertyId: row.property_id,
+  name: row.name,
+  amount: Number(row.amount),
+})
+
+export const fetchChargeTemplates = async (): Promise<ChargeTemplate[]> => {
+  const { data, error } = await supabase.from('charge_templates').select('*').order('name')
+  if (error) throw error
+  return ((data ?? []) as ChargeTemplateRow[]).map(mapChargeTemplate)
+}
+
+export const createChargeTemplate = async (data: {
+  propertyId: string
+  name: string
+  amount: number
+}): Promise<void> => {
+  const { error } = await supabase.from('charge_templates').insert({
+    property_id: data.propertyId,
+    name: data.name.trim(),
+    amount: data.amount,
+  })
+  if (error) throw error
+}
+
+export const updateChargeTemplate = async (
+  id: string,
+  patch: { propertyId: string; name: string; amount: number },
+): Promise<void> => {
+  const { error } = await supabase
+    .from('charge_templates')
+    .update({ property_id: patch.propertyId, name: patch.name.trim(), amount: patch.amount })
+    .eq('id', id)
+  if (error) throw error
+}
+
+export const deleteChargeTemplate = async (id: string): Promise<void> => {
+  const { error } = await supabase.from('charge_templates').delete().eq('id', id)
+  if (error) throw error
 }
 
 // Usado por el selector "Horario relacionado" en Planillas para autocompletar

@@ -3,6 +3,7 @@ import { ProtectedRoute } from './auth/ProtectedRoute'
 import { AppLayout } from './layout/AppLayout'
 import { Cobros } from './pages/Cobros'
 import { ConfiguracionAlertas } from './pages/ConfiguracionAlertas'
+import { ConfiguracionCobrosFijos } from './pages/ConfiguracionCobrosFijos'
 import { ConfiguracionGastosFijos } from './pages/ConfiguracionGastosFijos'
 import { ConfiguracionGeneral } from './pages/ConfiguracionGeneral'
 import { ConfiguracionServicios } from './pages/ConfiguracionServicios'
@@ -60,6 +61,7 @@ const App = () => {
           <Route path="alertas" element={<ConfiguracionAlertas />} />
           <Route path="servicios" element={<ConfiguracionServicios />} />
           <Route path="gastos-fijos" element={<ConfiguracionGastosFijos />} />
+          <Route path="cobros-fijos" element={<ConfiguracionCobrosFijos />} />
         </Route>
         <Route path="*" element={<NotFound />} />
       </Route>

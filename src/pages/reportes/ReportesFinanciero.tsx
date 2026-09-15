@@ -13,19 +13,18 @@ import { PageHeader } from '../../components/common/PageHeader'
 import { StatCard } from '../../components/common/StatCard'
 import { DataTablePanel } from '../../components/common/DataTablePanel'
 import { DashboardPanel } from '../../components/dashboard/DashboardPanel'
-import { DashboardDateRangeSelect } from '../../components/dashboard/DashboardDateRangeSelect'
+import { ReportDateRangeBar } from '../../components/dashboard/ReportDateRangeBar'
 import { RankingBars } from '../../components/dashboard/RankingBars'
 import { ServiceCategoryModal } from '../../components/dashboard/ServiceCategoryModal'
 import { fetchCharges, fetchExpenses, fetchPayrollEntries, fetchProperties, fetchSchedules, fetchServiceTypes } from '../../lib/api'
 import {
-  computeDateRange,
   computeKpis,
   computeMonthlyFinancials,
   computePropertyProfitability,
   computeRevenueByCategory,
   computeRevenueByPeriod,
   REVENUE_PERIOD_GRANULARITY_OPTIONS,
-  type DashboardDateRangeKey,
+  type DateRange,
   type PropertyProfitability,
   type RevenuePeriodGranularity,
 } from '../../lib/dashboardMetrics'
@@ -67,7 +66,7 @@ const columnHelper = createColumnHelper<PropertyProfitability>()
 // en vez de dos paneles separados — son la misma agrupación con columnas
 // distintas, no dos reportes distintos.
 export const ReportesFinanciero = () => {
-  const [rangeKey, setRangeKey] = useState<DashboardDateRangeKey>('this_month')
+  const [appliedRange, setAppliedRange] = useState<DateRange | null>(null)
   const [periodGranularity, setPeriodGranularity] = useState<RevenuePeriodGranularity>('day')
   const [sorting, setSorting] = useState<SortingState>([{ id: 'revenue', desc: true }])
   const [pageIndex, setPageIndex] = useState(0)
@@ -84,7 +83,7 @@ export const ReportesFinanciero = () => {
     loadingCharges || loadingExpenses || loadingPayroll || loadingSchedules || loadingProperties || loadingServiceTypes
   const error = errorCharges ?? errorExpenses ?? errorPayroll ?? errorSchedules ?? errorProperties ?? errorServiceTypes
 
-  const range = useMemo(() => computeDateRange(rangeKey), [rangeKey])
+  const range = appliedRange ?? { start: '', end: '' }
 
   const kpis = useMemo(
     () => computeKpis(charges ?? [], payrollEntries ?? [], expenses ?? [], schedules ?? [], range),
@@ -183,13 +182,15 @@ export const ReportesFinanciero = () => {
 
   return (
     <div className="pb-10">
-      <PageHeader
-        title="Reportes · Financiero"
-        subtitle="Resumen financiero, ingresos y rentabilidad por propiedad"
-        action={<DashboardDateRangeSelect value={rangeKey} onChange={setRangeKey} />}
-      />
+      <PageHeader title="Reportes · Financiero" subtitle="Resumen financiero, ingresos y rentabilidad por propiedad" />
 
-      {error ? (
+      <ReportDateRangeBar onGenerate={setAppliedRange} generated={appliedRange !== null} />
+
+      {!appliedRange ? (
+        <p className="mx-8 mt-10 text-center text-sm text-ink-500">
+          Elige un rango de fechas y dale "Generar reporte" para ver la información.
+        </p>
+      ) : error ? (
         <p className="mx-8 mt-6 text-sm text-red-400">No se pudieron cargar los datos: {error}</p>
       ) : loading ? (
         <p className="mx-8 mt-6 text-sm text-ink-500">Cargando…</p>
@@ -199,7 +200,7 @@ export const ReportesFinanciero = () => {
             <StatCard label="Ingresos" value={currency(kpis.revenue)} icon={DollarSign} />
             <StatCard label="Cobrado" value={currency(kpis.collected)} icon={Wallet} tone="good" />
             <StatCard label="Pendiente" value={currency(kpis.outstanding)} icon={Clock} tone="warn" />
-            <StatCard label="Costo de mano de obra" value={currency(kpis.laborCost)} icon={Banknote} />
+            <StatCard label="Pago a empleados" value={currency(kpis.laborCost)} icon={Banknote} />
             <StatCard label="Gastos" value={currency(kpis.expenses)} icon={TrendingDown} />
             <StatCard
               label="Ganancia estimada"
@@ -252,7 +253,7 @@ export const ReportesFinanciero = () => {
           </div>
 
           <div className="grid grid-cols-1 gap-4 px-8 pt-6 lg:grid-cols-2">
-            <DashboardPanel title="Ingresos vs. gastos vs. mano de obra" subtitle="Últimos 12 meses">
+            <DashboardPanel title="Ingresos vs. gastos vs. pago a empleados" subtitle="Últimos 12 meses">
               <div className="h-72">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={monthlyFinancials} margin={{ left: -20, right: 10 }}>
@@ -263,7 +264,7 @@ export const ReportesFinanciero = () => {
                     <Legend wrapperStyle={{ fontSize: 12, color: '#94a3b8' }} />
                     <Bar dataKey="revenue" name="Ingresos" fill={COLOR_BLUE} radius={[4, 4, 0, 0]} />
                     <Bar dataKey="expenses" name="Gastos" fill={COLOR_ORANGE} radius={[4, 4, 0, 0]} />
-                    <Bar dataKey="labor" name="Mano de obra" fill={COLOR_AQUA} radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="labor" name="Pago a empleados" fill={COLOR_AQUA} radius={[4, 4, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>

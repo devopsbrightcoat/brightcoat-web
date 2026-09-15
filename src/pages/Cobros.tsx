@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Clock, DollarSign, Download, Filter, Pencil, Search, Upload } from 'lucide-react'
+import { Clock, DollarSign, Download, Filter, Pencil, Plus, Search, Upload } from 'lucide-react'
 import {
   createColumnHelper,
   getCoreRowModel,
@@ -11,6 +11,7 @@ import {
 import { PageHeader } from '../components/common/PageHeader'
 import { StatCard } from '../components/common/StatCard'
 import { DataTablePanel } from '../components/common/DataTablePanel'
+import { AddFixedChargeModal } from '../components/cobros/AddFixedChargeModal'
 import { ImportChargesModal } from '../components/cobros/ImportChargesModal'
 import { ChargeInvoiceModal } from '../components/cobros/ChargeInvoiceModal'
 import { ChargeDetailModal } from '../components/cobros/ChargeDetailModal'
@@ -37,6 +38,7 @@ const columnHelper = createColumnHelper<Charge>()
 export const Cobros = () => {
   const [refreshKey, setRefreshKey] = useState(0)
   const [importOpen, setImportOpen] = useState(false)
+  const [addFixedOpen, setAddFixedOpen] = useState(false)
   const [invoiceCharge, setInvoiceCharge] = useState<Charge | null>(null)
   const [detailCharge, setDetailCharge] = useState<Charge | null>(null)
   const [editingCharge, setEditingCharge] = useState<Charge | null>(null)
@@ -96,7 +98,7 @@ export const Cobros = () => {
         id: 'property',
         header: 'Propiedad',
       }),
-      columnHelper.accessor((row) => row.unitLabel || '—', { id: 'unit', header: 'Apartamento' }),
+      columnHelper.accessor((row) => (row.isFixed ? 'N/A' : row.unitLabel || '—'), { id: 'unit', header: 'Apartamento' }),
       columnHelper.accessor(
         (row) => (row.serviceTypeId ? serviceTypes?.find((t) => t.id === row.serviceTypeId)?.name : undefined) ?? '—',
         { id: 'service', header: 'Servicio' },
@@ -187,16 +189,26 @@ export const Cobros = () => {
     <div className="h-screen overflow-hidden flex flex-col">
       <PageHeader
         title="Cobros"
-        subtitle="Cobros por apartamento — subidos a OPS, pendientes y capturados desde Horarios"
+        subtitle="Cobros por apartamento — subidos a OPS, pendientes, capturados desde Horarios y cobros fijos"
         action={
-          <button
-            type="button"
-            onClick={() => setImportOpen(true)}
-            className="flex items-center gap-2 rounded-lg bg-gold-500 px-3.5 py-2 text-sm font-semibold text-brand-900 transition hover:bg-gold-400"
-          >
-            <Upload className="h-4 w-4" />
-            Cargar Excel
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setImportOpen(true)}
+              className="flex items-center gap-2 rounded-lg border border-white/10 bg-surface-alt px-3.5 py-2 text-sm font-medium text-ink-300 hover:bg-white/5"
+            >
+              <Upload className="h-4 w-4" />
+              Cargar Excel
+            </button>
+            <button
+              type="button"
+              onClick={() => setAddFixedOpen(true)}
+              className="flex items-center gap-2 rounded-lg bg-gold-500 px-3.5 py-2 text-sm font-semibold text-brand-900 transition hover:bg-gold-400"
+            >
+              <Plus className="h-4 w-4" />
+              Agregar cobro fijo
+            </button>
+          </div>
         }
       />
 
@@ -261,6 +273,13 @@ export const Cobros = () => {
         open={importOpen}
         onClose={() => setImportOpen(false)}
         onImported={() => setRefreshKey((k) => k + 1)}
+      />
+
+      <AddFixedChargeModal
+        open={addFixedOpen}
+        properties={properties ?? []}
+        onClose={() => setAddFixedOpen(false)}
+        onSaved={() => setRefreshKey((k) => k + 1)}
       />
 
       <ChargeInvoiceModal

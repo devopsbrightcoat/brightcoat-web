@@ -146,10 +146,11 @@ export const EditChargeModal = ({ charge, properties, serviceTypes, onClose, onS
             <input
               id="edit-chg-unit"
               type="text"
-              placeholder="Unidad (ej. L303)"
-              value={unitLabel}
+              placeholder={charge?.isFixed ? 'N/A' : 'Unidad (ej. L303)'}
+              value={charge?.isFixed ? '' : unitLabel}
               onChange={(e) => setUnitLabel(e.target.value)}
-              className={inputClass}
+              disabled={charge?.isFixed}
+              className={`${inputClass} ${charge?.isFixed ? 'cursor-not-allowed opacity-50' : ''}`}
             />
           </div>
         </div>

@@ -11,16 +11,15 @@ import {
 import { PageHeader } from '../../components/common/PageHeader'
 import { StatCard } from '../../components/common/StatCard'
 import { DataTablePanel } from '../../components/common/DataTablePanel'
-import { DashboardDateRangeSelect } from '../../components/dashboard/DashboardDateRangeSelect'
+import { ReportDateRangeBar } from '../../components/dashboard/ReportDateRangeBar'
 import { StatusPill } from '../../components/common/StatusPill'
 import { fetchCharges, fetchProperties } from '../../lib/api'
 import {
   computeAgingDetail,
-  computeDateRange,
   computeOutstandingAging,
   filterChargesByRange,
   type AgingDetailRow,
-  type DashboardDateRangeKey,
+  type DateRange,
 } from '../../lib/dashboardMetrics'
 import { useSupabaseQuery } from '../../lib/useSupabaseQuery'
 import type { Charge } from '../../types'
@@ -53,7 +52,7 @@ const agingColumnHelper = createColumnHelper<AgingDetailRow>()
 // "Invoices por período", por rango), más el drill-down de antigüedad (el
 // Dashboard solo muestra los 4 totales por bucket, no el detalle por cobro).
 export const ReportesCobros = () => {
-  const [rangeKey, setRangeKey] = useState<DashboardDateRangeKey>('this_month')
+  const [appliedRange, setAppliedRange] = useState<DateRange | null>(null)
   const [bucketFilter, setBucketFilter] = useState<string>('all')
   const [invoiceSorting, setInvoiceSorting] = useState<SortingState>([{ id: 'date', desc: true }])
   const [invoicePageIndex, setInvoicePageIndex] = useState(0)
@@ -66,7 +65,7 @@ export const ReportesCobros = () => {
   const loading = loadingCharges || loadingProperties
   const error = errorCharges ?? errorProperties
 
-  const range = useMemo(() => computeDateRange(rangeKey), [rangeKey])
+  const range = appliedRange ?? { start: '', end: '' }
 
   const periodCharges = useMemo(() => filterChargesByRange(charges ?? [], range), [charges, range])
   const collected = useMemo(
@@ -202,10 +201,15 @@ export const ReportesCobros = () => {
       <PageHeader
         title="Reportes · Cobros"
         subtitle="Cobrado vs. pendiente, invoices por período y antigüedad de cartera"
-        action={<DashboardDateRangeSelect value={rangeKey} onChange={setRangeKey} />}
       />
 
-      {error ? (
+      <ReportDateRangeBar onGenerate={setAppliedRange} generated={appliedRange !== null} />
+
+      {!appliedRange ? (
+        <p className="mx-8 mt-10 text-center text-sm text-ink-500">
+          Elige un rango de fechas y dale "Generar reporte" para ver la información.
+        </p>
+      ) : error ? (
         <p className="mx-8 mt-6 text-sm text-red-400">No se pudieron cargar los cobros: {error}</p>
       ) : loading ? (
         <p className="mx-8 mt-6 text-sm text-ink-500">Cargando…</p>

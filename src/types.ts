@@ -52,6 +52,22 @@ export type ExpenseTemplate = {
   description?: string
 }
 
+// "Cobros fijos" — catálogo de cargos recurrentes (cuota de
+// administración, mantenimiento mensual, etc.) que sirve como plantilla
+// OBLIGATORIA al agregar un cobro fijo (ver AddFixedChargeModal). A
+// diferencia de ExpenseTemplate, `amount` no es opcional — un cobro fijo
+// siempre tiene un monto conocido. Cada cobro fijo ya trae su propiedad:
+// elegir uno precarga propiedad, monto y servicio (nombre pasa a
+// Charge.description, propertyId pasa a Charge.propertyId) — el formulario
+// de "Agregar cobro fijo" ya no pide propiedad por separado. No queda
+// ningún vínculo guardado hacia charges.
+export type ChargeTemplate = {
+  id: string
+  propertyId: string
+  name: string
+  amount: number
+}
+
 // Catálogo de proveedores — de dónde sale cada compra registrada en Gastos
 // (ver Expense.vendorId más arriba). A diferencia de ExpenseTemplate, este sí
 // queda ligado a los gastos que lo usan (expenses.vendor_id).
@@ -107,7 +123,10 @@ export type Employee = {
 // de forma única un cobro junto con propertyId + unitLabel — ver constraint
 // `charges_unique_identity` en 20260912000000_unify_charges.sql. Los cobros
 // importados de Excel normalmente no traen serviceTypeId (la plantilla no
-// lo captura); los generados desde Horarios siempre lo traen.
+// lo captura); los generados desde Horarios siempre lo traen. Un tercer
+// origen, "cobro fijo" (isFixed=true, ver 20261001000000_add_charges_is_fixed.sql),
+// se agrega a mano desde Cobros — nunca trae unitLabel ni serviceTypeId,
+// solo propertyId + amount + generatedDate.
 export type ChargeExtra = {
   description: string
   amount: number
@@ -131,6 +150,10 @@ export type Charge = {
   // — estos dos campos solo trackean si ya se remitió al estado.
   taxPaid: boolean
   taxPaidDate?: string
+  // true = creado a mano con "Agregar cobro fijo" en Cobros (propiedad +
+  // monto + fecha, sin unidad ni servicio). false = generado desde
+  // Horarios o importado de Excel.
+  isFixed: boolean
 }
 
 // Configuración general — tabla singleton (una sola fila) con los datos del

@@ -74,6 +74,13 @@ export type PayrollEntryRow = {
   payroll_entry_items?: PayrollEntryItemRow[]
 }
 
+export type ChargeTemplateRow = {
+  id: string
+  property_id: string
+  name: string
+  amount: number | string
+}
+
 export type ChargeRow = {
   id: string
   property_id: string
@@ -90,6 +97,7 @@ export type ChargeRow = {
   invoice_number: string | null
   tax_paid: boolean
   tax_paid_date: string | null
+  is_fixed: boolean
 }
 
 export type ScheduleRow = {

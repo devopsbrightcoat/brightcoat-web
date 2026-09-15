@@ -36,7 +36,7 @@ export const ChargeDetailModal = ({ charge, properties, serviceTypes, onClose }:
         <div className="space-y-5">
           <div className="grid grid-cols-2 gap-4">
             <Field label="Propiedad" value={propertyName ?? '—'} />
-            <Field label="Apartamento" value={charge.unitLabel || '—'} />
+            <Field label="Apartamento" value={charge.isFixed ? 'N/A' : charge.unitLabel || '—'} />
             <Field label="Servicio" value={serviceTypeName ?? '—'} />
             <Field label="Fecha" value={charge.generatedDate || '—'} />
             <Field label="Estatus" value={<StatusPill status={charge.status} />} />

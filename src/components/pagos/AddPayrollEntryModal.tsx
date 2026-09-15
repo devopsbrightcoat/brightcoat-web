@@ -65,6 +65,12 @@ export const AddPayrollEntryModal = ({ open, properties, employees, onClose, onS
   const [scheduleTo, setScheduleTo] = useState('')
   const [selectedScheduleId, setSelectedScheduleId] = useState('')
   const [chargeNotFound, setChargeNotFound] = useState(false)
+  // Fuerza a fetchSchedulesForEmployee a volver a consultarse con el mismo
+  // empleado/rango de fechas después de guardar una planilla — ese fetch ya
+  // excluye los horarios que ya tienen payroll_entry (ver comentario en
+  // fetchSchedulesForEmployee), así que basta con re-disparar la consulta
+  // para que el horario recién usado desaparezca del select.
+  const [scheduleRefreshKey, setScheduleRefreshKey] = useState(0)
 
   // Sin rango de fechas no se pide nada al servidor — el select de
   // horarios se queda vacío hasta que Desde y Hasta estén completos.
@@ -73,7 +79,7 @@ export const AddPayrollEntryModal = ({ open, properties, employees, onClose, onS
       employeeId && scheduleFrom && scheduleTo
         ? fetchSchedulesForEmployee(employeeId, scheduleFrom, scheduleTo)
         : Promise.resolve([]),
-    [employeeId, scheduleFrom, scheduleTo],
+    [employeeId, scheduleFrom, scheduleTo, scheduleRefreshKey],
   )
   const { data: serviceTypes } = useSupabaseQuery(fetchServiceTypes, [open])
 
@@ -96,6 +102,7 @@ export const AddPayrollEntryModal = ({ open, properties, employees, onClose, onS
     setChargeNotFound(false)
     setSavingMode(null)
     setAddedCount(0)
+    setScheduleRefreshKey(0)
   }, [open])
 
   const updateItem = (key: number, patch: Partial<ItemLine>) =>
@@ -242,6 +249,7 @@ export const AddPayrollEntryModal = ({ open, properties, employees, onClose, onS
       onSaved()
       resetForNextEntry()
       setAddedCount((c) => c + 1)
+      setScheduleRefreshKey((k) => k + 1)
     } catch (err) {
       setError(getErrorMessage(err, 'No se pudo guardar la planilla.'))
     } finally {

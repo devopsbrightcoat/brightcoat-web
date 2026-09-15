@@ -4,6 +4,13 @@
 // Planillas.tsx) y dispara su descarga en el navegador. Incluye Pago y
 // Ganancia ya calculadas (a partir del desglose), más el desglose mismo como
 // texto en una columna aparte — igual que Cobros hace con sus "extras".
+//
+// Al final se agrega un total de Pago por empleado (lo que se le pagó en
+// las planillas incluidas en este export) — si Blanca filtró por un solo
+// empleado antes de exportar (el uso más común) queda una sola fila de
+// total; si el export trae varios empleados mezclados (filtro "Todos"),
+// se agrega una fila de subtotal por cada uno más una fila de total
+// general al final.
 // ---------------------------------------------------------------------------
 
 import ExcelJS from 'exceljs'
@@ -53,6 +60,38 @@ export const exportPayrollToExcel = async (
       sales: e.sales,
       profit: e.profit ?? 'Pendiente',
     })
+  }
+
+  // Totales de Pago por empleado — en el mismo orden en que aparece cada
+  // empleado por primera vez entre las filas exportadas.
+  const employeeOrder: string[] = []
+  const totalsByEmployee = new Map<string, number>()
+  for (const e of entries) {
+    if (!totalsByEmployee.has(e.employeeId)) {
+      employeeOrder.push(e.employeeId)
+      totalsByEmployee.set(e.employeeId, 0)
+    }
+    totalsByEmployee.set(e.employeeId, (totalsByEmployee.get(e.employeeId) ?? 0) + e.sales)
+  }
+
+  if (employeeOrder.length > 0) {
+    sheet.addRow({})
+
+    for (const employeeId of employeeOrder) {
+      const employeeName = employees.find((emp) => emp.id === employeeId)?.name ?? '—'
+      const totalRow = sheet.addRow({
+        service: `Total pagado a ${employeeName}`,
+        sales: totalsByEmployee.get(employeeId) ?? 0,
+      })
+      totalRow.font = { bold: true }
+    }
+
+    if (employeeOrder.length > 1) {
+      const grandTotal = Array.from(totalsByEmployee.values()).reduce((sum, v) => sum + v, 0)
+      sheet.addRow({})
+      const grandTotalRow = sheet.addRow({ service: 'Total general', sales: grandTotal })
+      grandTotalRow.font = { bold: true }
+    }
   }
 
   const buffer = await workbook.xlsx.writeBuffer()
