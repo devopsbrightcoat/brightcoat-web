@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Clock, DollarSign, Download, Filter, Pencil, Plus, Search, Upload } from 'lucide-react'
+import { Clock, DollarSign, Download, Filter, Pencil, Plus, Search, Trash2, Upload } from 'lucide-react'
 import {
   createColumnHelper,
   getCoreRowModel,
@@ -17,8 +17,9 @@ import { ChargeInvoiceModal } from '../components/cobros/ChargeInvoiceModal'
 import { ChargeDetailModal } from '../components/cobros/ChargeDetailModal'
 import { EditChargeModal } from '../components/cobros/EditChargeModal'
 import { ChargeFiltersModal } from '../components/cobros/ChargeFiltersModal'
+import { ConfirmModal } from '../components/common/ConfirmModal'
 import { StatusPill } from '../components/common/StatusPill'
-import { fetchCharges, fetchProperties, fetchServiceTypes } from '../lib/api'
+import { deleteCharge, fetchCharges, fetchProperties, fetchServiceTypes } from '../lib/api'
 import { useSupabaseQuery } from '../lib/useSupabaseQuery'
 import { exportChargesToExcel } from '../lib/exportCharges'
 import { getErrorMessage } from '../lib/errors'
@@ -42,6 +43,7 @@ export const Cobros = () => {
   const [invoiceCharge, setInvoiceCharge] = useState<Charge | null>(null)
   const [detailCharge, setDetailCharge] = useState<Charge | null>(null)
   const [editingCharge, setEditingCharge] = useState<Charge | null>(null)
+  const [deletingCharge, setDeletingCharge] = useState<Charge | null>(null)
   const [propertyId, setPropertyId] = useState('all')
   const [status, setStatus] = useState<'all' | 'paid' | 'pending'>('all')
   const [serviceTypeId, setServiceTypeId] = useState('all')
@@ -138,17 +140,30 @@ export const Cobros = () => {
         id: 'actions',
         header: '',
         cell: (info) => (
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation()
-              setEditingCharge(info.row.original)
-            }}
-            className="flex items-center gap-1.5 rounded-lg border border-white/10 px-2.5 py-1.5 text-xs font-medium text-ink-300 hover:bg-white/5"
-          >
-            <Pencil className="h-3.5 w-3.5" />
-            Editar
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation()
+                setEditingCharge(info.row.original)
+              }}
+              className="flex items-center gap-1.5 rounded-lg border border-white/10 px-2.5 py-1.5 text-xs font-medium text-ink-300 hover:bg-white/5"
+            >
+              <Pencil className="h-3.5 w-3.5" />
+              Editar
+            </button>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation()
+                setDeletingCharge(info.row.original)
+              }}
+              className="flex items-center gap-1.5 rounded-lg border border-white/10 px-2.5 py-1.5 text-xs font-medium text-red-400 hover:bg-red-500/10"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+              Eliminar
+            </button>
+          </div>
         ),
       }),
     ],
@@ -301,6 +316,22 @@ export const Cobros = () => {
         serviceTypes={serviceTypes ?? []}
         onClose={() => setEditingCharge(null)}
         onSaved={() => setRefreshKey((k) => k + 1)}
+      />
+
+      <ConfirmModal
+        open={deletingCharge !== null}
+        onClose={() => setDeletingCharge(null)}
+        title="Eliminar cobro"
+        message={
+          deletingCharge?.serviceTypeId && deletingCharge?.generatedDate
+            ? 'Este cobro puede venir de un horario ya entregado. Si es así, el horario vuelve a quedar pendiente de cobro. ¿Eliminar de todas formas? Esta acción no se puede deshacer.'
+            : '¿Eliminar este cobro? Esta acción no se puede deshacer.'
+        }
+        onConfirm={async () => {
+          if (!deletingCharge) return
+          await deleteCharge(deletingCharge.id)
+          setRefreshKey((k) => k + 1)
+        }}
       />
 
       <ChargeFiltersModal

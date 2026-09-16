@@ -655,6 +655,52 @@ export const updateCharge = async (
   if (payrollError) throw payrollError
 }
 
+// Borra un cobro. Si coincide con un horario 'delivered' bajo el mismo
+// criterio que usa charges_unique_identity (propiedad + unidad + tipo de
+// servicio + fecha — ver createScheduleCharge/updateCharge), el horario
+// se "desliga" del cobro que se está borrando. Como no hay una relación
+// real en la base (el match siempre fue implícito por esos 4 campos),
+// desligarlo es devolverle su estatus a 'pending': dejar de estar
+// 'delivered' es justo lo que hace que vuelva a aparecer como pendiente
+// de cobro en Horarios (y lo que updateSchedule/deleteSchedule usan para
+// decidir si un horario se puede volver a tocar). No se toca ninguna
+// planilla generada a partir de ese horario (payroll_entries.schedule_id)
+// — su columna "Cobro" es solo un valor copiado una vez al elegir el
+// horario, sin referencia viva (ver updateCharge), así que se queda
+// exactamente como estaba.
+export const deleteCharge = async (id: string): Promise<void> => {
+  const { data: existing, error: fetchError } = await supabase
+    .from('charges')
+    .select('property_id, unit_label, service_type_id, generated_date')
+    .eq('id', id)
+    .single()
+  if (fetchError) throw fetchError
+
+  const { error } = await supabase.from('charges').delete().eq('id', id)
+  if (error) throw error
+
+  // Cobros de Excel o fijos nunca traen service_type_id/generated_date a
+  // la vez, así que nunca pudieron emparejar un horario — no hay nada más
+  // que hacer.
+  if (!existing.service_type_id || !existing.generated_date) return
+
+  const { data: schedules, error: schedError } = await supabase
+    .from('schedules')
+    .select('id, unit_label')
+    .eq('property_id', existing.property_id)
+    .eq('service_type_id', existing.service_type_id)
+    .eq('scheduled_date', existing.generated_date)
+    .eq('status', 'delivered')
+  if (schedError) throw schedError
+
+  const wanted = existing.unit_label ?? ''
+  const match = (schedules ?? []).find((s) => (s.unit_label ?? '') === wanted)
+  if (!match) return
+
+  const { error: statusError } = await supabase.from('schedules').update({ status: 'pending' }).eq('id', match.id)
+  if (statusError) throw statusError
+}
+
 
 // ---------------------------------------------------------------------------
 // Updates — usados por los formularios de edición (Propiedades, Empleados).
