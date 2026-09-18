@@ -17,8 +17,7 @@ export const exportPayrollToExcel = async (
     { header: 'Propiedad', key: 'property', width: 28 },
     { header: 'Unidad', key: 'unit', width: 14 },
     { header: 'Empleado', key: 'employee', width: 22 },
-    { header: 'Servicio', key: 'service', width: 30 },
-    { header: 'Desglose', key: 'breakdown', width: 40 },
+    { header: 'Servicio', key: 'service', width: 32 },
     { header: 'Notas', key: 'notes', width: 30 },
     { header: 'Cobro', key: 'amount', width: 14 },
     { header: 'Pago', key: 'sales', width: 14 },
@@ -29,23 +28,38 @@ export const exportPayrollToExcel = async (
   sheet.getColumn('sales').numFmt = '$#,##0'
   sheet.getColumn('profit').numFmt = '$#,##0'
 
+  // Cada planilla ocupa una fila "principal" con todos sus datos, seguida de
+  // una fila por cada línea de su desglose (solo Servicio + Pago, en cursiva
+  // y con sangría, sin repetir propiedad/unidad/empleado/fecha) — en vez de
+  // amontonar el desglose en una sola celda de texto como antes.
+  const TOP_DIVIDER = { top: { style: 'thin', color: { argb: 'FFE2E8F0' } } } as const
+
   for (const e of entries) {
     const propertyName = properties.find((p) => p.id === e.propertyId)?.name
     const employeeName = employees.find((emp) => emp.id === e.employeeId)?.name
-    const breakdown = e.items.map((item) => `${item.description} (${item.amount})`).join(', ')
 
-    sheet.addRow({
+    const mainRow = sheet.addRow({
       date: e.date || '—',
       property: propertyName ?? '—',
       unit: e.unitLabel || '—',
       employee: employeeName ?? '—',
       service: e.serviceName || '—',
-      breakdown: breakdown || '—',
       notes: e.notes || '—',
       amount: e.amount ?? 'Pendiente',
       sales: e.sales,
       profit: e.profit ?? 'Pendiente',
     })
+    mainRow.eachCell({ includeEmpty: true }, (cell) => {
+      cell.border = TOP_DIVIDER
+    })
+
+    for (const item of e.items) {
+      const itemRow = sheet.addRow({
+        service: `    • ${item.description}`,
+        sales: item.amount,
+      })
+      itemRow.font = { italic: true, color: { argb: 'FF64748B' } }
+    }
   }
 
   const employeeOrder: string[] = []

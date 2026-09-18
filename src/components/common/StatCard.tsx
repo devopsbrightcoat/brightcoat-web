@@ -6,6 +6,7 @@ type StatCardProps = {
   icon: LucideIcon
   tone?: 'default' | 'good' | 'warn'
   hint?: string
+  hintTone?: 'default' | 'warn'
   size?: 'default' | 'compact'
 }
 
@@ -15,7 +16,12 @@ const toneClasses: Record<NonNullable<StatCardProps['tone']>, string> = {
   warn: 'bg-amber-500/10 text-amber-400',
 }
 
-export const StatCard = ({ label, value, icon: Icon, tone = 'default', hint, size = 'default' }: StatCardProps) => {
+const hintToneClasses: Record<NonNullable<StatCardProps['hintTone']>, string> = {
+  default: 'text-ink-500',
+  warn: 'font-semibold text-amber-400',
+}
+
+export const StatCard = ({ label, value, icon: Icon, tone = 'default', hint, hintTone = 'default', size = 'default' }: StatCardProps) => {
   const compact = size === 'compact'
   return (
     <div className={`rounded-xl border border-white/10 bg-surface-alt ${compact ? 'p-3' : 'p-5'}`}>
@@ -28,7 +34,7 @@ export const StatCard = ({ label, value, icon: Icon, tone = 'default', hint, siz
         </span>
       </div>
       <p className={`font-bold tabular-nums text-white ${compact ? 'mt-1.5 text-lg' : 'mt-3 text-2xl'}`}>{value}</p>
-      {hint && <p className="mt-1 text-xs text-ink-500">{hint}</p>}
+      {hint && <p className={`mt-1 text-xs ${hintToneClasses[hintTone]}`}>{hint}</p>}
     </div>
   )
 }

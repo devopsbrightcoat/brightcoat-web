@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react'
 import { flexRender, type Table } from '@tanstack/react-table'
 import { ArrowDown, ArrowUp, ArrowUpDown } from 'lucide-react'
 import { Pagination } from './Pagination'
@@ -32,8 +33,31 @@ export function DataTablePanel<T>({
   message,
   onRowClick,
 }: DataTablePanelProps<T>) {
+  // Al cambiar de página, la tabla puede quedar scrolleada hacia abajo (su
+  // propio contenedor con scroll interno, o la página completa si no lo
+  // tiene) y las primeras filas de la página nueva quedan fuera de vista —
+  // dando la falsa impresión de que se saltaron registros. Volvemos a subir
+  // el scroll cada vez que cambia `page`.
+  const panelRef = useRef<HTMLDivElement>(null)
+  const scrollBodyRef = useRef<HTMLDivElement>(null)
+  // Guardamos la página anterior para subir el scroll solo cuando `page`
+  // realmente cambia (clic en Siguiente/Anterior), nunca en el montaje
+  // inicial del panel (p. ej. al generar el reporte por primera vez) ni en
+  // el doble efecto que React StrictMode dispara en desarrollo — comparar
+  // contra el valor previo es inmune a eso, a diferencia de una bandera de
+  // "primera vez" que StrictMode puede hacer disparar de más.
+  const previousPageRef = useRef(page)
+
+  useEffect(() => {
+    if (previousPageRef.current !== page) {
+      if (scrollBodyRef.current) scrollBodyRef.current.scrollTop = 0
+      panelRef.current?.scrollIntoView({ block: 'start' })
+    }
+    previousPageRef.current = page
+  }, [page])
+
   return (
-    <div className="mx-8 mt-6 mb-6 flex flex-1 min-h-0 flex-col overflow-hidden rounded-xl border border-white/10 bg-surface-alt">
+    <div ref={panelRef} className="mx-8 mt-6 mb-6 flex flex-1 min-h-0 flex-col overflow-hidden rounded-xl border border-white/10 bg-surface-alt">
       <div className="border-b border-white/10 px-5 py-3.5">
         <p className="text-sm font-semibold text-white">{title}</p>
       </div>
@@ -41,7 +65,7 @@ export function DataTablePanel<T>({
         <p className={`px-5 py-6 text-sm ${state === 'error' ? 'text-red-400' : 'text-ink-500'}`}>{message}</p>
       ) : (
         <>
-          <div className="min-h-0 flex-1 overflow-auto">
+          <div ref={scrollBodyRef} className="min-h-0 flex-1 overflow-auto">
             <table className="w-full text-left text-sm">
               <thead className="sticky top-0 z-10 bg-surface-alt">
                 {table.getHeaderGroups().map((headerGroup) => (
