@@ -1,5 +1,6 @@
 import type { Charge, Employee, PayrollEntry, Expense, Property, Schedule, ServiceCategory, ServiceType } from '../types'
 import { addDays, parseISODate, toISODate } from './scheduleDates'
+import { getQuincenaRange, type QuincenaKey } from './quincena'
 
 // ---------------------------------------------------------------------------
 // Cálculos para el Dashboard (Business Overview) — ver propuesta de diseño
@@ -35,10 +36,21 @@ export type DateRange = { start: string; end: string } // ISO 'YYYY-MM-DD', ambo
 const startOfMonth = (year: number, month: number) => new Date(year, month, 1)
 const endOfMonth = (year: number, month: number) => new Date(year, month + 1, 0)
 
+// Selección de rango del Dashboard: un preset (ver arriba) o una quincena
+// específica (mes + 1ra/2da, al estilo de David — ver lib/quincena.ts). Es
+// un eje aparte de los presets, no una opción más de la lista: el usuario
+// elige uno u otro con QuincenaPicker (ver DashboardDateRangeSelect.tsx).
+export type DashboardDateRangeSelection =
+  | { kind: 'preset'; key: DashboardDateRangeKey }
+  | { kind: 'quincena'; quincena: QuincenaKey }
+
 // "Mes actual" es el mes calendario (1 al último día); "15 días" y "6
 // meses" son ventanas móviles terminando hoy — mismo criterio que el
 // filtro de rango ya usado en Finanzas/Reportes (ver dateRange.ts).
-export const computeDateRange = (key: DashboardDateRangeKey): DateRange => {
+export const computeDateRange = (selection: DashboardDateRangeSelection): DateRange => {
+  if (selection.kind === 'quincena') return getQuincenaRange(selection.quincena)
+
+  const key = selection.key
   const now = new Date()
 
   switch (key) {

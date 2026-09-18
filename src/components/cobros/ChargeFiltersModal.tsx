@@ -1,4 +1,5 @@
 import { FilterPanel } from '../common/FilterPanel'
+import { QuincenaDateFilter } from '../dashboard/QuincenaDateFilter'
 import type { Property, ServiceType } from '../../types'
 
 const inputClass =
@@ -21,9 +22,13 @@ type ChargeFiltersModalProps = {
   propertyId: string
   status: 'all' | 'paid' | 'pending'
   serviceTypeId: string
+  dateFrom: string
+  dateTo: string
   onPropertyChange: (id: string) => void
   onStatusChange: (status: 'all' | 'paid' | 'pending') => void
   onServiceTypeChange: (id: string) => void
+  onDateFromChange: (value: string) => void
+  onDateToChange: (value: string) => void
 }
 
 export const ChargeFiltersModal = ({
@@ -34,11 +39,15 @@ export const ChargeFiltersModal = ({
   propertyId,
   status,
   serviceTypeId,
+  dateFrom,
+  dateTo,
   onPropertyChange,
   onStatusChange,
   onServiceTypeChange,
+  onDateFromChange,
+  onDateToChange,
 }: ChargeFiltersModalProps) => {
-  const hasFilters = propertyId !== 'all' || status !== 'all' || serviceTypeId !== 'all'
+  const hasFilters = propertyId !== 'all' || status !== 'all' || serviceTypeId !== 'all' || Boolean(dateFrom) || Boolean(dateTo)
 
   return (
     <FilterPanel
@@ -49,6 +58,8 @@ export const ChargeFiltersModal = ({
         onPropertyChange('all')
         onStatusChange('all')
         onServiceTypeChange('all')
+        onDateFromChange('')
+        onDateToChange('')
       }}
     >
       <div className="space-y-4">
@@ -105,6 +116,15 @@ export const ChargeFiltersModal = ({
             ))}
           </select>
         </div>
+
+        <QuincenaDateFilter
+          dateFrom={dateFrom}
+          dateTo={dateTo}
+          onDateFromChange={onDateFromChange}
+          onDateToChange={onDateToChange}
+          fromId="chg-filter-date-from"
+          toId="chg-filter-date-to"
+        />
       </div>
     </FilterPanel>
   )

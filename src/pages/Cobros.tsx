@@ -47,6 +47,8 @@ export const Cobros = () => {
   const [propertyId, setPropertyId] = useState('all')
   const [status, setStatus] = useState<'all' | 'paid' | 'pending'>('all')
   const [serviceTypeId, setServiceTypeId] = useState('all')
+  const [dateFrom, setDateFrom] = useState('')
+  const [dateTo, setDateTo] = useState('')
   const [searchText, setSearchText] = useState('')
   const [filtersOpen, setFiltersOpen] = useState(false)
   const [sorting, setSorting] = useState<SortingState>([])
@@ -64,6 +66,8 @@ export const Cobros = () => {
       if (propertyId !== 'all' && c.propertyId !== propertyId) return false
       if (status !== 'all' && c.status !== status) return false
       if (serviceTypeId !== 'all' && c.serviceTypeId !== serviceTypeId) return false
+      if (dateFrom && (!c.generatedDate || c.generatedDate < dateFrom)) return false
+      if (dateTo && (!c.generatedDate || c.generatedDate > dateTo)) return false
       if (q) {
         const propertyName = properties?.find((p) => p.id === c.propertyId)?.name ?? ''
         const haystack = [propertyName, c.unitLabel, c.description, c.notes, c.responsible, c.invoiceNumber]
@@ -74,10 +78,14 @@ export const Cobros = () => {
       }
       return true
     })
-  }, [charges, properties, propertyId, status, serviceTypeId, searchText])
+  }, [charges, properties, propertyId, status, serviceTypeId, dateFrom, dateTo, searchText])
 
   const activeFilterCount =
-    (propertyId !== 'all' ? 1 : 0) + (status !== 'all' ? 1 : 0) + (serviceTypeId !== 'all' ? 1 : 0)
+    (propertyId !== 'all' ? 1 : 0) +
+    (status !== 'all' ? 1 : 0) +
+    (serviceTypeId !== 'all' ? 1 : 0) +
+    (dateFrom ? 1 : 0) +
+    (dateTo ? 1 : 0)
 
   const totalPaid = (charges ?? []).filter((c) => c.status === 'paid').reduce((sum, c) => sum + c.amount, 0)
   const totalPending = (charges ?? []).filter((c) => c.status === 'pending').reduce((sum, c) => sum + c.amount, 0)
@@ -342,9 +350,13 @@ export const Cobros = () => {
         propertyId={propertyId}
         status={status}
         serviceTypeId={serviceTypeId}
+        dateFrom={dateFrom}
+        dateTo={dateTo}
         onPropertyChange={setPropertyId}
         onStatusChange={setStatus}
         onServiceTypeChange={setServiceTypeId}
+        onDateFromChange={setDateFrom}
+        onDateToChange={setDateTo}
       />
     </div>
   )

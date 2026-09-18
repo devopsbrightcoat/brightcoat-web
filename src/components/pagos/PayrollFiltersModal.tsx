@@ -1,4 +1,5 @@
 import { FilterPanel } from '../common/FilterPanel'
+import { QuincenaDateFilter } from '../dashboard/QuincenaDateFilter'
 import type { Employee, Property } from '../../types'
 
 const inputClass =
@@ -94,32 +95,14 @@ export const PayrollFiltersModal = ({
           </select>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label htmlFor="payroll-filter-date-from" className={labelClass}>
-              Fecha desde
-            </label>
-            <input
-              id="payroll-filter-date-from"
-              type="date"
-              value={dateFrom}
-              onChange={(e) => onDateFromChange(e.target.value)}
-              className={inputClass}
-            />
-          </div>
-          <div>
-            <label htmlFor="payroll-filter-date-to" className={labelClass}>
-              Fecha hasta
-            </label>
-            <input
-              id="payroll-filter-date-to"
-              type="date"
-              value={dateTo}
-              onChange={(e) => onDateToChange(e.target.value)}
-              className={inputClass}
-            />
-          </div>
-        </div>
+        <QuincenaDateFilter
+          dateFrom={dateFrom}
+          dateTo={dateTo}
+          onDateFromChange={onDateFromChange}
+          onDateToChange={onDateToChange}
+          fromId="payroll-filter-date-from"
+          toId="payroll-filter-date-to"
+        />
       </div>
     </FilterPanel>
   )

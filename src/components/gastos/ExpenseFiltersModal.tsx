@@ -1,4 +1,5 @@
 import { FilterPanel } from '../common/FilterPanel'
+import { QuincenaDateFilter } from '../dashboard/QuincenaDateFilter'
 import type { Vendor } from '../../types'
 
 const inputClass =
@@ -57,32 +58,14 @@ export const ExpenseFiltersModal = ({
       }}
     >
       <div className="space-y-4">
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label htmlFor="exp-filter-date-from" className={labelClass}>
-              Fecha desde
-            </label>
-            <input
-              id="exp-filter-date-from"
-              type="date"
-              value={dateFrom}
-              onChange={(e) => onDateFromChange(e.target.value)}
-              className={inputClass}
-            />
-          </div>
-          <div>
-            <label htmlFor="exp-filter-date-to" className={labelClass}>
-              Fecha hasta
-            </label>
-            <input
-              id="exp-filter-date-to"
-              type="date"
-              value={dateTo}
-              onChange={(e) => onDateToChange(e.target.value)}
-              className={inputClass}
-            />
-          </div>
-        </div>
+        <QuincenaDateFilter
+          dateFrom={dateFrom}
+          dateTo={dateTo}
+          onDateFromChange={onDateFromChange}
+          onDateToChange={onDateToChange}
+          fromId="exp-filter-date-from"
+          toId="exp-filter-date-to"
+        />
 
         <div className="grid grid-cols-2 gap-3">
           <div>

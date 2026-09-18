@@ -51,7 +51,7 @@ import {
   computeRevenueByCategory,
   computeRevenueByProperty,
   computeTodaySchedules,
-  type DashboardDateRangeKey,
+  type DashboardDateRangeSelection,
 } from '../lib/dashboardMetrics'
 import { useSupabaseQuery } from '../lib/useSupabaseQuery'
 
@@ -79,7 +79,7 @@ const chartTooltipStyle = {
 const axisTick = { fontSize: 12, fill: '#94a3b8' }
 
 export const Dashboard = () => {
-  const [rangeKey, setRangeKey] = useState<DashboardDateRangeKey>('this_month')
+  const [rangeSelection, setRangeSelection] = useState<DashboardDateRangeSelection>({ kind: 'preset', key: 'this_month' })
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null)
 
   const { data: charges, loading: loadingCharges, error: errorCharges } = useSupabaseQuery(fetchCharges, [])
@@ -94,7 +94,7 @@ export const Dashboard = () => {
     loadingCharges || loadingExpenses || loadingPayroll || loadingSchedules || loadingProperties || loadingEmployees || loadingServiceTypes
   const error = errorCharges ?? errorExpenses ?? errorPayroll ?? errorSchedules ?? errorProperties ?? errorEmployees ?? errorServiceTypes
 
-  const range = useMemo(() => computeDateRange(rangeKey), [rangeKey])
+  const range = useMemo(() => computeDateRange(rangeSelection), [rangeSelection])
 
   const kpis = useMemo(
     () => computeKpis(charges ?? [], payrollEntries ?? [], expenses ?? [], schedules ?? [], range),
@@ -151,7 +151,7 @@ export const Dashboard = () => {
       <PageHeader
         title="Dashboard"
         subtitle="Resumen general del negocio"
-        action={<DashboardDateRangeSelect value={rangeKey} onChange={setRangeKey} />}
+        action={<DashboardDateRangeSelect value={rangeSelection} onChange={setRangeSelection} />}
       />
 
       {error ? (
