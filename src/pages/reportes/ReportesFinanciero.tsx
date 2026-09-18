@@ -16,7 +16,8 @@ import { DashboardPanel } from '../../components/dashboard/DashboardPanel'
 import { ReportDateRangeBar } from '../../components/dashboard/ReportDateRangeBar'
 import { RankingBars } from '../../components/dashboard/RankingBars'
 import { ServiceCategoryModal } from '../../components/dashboard/ServiceCategoryModal'
-import { fetchCharges, fetchExpenses, fetchPayrollEntries, fetchProperties, fetchSchedules, fetchServiceTypes } from '../../lib/api'
+import { useReferenceData } from '../../contexts/ReferenceDataContext'
+import { fetchCharges, fetchExpenses, fetchPayrollEntries, fetchSchedules } from '../../lib/api'
 import {
   computeKpis,
   computeMonthlyFinancials,
@@ -65,8 +66,7 @@ export const ReportesFinanciero = () => {
   const { data: expenses, loading: loadingExpenses, error: errorExpenses } = useSupabaseQuery(fetchExpenses, [])
   const { data: payrollEntries, loading: loadingPayroll, error: errorPayroll } = useSupabaseQuery(fetchPayrollEntries, [])
   const { data: schedules, loading: loadingSchedules, error: errorSchedules } = useSupabaseQuery(fetchSchedules, [])
-  const { data: properties, loading: loadingProperties, error: errorProperties } = useSupabaseQuery(fetchProperties, [])
-  const { data: serviceTypes, loading: loadingServiceTypes, error: errorServiceTypes } = useSupabaseQuery(fetchServiceTypes, [])
+  const { properties, loadingProperties, errorProperties, serviceTypes, loadingServiceTypes, errorServiceTypes } = useReferenceData()
 
   const loading =
     loadingCharges || loadingExpenses || loadingPayroll || loadingSchedules || loadingProperties || loadingServiceTypes

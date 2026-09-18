@@ -1,5 +1,6 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { ProtectedRoute } from './auth/ProtectedRoute'
+import { ReferenceDataProvider } from './contexts/ReferenceDataContext'
 import { AppLayout } from './layout/AppLayout'
 import { Cobros } from './pages/Cobros'
 import { ConfiguracionAlertas } from './pages/ConfiguracionAlertas'
@@ -31,7 +32,9 @@ const App = () => {
       <Route
         element={
           <ProtectedRoute>
-            <AppLayout />
+            <ReferenceDataProvider>
+              <AppLayout />
+            </ReferenceDataProvider>
           </ProtectedRoute>
         }
       >

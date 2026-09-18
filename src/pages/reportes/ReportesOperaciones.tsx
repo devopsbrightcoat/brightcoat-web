@@ -25,7 +25,8 @@ import { DashboardPanel } from '../../components/dashboard/DashboardPanel'
 import { RankingBars } from '../../components/dashboard/RankingBars'
 import { ReportDateRangeBar } from '../../components/dashboard/ReportDateRangeBar'
 import { StatusPill } from '../../components/common/StatusPill'
-import { fetchCharges, fetchEmployees, fetchProperties, fetchSchedules, fetchServiceTypes } from '../../lib/api'
+import { useReferenceData } from '../../contexts/ReferenceDataContext'
+import { fetchCharges, fetchSchedules } from '../../lib/api'
 import {
   computeEmployeeActivity,
   computeOverdueSchedules,
@@ -96,12 +97,17 @@ export const ReportesOperaciones = () => {
   const detailRef = useRef<HTMLDivElement>(null)
 
   const { data: schedules, loading: loadingSchedules, error: errorSchedules } = useSupabaseQuery(fetchSchedules, [])
-  const { data: properties, loading: loadingProperties, error: errorProperties } = useSupabaseQuery(fetchProperties, [])
-  const { data: employees, loading: loadingEmployees, error: errorEmployees } = useSupabaseQuery(fetchEmployees, [])
-  const { data: serviceTypes, loading: loadingServiceTypes, error: errorServiceTypes } = useSupabaseQuery(
-    fetchServiceTypes,
-    [],
-  )
+  const {
+    properties,
+    loadingProperties,
+    errorProperties,
+    employees,
+    loadingEmployees,
+    errorEmployees,
+    serviceTypes,
+    loadingServiceTypes,
+    errorServiceTypes,
+  } = useReferenceData()
   const { data: charges, loading: loadingCharges, error: errorCharges } = useSupabaseQuery(fetchCharges, [])
 
   const loading = loadingSchedules || loadingProperties || loadingEmployees || loadingServiceTypes || loadingCharges

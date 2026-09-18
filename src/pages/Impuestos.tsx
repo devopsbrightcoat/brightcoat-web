@@ -13,7 +13,8 @@ import { StatCard } from '../components/common/StatCard'
 import { DataTablePanel } from '../components/common/DataTablePanel'
 import { StatusPill } from '../components/common/StatusPill'
 import { ImpuestosMonthDetailModal, type MonthGroup } from '../components/impuestos/ImpuestosMonthDetailModal'
-import { fetchCharges, fetchProperties, updateChargesTaxPaid } from '../lib/api'
+import { useReferenceData } from '../contexts/ReferenceDataContext'
+import { fetchCharges, updateChargesTaxPaid } from '../lib/api'
 import { useSupabaseQuery } from '../lib/useSupabaseQuery'
 import { formatMonthLabel, parseISODate } from '../lib/scheduleDates'
 import { taxOnAmount, SALES_TAX_RATE } from '../lib/tax'
@@ -35,7 +36,7 @@ export const Impuestos = () => {
   const [actionError, setActionError] = useState<string | null>(null)
 
   const { data: charges, loading: loadingCharges, error } = useSupabaseQuery(fetchCharges, [refreshKey])
-  const { data: properties, loading: loadingProperties } = useSupabaseQuery(fetchProperties, [refreshKey])
+  const { properties, loadingProperties } = useReferenceData()
 
   const months = useMemo<MonthGroup[]>(() => {
     const taxable = (charges ?? []).filter((c) => c.status === 'paid' && c.generatedDate)

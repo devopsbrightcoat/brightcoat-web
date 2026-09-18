@@ -14,7 +14,8 @@ import { PageHeader } from '../components/common/PageHeader'
 import { Pagination } from '../components/common/Pagination'
 import { AddChargeTemplateModal } from '../components/cobrosFijos/AddChargeTemplateModal'
 import { EditChargeTemplateModal } from '../components/cobrosFijos/EditChargeTemplateModal'
-import { deleteChargeTemplate, fetchChargeTemplates, fetchProperties } from '../lib/api'
+import { useReferenceData } from '../contexts/ReferenceDataContext'
+import { deleteChargeTemplate, fetchChargeTemplates } from '../lib/api'
 import { useSupabaseQuery } from '../lib/useSupabaseQuery'
 import type { ChargeTemplate } from '../types'
 
@@ -40,7 +41,7 @@ export const ConfiguracionCobrosFijos = () => {
   const [editingTemplate, setEditingTemplate] = useState<ChargeTemplate | null>(null)
   const [deletingTemplate, setDeletingTemplate] = useState<ChargeTemplate | null>(null)
   const { data: templates, loading, error } = useSupabaseQuery(fetchChargeTemplates, [refreshKey])
-  const { data: properties } = useSupabaseQuery(fetchProperties, [refreshKey])
+  const { properties } = useReferenceData()
 
   const propertyNameById = useMemo(() => {
     const map = new Map<string, string>()

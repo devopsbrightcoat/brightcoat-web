@@ -96,8 +96,14 @@ const mapExpense = (row: ExpenseRow): Expense => ({
   vendorId: row.vendor_id ?? undefined,
 })
 
-export const fetchExpenses = async (): Promise<Expense[]> => {
-  const { data, error } = await supabase.from('expenses').select('*').order('date', { ascending: false })
+// dateFrom/dateTo son opcionales: cuando la pantalla tiene un filtro de fecha
+// activo se filtra del lado del servidor en vez de traer todo el historial y
+// filtrar en el cliente. Sin filtro, se mantiene el comportamiento anterior.
+export const fetchExpenses = async (dateFrom?: string, dateTo?: string): Promise<Expense[]> => {
+  let query = supabase.from('expenses').select('*')
+  if (dateFrom) query = query.gte('date', dateFrom)
+  if (dateTo) query = query.lte('date', dateTo)
+  const { data, error } = await query.order('date', { ascending: false })
   if (error) throw error
   return ((data ?? []) as ExpenseRow[]).map(mapExpense)
 }
@@ -232,10 +238,12 @@ const mapPayrollEntry = (row: PayrollEntryRow): PayrollEntry => ({
   })),
 })
 
-export const fetchPayrollEntries = async (): Promise<PayrollEntry[]> => {
-  const { data, error } = await supabase
-    .from('payroll_entries')
-    .select('*, payroll_entry_items(*)')
+// dateFrom/dateTo opcionales — mismo patrón que fetchExpenses.
+export const fetchPayrollEntries = async (dateFrom?: string, dateTo?: string): Promise<PayrollEntry[]> => {
+  let query = supabase.from('payroll_entries').select('*, payroll_entry_items(*)')
+  if (dateFrom) query = query.gte('date', dateFrom)
+  if (dateTo) query = query.lte('date', dateTo)
+  const { data, error } = await query
     .order('date', { ascending: false })
     .order('position', { foreignTable: 'payroll_entry_items', ascending: true })
   if (error) throw error
@@ -335,8 +343,13 @@ const mapCharge = (row: ChargeRow): Charge => ({
   isFixed: row.is_fixed,
 })
 
-export const fetchCharges = async (): Promise<Charge[]> => {
-  const { data, error } = await supabase.from('charges').select('*').order('created_at', { ascending: false })
+// dateFrom/dateTo opcionales — filtran por generated_date, mismo patrón que
+// fetchExpenses/fetchPayrollEntries.
+export const fetchCharges = async (dateFrom?: string, dateTo?: string): Promise<Charge[]> => {
+  let query = supabase.from('charges').select('*')
+  if (dateFrom) query = query.gte('generated_date', dateFrom)
+  if (dateTo) query = query.lte('generated_date', dateTo)
+  const { data, error } = await query.order('created_at', { ascending: false })
   if (error) throw error
   return ((data ?? []) as ChargeRow[]).map(mapCharge)
 }
@@ -690,10 +703,13 @@ const mapSchedule = (row: ScheduleRow): Schedule => ({
   rescheduledToId: row.rescheduled_to_id ?? undefined,
 })
 
-export const fetchSchedules = async (): Promise<Schedule[]> => {
-  const { data, error } = await supabase
-    .from('schedules')
-    .select('*')
+// dateFrom opcional — mismo patrón que fetchCharges/fetchExpenses. Se usa
+// sobre todo para acotar el Dashboard a una ventana móvil reciente.
+export const fetchSchedules = async (dateFrom?: string, dateTo?: string): Promise<Schedule[]> => {
+  let query = supabase.from('schedules').select('*')
+  if (dateFrom) query = query.gte('scheduled_date', dateFrom)
+  if (dateTo) query = query.lte('scheduled_date', dateTo)
+  const { data, error } = await query
     .order('scheduled_date', { ascending: true })
     .order('created_at', { ascending: true })
   if (error) throw error

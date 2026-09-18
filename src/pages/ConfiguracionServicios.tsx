@@ -14,8 +14,8 @@ import { PageHeader } from '../components/common/PageHeader'
 import { Pagination } from '../components/common/Pagination'
 import { AddServiceTypeModal } from '../components/servicios/AddServiceTypeModal'
 import { EditServiceTypeModal } from '../components/servicios/EditServiceTypeModal'
-import { deleteServiceType, fetchServiceTypes } from '../lib/api'
-import { useSupabaseQuery } from '../lib/useSupabaseQuery'
+import { useReferenceData } from '../contexts/ReferenceDataContext'
+import { deleteServiceType } from '../lib/api'
 import type { ServiceType } from '../types'
 
 const PAGE_SIZE = 15
@@ -40,11 +40,10 @@ const SortIcon = ({ direction }: { direction: false | 'asc' | 'desc' }) =>
   )
 
 export const ConfiguracionServicios = () => {
-  const [refreshKey, setRefreshKey] = useState(0)
   const [addOpen, setAddOpen] = useState(false)
   const [editingServiceType, setEditingServiceType] = useState<ServiceType | null>(null)
   const [deletingServiceType, setDeletingServiceType] = useState<ServiceType | null>(null)
-  const { data: serviceTypes, loading, error } = useSupabaseQuery(fetchServiceTypes, [refreshKey])
+  const { serviceTypes, loadingServiceTypes: loading, errorServiceTypes: error, refetchServiceTypes } = useReferenceData()
 
   const [sorting, setSorting] = useState<SortingState>([])
   const [pageIndex, setPageIndex] = useState(0)
@@ -176,12 +175,12 @@ export const ConfiguracionServicios = () => {
         )}
       </div>
 
-      <AddServiceTypeModal open={addOpen} onClose={() => setAddOpen(false)} onSaved={() => setRefreshKey((k) => k + 1)} />
+      <AddServiceTypeModal open={addOpen} onClose={() => setAddOpen(false)} onSaved={refetchServiceTypes} />
 
       <EditServiceTypeModal
         serviceType={editingServiceType}
         onClose={() => setEditingServiceType(null)}
-        onSaved={() => setRefreshKey((k) => k + 1)}
+        onSaved={refetchServiceTypes}
       />
 
       <ConfirmModal
@@ -192,7 +191,7 @@ export const ConfiguracionServicios = () => {
         onConfirm={async () => {
           if (!deletingServiceType) return
           await deleteServiceType(deletingServiceType.id)
-          setRefreshKey((k) => k + 1)
+          refetchServiceTypes()
         }}
       />
     </div>

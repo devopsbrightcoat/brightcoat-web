@@ -31,17 +31,11 @@ import { DashboardPanel } from '../components/dashboard/DashboardPanel'
 import { DashboardDateRangeSelect } from '../components/dashboard/DashboardDateRangeSelect'
 import { RankingBars } from '../components/dashboard/RankingBars'
 import { ServiceCategoryModal } from '../components/dashboard/ServiceCategoryModal'
-import {
-  fetchCharges,
-  fetchEmployees,
-  fetchExpenses,
-  fetchPayrollEntries,
-  fetchProperties,
-  fetchSchedules,
-  fetchServiceTypes,
-} from '../lib/api'
+import { useReferenceData } from '../contexts/ReferenceDataContext'
+import { fetchCharges, fetchExpenses, fetchPayrollEntries, fetchSchedules } from '../lib/api'
 import {
   computeAlerts,
+  computeDashboardFetchWindowStart,
   computeDateRange,
   computeEmployeeProductivity,
   computeKpis,
@@ -79,13 +73,27 @@ export const Dashboard = () => {
   const [rangeSelection, setRangeSelection] = useState<DashboardDateRangeSelection>({ kind: 'preset', key: 'this_month' })
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null)
 
-  const { data: charges, loading: loadingCharges, error: errorCharges } = useSupabaseQuery(fetchCharges, [])
-  const { data: expenses, loading: loadingExpenses, error: errorExpenses } = useSupabaseQuery(fetchExpenses, [])
-  const { data: payrollEntries, loading: loadingPayroll, error: errorPayroll } = useSupabaseQuery(fetchPayrollEntries, [])
-  const { data: schedules, loading: loadingSchedules, error: errorSchedules } = useSupabaseQuery(fetchSchedules, [])
-  const { data: properties, loading: loadingProperties, error: errorProperties } = useSupabaseQuery(fetchProperties, [])
-  const { data: employees, loading: loadingEmployees, error: errorEmployees } = useSupabaseQuery(fetchEmployees, [])
-  const { data: serviceTypes, loading: loadingServiceTypes, error: errorServiceTypes } = useSupabaseQuery(fetchServiceTypes, [])
+  // El Dashboard solo necesita datos de los últimos ~14 meses (ver
+  // computeDashboardFetchWindowStart) — antes traía TODO el historial en
+  // cada una de estas 4 consultas.
+  const fetchWindowStart = useMemo(() => computeDashboardFetchWindowStart(), [])
+  const { data: charges, loading: loadingCharges, error: errorCharges } = useSupabaseQuery(
+    () => fetchCharges(fetchWindowStart),
+    [fetchWindowStart],
+  )
+  const { data: expenses, loading: loadingExpenses, error: errorExpenses } = useSupabaseQuery(
+    () => fetchExpenses(fetchWindowStart),
+    [fetchWindowStart],
+  )
+  const { data: payrollEntries, loading: loadingPayroll, error: errorPayroll } = useSupabaseQuery(
+    () => fetchPayrollEntries(fetchWindowStart),
+    [fetchWindowStart],
+  )
+  const { data: schedules, loading: loadingSchedules, error: errorSchedules } = useSupabaseQuery(
+    () => fetchSchedules(fetchWindowStart),
+    [fetchWindowStart],
+  )
+  const { properties, loadingProperties, errorProperties, employees, loadingEmployees, errorEmployees, serviceTypes, loadingServiceTypes, errorServiceTypes } = useReferenceData()
 
   const loading =
     loadingCharges || loadingExpenses || loadingPayroll || loadingSchedules || loadingProperties || loadingEmployees || loadingServiceTypes

@@ -8,7 +8,8 @@ import { EditScheduleModal } from '../components/horarios/EditScheduleModal'
 import { ScheduleActionModal } from '../components/horarios/ScheduleActionModal'
 import { ScheduleDetailModal } from '../components/horarios/ScheduleDetailModal'
 import { ScheduleFiltersModal } from '../components/horarios/ScheduleFiltersModal'
-import { deleteSchedule, fetchEmployees, fetchProperties, fetchSchedules, fetchServiceTypes } from '../lib/api'
+import { useReferenceData } from '../contexts/ReferenceDataContext'
+import { deleteSchedule, fetchSchedules } from '../lib/api'
 import { useSupabaseQuery } from '../lib/useSupabaseQuery'
 import { exportSchedulesToExcel } from '../lib/exportSchedules'
 import { getErrorMessage } from '../lib/errors'
@@ -31,9 +32,7 @@ const today = new Date()
 export const Horarios = () => {
   const [refreshKey, setRefreshKey] = useState(0)
   const { data: schedules, loading, error } = useSupabaseQuery(fetchSchedules, [refreshKey])
-  const { data: properties } = useSupabaseQuery(fetchProperties, [])
-  const { data: serviceTypes } = useSupabaseQuery(fetchServiceTypes, [])
-  const { data: employees } = useSupabaseQuery(fetchEmployees, [])
+  const { properties, serviceTypes, employees } = useReferenceData()
 
   const [viewYear, setViewYear] = useState(today.getFullYear())
   const [viewMonth, setViewMonth] = useState(today.getMonth())
@@ -76,9 +75,9 @@ export const Horarios = () => {
     setSelectedDateIso(toISODate(pickDateWithinWeek(week, today)))
   }
 
-  const propertyMap = new Map((properties ?? []).map((p) => [p.id, p.name]))
-  const serviceTypeMap = new Map((serviceTypes ?? []).map((t) => [t.id, t.name]))
-  const employeeMap = new Map((employees ?? []).map((e) => [e.id, e.name]))
+  const propertyMap = useMemo(() => new Map((properties ?? []).map((p) => [p.id, p.name])), [properties])
+  const serviceTypeMap = useMemo(() => new Map((serviceTypes ?? []).map((t) => [t.id, t.name])), [serviceTypes])
+  const employeeMap = useMemo(() => new Map((employees ?? []).map((e) => [e.id, e.name])), [employees])
 
   const dayRows = (schedules ?? [])
     .filter((s) => s.scheduledDate === selectedDateIso)

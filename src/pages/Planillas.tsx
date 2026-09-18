@@ -16,7 +16,8 @@ import { AddPayrollEntryModal } from '../components/pagos/AddPayrollEntryModal'
 import { EditPayrollEntryModal } from '../components/pagos/EditPayrollEntryModal'
 import { PayrollEntryDetailModal } from '../components/pagos/PayrollEntryDetailModal'
 import { PayrollFiltersModal } from '../components/pagos/PayrollFiltersModal'
-import { deletePayrollEntry, fetchEmployees, fetchPayrollEntries, fetchProperties } from '../lib/api'
+import { useReferenceData } from '../contexts/ReferenceDataContext'
+import { deletePayrollEntry, fetchPayrollEntries } from '../lib/api'
 import { useSupabaseQuery } from '../lib/useSupabaseQuery'
 import { formatFullDate } from '../lib/scheduleDates'
 import { exportPayrollToExcel } from '../lib/exportPayroll'
@@ -50,17 +51,17 @@ export const Planillas = () => {
   const [exporting, setExporting] = useState(false)
   const [exportError, setExportError] = useState<string | null>(null)
 
-  const { data: entries, loading: loadingEntries, error } = useSupabaseQuery(fetchPayrollEntries, [refreshKey])
-  const { data: properties, loading: loadingProperties } = useSupabaseQuery(fetchProperties, [refreshKey])
-  const { data: employees, loading: loadingEmployees } = useSupabaseQuery(fetchEmployees, [refreshKey])
+  const { data: entries, loading: loadingEntries, error } = useSupabaseQuery(
+    () => fetchPayrollEntries(dateFrom || undefined, dateTo || undefined),
+    [refreshKey, dateFrom, dateTo],
+  )
+  const { properties, loadingProperties, employees, loadingEmployees } = useReferenceData()
 
   const filtered = useMemo(() => {
     const q = searchText.trim().toLowerCase()
     const rows: PayrollRow[] = (entries ?? [])
       .filter((e) => propertyId === 'all' || e.propertyId === propertyId)
       .filter((e) => employeeId === 'all' || e.employeeId === employeeId)
-      .filter((e) => !dateFrom || e.date >= dateFrom)
-      .filter((e) => !dateTo || e.date <= dateTo)
       .filter((e) => {
         if (!q) return true
         const propertyName = properties?.find((p) => p.id === e.propertyId)?.name ?? ''
@@ -82,7 +83,7 @@ export const Planillas = () => {
         }
       })
     return rows
-  }, [entries, properties, employees, propertyId, employeeId, dateFrom, dateTo, searchText])
+  }, [entries, properties, employees, propertyId, employeeId, searchText])
 
   const activeFilterCount =
     (propertyId !== 'all' ? 1 : 0) + (employeeId !== 'all' ? 1 : 0) + (dateFrom ? 1 : 0) + (dateTo ? 1 : 0)

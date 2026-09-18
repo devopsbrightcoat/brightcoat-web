@@ -15,8 +15,8 @@ import { ConfirmModal } from '../components/common/ConfirmModal'
 import { PageHeader } from '../components/common/PageHeader'
 import { Pagination } from '../components/common/Pagination'
 import { StatusPill } from '../components/common/StatusPill'
-import { deleteProperty, fetchProperties } from '../lib/api'
-import { useSupabaseQuery } from '../lib/useSupabaseQuery'
+import { useReferenceData } from '../contexts/ReferenceDataContext'
+import { deleteProperty } from '../lib/api'
 import type { Property } from '../types'
 
 const PAGE_SIZE = 15
@@ -39,8 +39,7 @@ const SortIcon = ({ direction }: { direction: false | 'asc' | 'desc' }) =>
   )
 
 export const Propiedades = () => {
-  const [refreshKey, setRefreshKey] = useState(0)
-  const { data: properties, loading, error } = useSupabaseQuery(fetchProperties, [refreshKey])
+  const { properties, loadingProperties: loading, errorProperties: error, refetchProperties } = useReferenceData()
 
   const [searchText, setSearchText] = useState('')
   const [sorting, setSorting] = useState<SortingState>([])
@@ -211,12 +210,12 @@ export const Propiedades = () => {
         )}
       </div>
 
-      <AddPropertyModal open={addOpen} onClose={() => setAddOpen(false)} onSaved={() => setRefreshKey((k) => k + 1)} />
+      <AddPropertyModal open={addOpen} onClose={() => setAddOpen(false)} onSaved={refetchProperties} />
 
       <EditPropertyModal
         property={editingProperty}
         onClose={() => setEditingProperty(null)}
-        onSaved={() => setRefreshKey((k) => k + 1)}
+        onSaved={refetchProperties}
       />
 
       <ConfirmModal
@@ -227,7 +226,7 @@ export const Propiedades = () => {
         onConfirm={async () => {
           if (!deletingProperty) return
           await deleteProperty(deletingProperty.id)
-          setRefreshKey((k) => k + 1)
+          refetchProperties()
         }}
       />
     </div>

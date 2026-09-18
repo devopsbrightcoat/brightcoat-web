@@ -19,7 +19,8 @@ import { EditChargeModal } from '../components/cobros/EditChargeModal'
 import { ChargeFiltersModal } from '../components/cobros/ChargeFiltersModal'
 import { ConfirmModal } from '../components/common/ConfirmModal'
 import { StatusPill } from '../components/common/StatusPill'
-import { deleteCharge, fetchCharges, fetchProperties, fetchServiceTypes } from '../lib/api'
+import { useReferenceData } from '../contexts/ReferenceDataContext'
+import { deleteCharge, fetchCharges } from '../lib/api'
 import { useSupabaseQuery } from '../lib/useSupabaseQuery'
 import { exportChargesToExcel } from '../lib/exportCharges'
 import { getErrorMessage } from '../lib/errors'
@@ -52,9 +53,11 @@ export const Cobros = () => {
   const [exporting, setExporting] = useState(false)
   const [exportError, setExportError] = useState<string | null>(null)
 
-  const { data: charges, loading: loadingCharges, error } = useSupabaseQuery(fetchCharges, [refreshKey])
-  const { data: properties, loading: loadingProperties } = useSupabaseQuery(fetchProperties, [refreshKey])
-  const { data: serviceTypes, loading: loadingServiceTypes } = useSupabaseQuery(fetchServiceTypes, [refreshKey])
+  const { data: charges, loading: loadingCharges, error } = useSupabaseQuery(
+    () => fetchCharges(dateFrom || undefined, dateTo || undefined),
+    [refreshKey, dateFrom, dateTo],
+  )
+  const { properties, loadingProperties, serviceTypes, loadingServiceTypes } = useReferenceData()
 
   const filtered = useMemo(() => {
     const q = searchText.trim().toLowerCase()
@@ -62,8 +65,6 @@ export const Cobros = () => {
       if (propertyId !== 'all' && c.propertyId !== propertyId) return false
       if (status !== 'all' && c.status !== status) return false
       if (serviceTypeId !== 'all' && c.serviceTypeId !== serviceTypeId) return false
-      if (dateFrom && (!c.generatedDate || c.generatedDate < dateFrom)) return false
-      if (dateTo && (!c.generatedDate || c.generatedDate > dateTo)) return false
       if (q) {
         const propertyName = properties?.find((p) => p.id === c.propertyId)?.name ?? ''
         const haystack = [propertyName, c.unitLabel, c.description, c.notes, c.responsible, c.invoiceNumber]
@@ -74,7 +75,7 @@ export const Cobros = () => {
       }
       return true
     })
-  }, [charges, properties, propertyId, status, serviceTypeId, dateFrom, dateTo, searchText])
+  }, [charges, properties, propertyId, status, serviceTypeId, searchText])
 
   const activeFilterCount =
     (propertyId !== 'all' ? 1 : 0) +
@@ -83,8 +84,14 @@ export const Cobros = () => {
     (dateFrom ? 1 : 0) +
     (dateTo ? 1 : 0)
 
-  const totalPaid = (charges ?? []).filter((c) => c.status === 'paid').reduce((sum, c) => sum + c.amount, 0)
-  const totalPending = (charges ?? []).filter((c) => c.status === 'pending').reduce((sum, c) => sum + c.amount, 0)
+  const totalPaid = useMemo(
+    () => (charges ?? []).filter((c) => c.status === 'paid').reduce((sum, c) => sum + c.amount, 0),
+    [charges],
+  )
+  const totalPending = useMemo(
+    () => (charges ?? []).filter((c) => c.status === 'pending').reduce((sum, c) => sum + c.amount, 0),
+    [charges],
+  )
 
   const handleExport = async () => {
     setExporting(true)

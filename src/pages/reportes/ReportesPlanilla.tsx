@@ -13,7 +13,8 @@ import { PageHeader } from '../../components/common/PageHeader'
 import { StatCard } from '../../components/common/StatCard'
 import { DataTablePanel } from '../../components/common/DataTablePanel'
 import { ReportDateRangeBar } from '../../components/dashboard/ReportDateRangeBar'
-import { fetchEmployees, fetchPayrollEntries, fetchProperties } from '../../lib/api'
+import { useReferenceData } from '../../contexts/ReferenceDataContext'
+import { fetchPayrollEntries } from '../../lib/api'
 import {
   computePayrollByEmployee,
   computePayrollByProperty,
@@ -77,8 +78,7 @@ export const ReportesPlanilla = () => {
   const [pendingPageIndex, setPendingPageIndex] = useState(0)
 
   const { data: entries, loading: loadingEntries, error: errorEntries } = useSupabaseQuery(fetchPayrollEntries, [])
-  const { data: properties, loading: loadingProperties, error: errorProperties } = useSupabaseQuery(fetchProperties, [])
-  const { data: employees, loading: loadingEmployees, error: errorEmployees } = useSupabaseQuery(fetchEmployees, [])
+  const { properties, loadingProperties, errorProperties, employees, loadingEmployees, errorEmployees } = useReferenceData()
 
   const loading = loadingEntries || loadingProperties || loadingEmployees
   const error = errorEntries ?? errorProperties ?? errorEmployees

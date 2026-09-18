@@ -31,7 +31,6 @@ const columnHelper = createColumnHelper<Expense>()
 
 export const Gastos = () => {
   const [refreshKey, setRefreshKey] = useState(0)
-  const { data: expenses, loading, error } = useSupabaseQuery(fetchExpenses, [refreshKey])
 
   const [searchText, setSearchText] = useState('')
   const [addOpen, setAddOpen] = useState(false)
@@ -46,8 +45,16 @@ export const Gastos = () => {
   const [amountMax, setAmountMax] = useState('')
   const [vendorId, setVendorId] = useState('')
 
-  const { data: vendors } = useSupabaseQuery(fetchVendors, [refreshKey])
-  const vendorMap = new Map((vendors ?? []).map((v) => [v.id, v.name]))
+  const { data: expenses, loading, error } = useSupabaseQuery(
+    () => fetchExpenses(dateFrom || undefined, dateTo || undefined),
+    [refreshKey, dateFrom, dateTo],
+  )
+
+  // Los proveedores no se editan desde esta pantalla (solo se leen para el
+  // filtro/selector) — no dependen de refreshKey, que bumpea al crear/editar
+  // gastos.
+  const { data: vendors } = useSupabaseQuery(fetchVendors, [])
+  const vendorMap = useMemo(() => new Map((vendors ?? []).map((v) => [v.id, v.name])), [vendors])
 
   const [sorting, setSorting] = useState<SortingState>([])
   const [pageIndex, setPageIndex] = useState(0)
@@ -64,14 +71,12 @@ export const Gastos = () => {
         const matchesDescription = (e.description ?? '').toLowerCase().includes(q)
         if (!matchesInvoice && !matchesDescription) return false
       }
-      if (dateFrom && e.date < dateFrom) return false
-      if (dateTo && e.date > dateTo) return false
       if (min != null && !Number.isNaN(min) && e.amount < min) return false
       if (max != null && !Number.isNaN(max) && e.amount > max) return false
       if (vendorId && e.vendorId !== vendorId) return false
       return true
     })
-  }, [expenses, searchText, dateFrom, dateTo, amountMin, amountMax, vendorId])
+  }, [expenses, searchText, amountMin, amountMax, vendorId])
 
   const activeFilterCount = [dateFrom, dateTo, amountMin, amountMax, vendorId].filter(Boolean).length
   const totalAmount = filtered.reduce((sum, e) => sum + e.amount, 0)

@@ -13,7 +13,8 @@ import { StatCard } from '../../components/common/StatCard'
 import { DataTablePanel } from '../../components/common/DataTablePanel'
 import { ReportDateRangeBar } from '../../components/dashboard/ReportDateRangeBar'
 import { StatusPill } from '../../components/common/StatusPill'
-import { fetchCharges, fetchProperties } from '../../lib/api'
+import { useReferenceData } from '../../contexts/ReferenceDataContext'
+import { fetchCharges } from '../../lib/api'
 import {
   computeAgingDetail,
   computeOutstandingAging,
@@ -52,7 +53,7 @@ export const ReportesCobros = () => {
   const [agingPageIndex, setAgingPageIndex] = useState(0)
 
   const { data: charges, loading: loadingCharges, error: errorCharges } = useSupabaseQuery(fetchCharges, [])
-  const { data: properties, loading: loadingProperties, error: errorProperties } = useSupabaseQuery(fetchProperties, [])
+  const { properties, loadingProperties, errorProperties } = useReferenceData()
 
   const loading = loadingCharges || loadingProperties
   const error = errorCharges ?? errorProperties

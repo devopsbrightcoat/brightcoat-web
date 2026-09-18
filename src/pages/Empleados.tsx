@@ -6,14 +6,13 @@ import { ConfirmModal } from '../components/common/ConfirmModal'
 import { PageHeader } from '../components/common/PageHeader'
 import { Pagination } from '../components/common/Pagination'
 import { StatusPill } from '../components/common/StatusPill'
-import { deleteEmployee, fetchEmployees } from '../lib/api'
+import { useReferenceData } from '../contexts/ReferenceDataContext'
+import { deleteEmployee } from '../lib/api'
 import { usePagination } from '../lib/usePagination'
-import { useSupabaseQuery } from '../lib/useSupabaseQuery'
 import type { Employee } from '../types'
 
 export const Empleados = () => {
-  const [refreshKey, setRefreshKey] = useState(0)
-  const { data: employees, loading: loadingEmployees, error: errorEmployees } = useSupabaseQuery(fetchEmployees, [refreshKey])
+  const { employees, loadingEmployees, errorEmployees, refetchEmployees } = useReferenceData()
   const [searchText, setSearchText] = useState('')
   const [addOpen, setAddOpen] = useState(false)
   const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null)
@@ -117,12 +116,12 @@ export const Empleados = () => {
         </>
       )}
 
-      <AddEmployeeModal open={addOpen} onClose={() => setAddOpen(false)} onSaved={() => setRefreshKey((k) => k + 1)} />
+      <AddEmployeeModal open={addOpen} onClose={() => setAddOpen(false)} onSaved={refetchEmployees} />
 
       <EditEmployeeModal
         employee={editingEmployee}
         onClose={() => setEditingEmployee(null)}
-        onSaved={() => setRefreshKey((k) => k + 1)}
+        onSaved={refetchEmployees}
       />
 
       <ConfirmModal
@@ -133,7 +132,7 @@ export const Empleados = () => {
         onConfirm={async () => {
           if (!deletingEmployee) return
           await deleteEmployee(deletingEmployee.id)
-          setRefreshKey((k) => k + 1)
+          refetchEmployees()
         }}
       />
     </div>
