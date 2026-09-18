@@ -4,10 +4,6 @@ import { formatQuincenaRangeLabel, listRecentMonths, type QuincenaKey } from '..
 const selectClass =
   'rounded-lg border border-white/10 bg-surface px-3 py-2 text-sm text-white outline-none focus:border-gold-500'
 
-// Selector "mes + 1ra/2da quincena" — quincenas al estilo de David, no las
-// de calendario (ver lib/quincena.ts). Se usa tanto en el filtro del
-// Dashboard como en la barra de Reportes (ver ReportDateRangeBar), así que
-// vive como componente propio en vez de duplicarse en los dos.
 type QuincenaPickerProps = {
   value: QuincenaKey
   onChange: (key: QuincenaKey) => void

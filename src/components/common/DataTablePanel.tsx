@@ -2,12 +2,6 @@ import { flexRender, type Table } from '@tanstack/react-table'
 import { ArrowDown, ArrowUp, ArrowUpDown } from 'lucide-react'
 import { Pagination } from './Pagination'
 
-// ---------------------------------------------------------------------------
-// Panel genérico para tablas ordenables/paginadas (tanstack/react-table).
-// Reutilizado por Cobros, Gastos y Planillas para no repetir el mismo
-// markup de encabezado ordenable + estados de carga/error/vacío + paginación.
-// ---------------------------------------------------------------------------
-
 type DataTablePanelProps<T> = {
   title: string
   table: Table<T>

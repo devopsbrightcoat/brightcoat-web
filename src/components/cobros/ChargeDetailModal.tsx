@@ -12,11 +12,6 @@ const Field = ({ label, value }: { label: string; value: React.ReactNode }) => (
   </div>
 )
 
-// Vista de solo lectura con toda la información de un cobro — se abre al
-// hacer clic en cualquier parte de una fila de la tabla de Cobros (ver
-// onRowClick en DataTablePanel.tsx). El clic en el estatus abre en cambio
-// ChargeInvoiceModal — su botón detiene la propagación para no chocar con
-// este modal.
 type ChargeDetailModalProps = {
   charge: Charge | null
   properties: Property[]

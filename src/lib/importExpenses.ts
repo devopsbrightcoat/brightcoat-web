@@ -1,9 +1,3 @@
-// ---------------------------------------------------------------------------
-// Importador de la plantilla "Gastos" (ver /public/plantilla-gastos.xlsx).
-// Una sola hoja plana: cada fila es un gasto/factura, totalmente desligado
-// de propiedades, empleados y servicios — número de factura, monto, fecha y
-// descripción.
-// ---------------------------------------------------------------------------
 
 import ExcelJS from 'exceljs'
 import { fetchExpenses } from './api'
@@ -50,9 +44,6 @@ export type ImportExpenseOutcome = {
   rowNumber: number
   invoiceNumber?: string
   success: boolean
-  // true cuando la fila no se insertó porque ya existía un gasto idéntico
-  // (misma factura, monto, fecha y descripción) — evita duplicar datos si
-  // se sube el mismo archivo más de una vez.
   skipped?: boolean
   message: string
 }
@@ -70,14 +61,14 @@ export const parseExpensesWorkbook = async (file: File): Promise<ParsedExpenseRo
   const rows: ParsedExpenseRow[] = []
 
   sheet.eachRow((row, rowNumber) => {
-    if (rowNumber === 1) return // fila de encabezados
+    if (rowNumber === 1) return
 
     const get = (col: number) => cellText(row.getCell(col).value)
     const invoiceNumber = get(COLS.invoiceNumber)
     const amountRaw = get(COLS.amount)
     const dateRaw = get(COLS.date)
     const description = get(COLS.description)
-    if (!invoiceNumber && !amountRaw && !dateRaw && !description) return // fila vacía
+    if (!invoiceNumber && !amountRaw && !dateRaw && !description) return
 
     rows.push({ rowNumber, invoiceNumber, amountRaw, dateRaw, description })
   })
@@ -104,9 +95,6 @@ export const validateExpenseRow = (row: ParsedExpenseRow): ValidatedExpenseRow =
   }
 }
 
-// Firma única de un gasto (factura + monto + fecha + descripción). Se usa
-// para detectar si una fila del Excel ya se había importado antes, de modo
-// que subir el mismo archivo dos veces no duplique los gastos.
 const expenseSignature = (invoiceNumber: string | null, amount: number, date: string, description: string): string =>
   [invoiceNumber ?? '', amount.toFixed(2), date, description.trim().toLowerCase()].join('|')
 

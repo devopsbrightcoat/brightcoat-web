@@ -3,9 +3,6 @@ import { Bell } from 'lucide-react'
 import { fetchNotifications, markAllNotificationsRead, markNotificationRead } from '../../lib/api'
 import type { AppNotification } from '../../types'
 
-// Sin websockets/realtime en esta app (ver src/lib/useSupabaseQuery.ts —
-// fetch simple, sin cache ni revalidación) — la campanita se mantiene al
-// día con un poll simple en vez de una suscripción a Supabase Realtime.
 const POLL_MS = 30000
 
 const timeAgo = (iso: string): string => {
@@ -26,8 +23,6 @@ export const NotificationBell = () => {
     fetchNotifications()
       .then(setNotifications)
       .catch(() => {
-        // La campanita no es crítica para el flujo de trabajo — si falla el
-        // fetch simplemente se reintenta en el próximo poll, sin mostrar error.
       })
   }
 
@@ -46,8 +41,6 @@ export const NotificationBell = () => {
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [open])
 
-  // Todas las alertas mostradas acá están, por definición, sin leer — leer
-  // una la borra (ver api.ts), así que nunca se acumulan.
   const unreadCount = notifications.length
 
   const handleItemClick = (n: AppNotification) => {

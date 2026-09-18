@@ -34,14 +34,6 @@ const SortIcon = ({ direction }: { direction: false | 'asc' | 'desc' }) =>
     <ArrowUpDown className="h-3 w-3 opacity-40" />
   )
 
-// Configuración › Cobros fijos — catálogo de cargos recurrentes que se
-// eligen como plantilla OBLIGATORIA al agregar un cobro fijo real
-// (Finanzas › Cobros → "Agregar cobro fijo"). Mismo patrón que
-// Configuración › Gastos fijos (ConfiguracionGastosFijos.tsx): tabla
-// ordenable + modales de agregar/editar/eliminar sobre charge_templates,
-// sin ningún vínculo hacia la tabla charges. A diferencia de Gastos fijos,
-// acá "Servicio" y "Monto" son ambos obligatorios — un cobro fijo siempre
-// tiene un monto conocido.
 export const ConfiguracionCobrosFijos = () => {
   const [refreshKey, setRefreshKey] = useState(0)
   const [addOpen, setAddOpen] = useState(false)

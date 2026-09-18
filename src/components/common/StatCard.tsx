@@ -6,9 +6,6 @@ type StatCardProps = {
   icon: LucideIcon
   tone?: 'default' | 'good' | 'warn'
   hint?: string
-  // 'compact' es para paneles donde el stat es un dato secundario junto a una
-  // tabla (ej. Planillas) y no debe competir en tamaño con las StatCard
-  // principales de un dashboard/reporte — mismo componente, menos presencia.
   size?: 'default' | 'compact'
 }
 

@@ -2,26 +2,6 @@ import type { Charge, Employee, PayrollEntry, Expense, Property, Schedule, Servi
 import { addDays, parseISODate, toISODate } from './scheduleDates'
 import { getQuincenaRange, type QuincenaKey } from './quincena'
 
-// ---------------------------------------------------------------------------
-// Cálculos para el Dashboard (Business Overview) — ver propuesta de diseño
-// "BrightCoat Ops — Dashboard, Métricas, KPIs y Gráficas Recomendadas" (PDF
-// de David). Todo lo de acá es agregación pura en memoria sobre lo que ya
-// traen fetchCharges/fetchExpenses/fetchPayrollEntries/fetchSchedules — sin
-// vistas nuevas en Supabase.
-//
-// Notas de modelado importantes (para no malinterpretar los números):
-// - `charges` no tiene fecha de vencimiento (due date), solo `generatedDate`
-//   (la fecha en que se generó el cobro). "Outstanding Aging" y "cobros
-//   vencidos" usan generatedDate como aproximación de antigüedad.
-// - `expenses` es a nivel de negocio, no tiene propertyId. Por eso el
-//   margen "por propiedad" (usado en la alerta de margen bajo) es
-//   Revenue − Labor Cost por propiedad, sin restar gastos generales — no
-//   son atribuibles a una propiedad específica en el modelo actual.
-// - `charges` no tiene employeeId, así que "revenue por empleado" no es
-//   calculable. Employee Productivity usa trabajos completados (schedules
-//   con status "delivered"), que sí están atribuidos a un empleado.
-// ---------------------------------------------------------------------------
-
 export type DashboardDateRangeKey = 'fifteen_days' | 'this_month' | 'last_6_months' | 'last_12_months'
 
 export const DASHBOARD_DATE_RANGE_OPTIONS: { value: DashboardDateRangeKey; label: string }[] = [
@@ -31,22 +11,15 @@ export const DASHBOARD_DATE_RANGE_OPTIONS: { value: DashboardDateRangeKey; label
   { value: 'last_12_months', label: 'Últimos 12 meses' },
 ]
 
-export type DateRange = { start: string; end: string } // ISO 'YYYY-MM-DD', ambos inclusive
+export type DateRange = { start: string; end: string }
 
 const startOfMonth = (year: number, month: number) => new Date(year, month, 1)
 const endOfMonth = (year: number, month: number) => new Date(year, month + 1, 0)
 
-// Selección de rango del Dashboard: un preset (ver arriba) o una quincena
-// específica (mes + 1ra/2da, al estilo de David — ver lib/quincena.ts). Es
-// un eje aparte de los presets, no una opción más de la lista: el usuario
-// elige uno u otro con QuincenaPicker (ver DashboardDateRangeSelect.tsx).
 export type DashboardDateRangeSelection =
   | { kind: 'preset'; key: DashboardDateRangeKey }
   | { kind: 'quincena'; quincena: QuincenaKey }
 
-// "Mes actual" es el mes calendario (1 al último día); "15 días" y "6
-// meses" son ventanas móviles terminando hoy — mismo criterio que el
-// filtro de rango ya usado en Finanzas/Reportes (ver dateRange.ts).
 export const computeDateRange = (selection: DashboardDateRangeSelection): DateRange => {
   if (selection.kind === 'quincena') return getQuincenaRange(selection.quincena)
 
@@ -56,26 +29,24 @@ export const computeDateRange = (selection: DashboardDateRangeSelection): DateRa
   switch (key) {
     case 'fifteen_days': {
       const start = new Date(now)
-      start.setDate(start.getDate() - 14) // incluye hoy → 15 días en total
+      start.setDate(start.getDate() - 14)
       return { start: toISODate(start), end: toISODate(now) }
     }
     case 'this_month':
       return { start: toISODate(startOfMonth(now.getFullYear(), now.getMonth())), end: toISODate(endOfMonth(now.getFullYear(), now.getMonth())) }
     case 'last_6_months': {
       const start = new Date(now)
-      start.setDate(start.getDate() - 179) // 180 días, mismo criterio que "six_months" en dateRange.ts
+      start.setDate(start.getDate() - 179)
       return { start: toISODate(start), end: toISODate(now) }
     }
     case 'last_12_months': {
       const start = new Date(now)
-      start.setDate(start.getDate() - 364) // 365 días, misma ventana móvil que "6 meses" pero al doble
+      start.setDate(start.getDate() - 364)
       return { start: toISODate(start), end: toISODate(now) }
     }
   }
 }
 
-// Período inmediatamente anterior, de la misma duración — para comparar
-// "vs. período anterior" (Revenue vs Previous Period, spike de Expenses).
 export const previousPeriod = (range: DateRange): DateRange => {
   const start = new Date(range.start)
   const end = new Date(range.end)
@@ -92,14 +63,7 @@ export const filterExpensesByRange = (expenses: Expense[], range: DateRange) => 
 export const filterPayrollByRange = (entries: PayrollEntry[], range: DateRange) => entries.filter((p) => inRange(p.date, range))
 export const filterSchedulesByRange = (schedules: Schedule[], range: DateRange) => schedules.filter((s) => inRange(s.scheduledDate, range))
 
-// Costo real de mano de obra de una planilla = suma de su desglose (el
-// "Pago" al empleado, ver Planillas.tsx) — NO `amount`, que desde el
-// refactor Cobro/Pago/Ganancia es el Cobro al cliente (un ingreso, no un
-// costo). Usarlo en vez de `p.amount` es lo que evita restar el mismo
-// ingreso dos veces en Estimated Profit / margen por propiedad.
 const payrollPago = (p: PayrollEntry) => p.items.reduce((sum, item) => sum + item.amount, 0)
-
-// --- 7 KPIs principales ------------------------------------------------
 
 export type DashboardKpis = {
   revenue: number
@@ -109,7 +73,7 @@ export type DashboardKpis = {
   laborCost: number
   expenses: number
   estimatedProfit: number
-  profitMargin: number | null // null cuando revenue del período es 0 (razón indefinida)
+  profitMargin: number | null
   completedJobs: number
 }
 
@@ -126,7 +90,6 @@ export const computeKpis = (
   const outstanding = periodCharges.filter((c) => c.status === 'pending').reduce((sum, c) => sum + c.amount, 0)
   const laborCost = filterPayrollByRange(payrollEntries, range).reduce((sum, p) => sum + payrollPago(p), 0)
   const periodExpenses = filterExpensesByRange(expenses, range).reduce((sum, e) => sum + e.amount, 0)
-  // Fórmula validada por el negocio (ver PDF): Estimated Profit = Revenue − Labor Cost − Expenses.
   const estimatedProfit = revenue - laborCost - periodExpenses
   const profitMargin = revenue > 0 ? (estimatedProfit / revenue) * 100 : null
   const completedJobs = filterSchedulesByRange(schedules, range).filter((s) => s.status === 'delivered').length
@@ -135,15 +98,10 @@ export const computeKpis = (
   return { revenue, revenuePrevious, collected, outstanding, laborCost, expenses: periodExpenses, estimatedProfit, profitMargin, completedJobs }
 }
 
-// --- Revenue Trend + Revenue vs Expenses vs Labor (últimos N meses) ----
-// Independiente del Date Range global — el PDF pide explícitamente "los
-// últimos 6–12 meses" para estas dos gráficas de tendencia, no el período
-// que esté seleccionado en el filtro (que puede ser un solo mes).
-
 export type MonthlyFinancials = { key: string; month: string; revenue: number; expenses: number; labor: number }
 
 const MONTH_LABELS = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']
-const monthKey = (dateStr: string) => dateStr.slice(0, 7) // 'YYYY-MM'
+const monthKey = (dateStr: string) => dateStr.slice(0, 7)
 
 export const computeMonthlyFinancials = (
   charges: Charge[],
@@ -167,14 +125,6 @@ export const computeMonthlyFinancials = (
   }))
 }
 
-// --- Revenue/Expenses by Period (granularidad elegible) -------------------
-// A diferencia de computeMonthlyFinancials (fijo a 12 meses, independiente
-// del filtro de fecha de la pantalla), esto agrupa por día, semana, mes,
-// trimestre o año el rango de fecha SELECCIONADO — para "Ingresos por
-// período" (Reportes › Financiero) y "Gastos por período" (Reportes ›
-// Gastos). Mismo bucketing para ambos (bucketByPeriod), solo cambia la
-// fuente de datos.
-
 export type RevenuePeriodGranularity = 'day' | 'week' | 'month' | 'quarter' | 'year'
 
 export const REVENUE_PERIOD_GRANULARITY_OPTIONS: { value: RevenuePeriodGranularity; label: string }[] = [
@@ -188,10 +138,8 @@ export const REVENUE_PERIOD_GRANULARITY_OPTIONS: { value: RevenuePeriodGranulari
 export type RevenueByPeriod = { key: string; label: string; revenue: number }
 export type ExpensesByPeriod = { key: string; label: string; total: number }
 
-// Lunes de la semana que contiene `d` — mismo criterio "semana lunes a
-// domingo" que scheduleDates.ts usa para Horarios.
 const startOfWeek = (d: Date): Date => {
-  const day = (d.getDay() + 6) % 7 // lunes=0 ... domingo=6
+  const day = (d.getDay() + 6) % 7
   return addDays(d, -day)
 }
 
@@ -253,8 +201,6 @@ export const computeExpensesByPeriod = (
   return bucketByPeriod(items, granularity)
 }
 
-// --- Revenue by Service --------------------------------------------------
-
 export type ServiceRevenue = { serviceTypeId: string | null; label: string; revenue: number }
 
 export const computeRevenueByService = (charges: Charge[], serviceTypes: ServiceType[], range: DateRange): ServiceRevenue[] => {
@@ -271,16 +217,6 @@ export const computeRevenueByService = (charges: Charge[], serviceTypes: Service
     })
     .sort((a, b) => b.revenue - a.revenue)
 }
-
-// --- Revenue by Category ---------------------------------------------------
-// "Ingresos por servicio" del Dashboard, agrupado por categoría de
-// servicio (ServiceType.category) en vez de por tipo de servicio
-// individual — con muchos tipos granulares (ej. "Full painting 1x1",
-// "Full Cleaning 2x2") el ranking por tipo se vuelve largo y repetitivo;
-// agrupar por categoría da una lectura más clara de un vistazo. Función
-// nueva y separada de computeRevenueByService (que se sigue usando en
-// Reportes › Financiero, donde sí interesa el detalle por tipo de
-// servicio).
 
 const SERVICE_CATEGORY_LABELS: Record<ServiceCategory, string> = {
   painting: 'Pintura',
@@ -333,8 +269,6 @@ export const computeRevenueByCategory = (
     .sort((a, b) => b.revenue - a.revenue)
 }
 
-// --- Revenue by Property (top N) -----------------------------------------
-
 export type PropertyRevenue = { propertyId: string; name: string; revenue: number }
 
 export const computeRevenueByProperty = (
@@ -351,8 +285,6 @@ export const computeRevenueByProperty = (
     .sort((a, b) => b.revenue - a.revenue)
     .slice(0, limit)
 }
-
-// --- Employee Productivity (top N por trabajos completados) --------------
 
 export type EmployeeProductivity = { employeeId: string; name: string; completedJobs: number }
 
@@ -371,16 +303,11 @@ export const computeEmployeeProductivity = (
     .slice(0, limit)
 }
 
-// --- Bloque operativo: Today's Schedule / Overdue Jobs / Outstanding Aging
-
 export const computeTodaySchedules = (schedules: Schedule[]): Schedule[] => {
   const today = toISODate(new Date())
   return schedules.filter((s) => s.scheduledDate === today)
 }
 
-// "Overdue" no es un status propio de Schedule — es cualquier trabajo cuya
-// fecha ya pasó y que no llegó a delivered/cancelled (ver PDF: "trabajos
-// cuya fecha esperada ya pasó").
 export const computeOverdueSchedules = (schedules: Schedule[]): Schedule[] => {
   const today = toISODate(new Date())
   return schedules
@@ -413,10 +340,6 @@ export type AgingDetailRow = {
   amount: number
 }
 
-// Detalle por cobro pendiente — para "Reportes › Cobros › Antigüedad", el
-// drill-down que el Dashboard no tiene (ahí solo se ven los 4 totales por
-// bucket). Antigüedad de cobros pendientes por días desde generatedDate (no
-// hay due date en el modelo — ver nota de modelado arriba).
 export const computeAgingDetail = (charges: Charge[], properties: Property[] = []): AgingDetailRow[] => {
   const today = new Date()
   const propertyName = (id: string) => properties.find((p) => p.id === id)?.name ?? '—'
@@ -452,12 +375,6 @@ export const computeOutstandingAging = (charges: Charge[]): AgingBucket[] => {
   }
   return buckets
 }
-
-// --- Planilla agrupada (por propiedad / por empleado) ---------------------
-// Para "Planilla por propiedad y por empleado" (Reportes › Planilla) — el
-// mismo total de planillas pagadas, agrupado por cada dimensión. Las
-// planillas sin monto definido (amount == null, ver PayrollEntry en
-// types.ts) cuentan como pendientes, no se suman a totalPaid.
 
 export type PayrollGroupSummary = {
   id: string
@@ -521,10 +438,6 @@ export type PendingPayrollRow = {
   sales: number
 }
 
-// Trabajo ya hecho (tiene fecha, propiedad, empleado y servicio) cuyo pago
-// todavía no se definió — ver PayrollEntry.amount en types.ts. Igual que
-// Antigüedad de cartera (Reportes › Cobros), es sobre toda la planilla
-// pendiente ahora mismo, no solo el período seleccionado en pantalla.
 export const computePendingPayroll = (
   payrollEntries: PayrollEntry[],
   properties: Property[],
@@ -544,12 +457,6 @@ export const computePendingPayroll = (
       sales: e.items.reduce((sum, item) => sum + item.amount, 0),
     }))
     .sort((a, b) => b.date.localeCompare(a.date))
-
-// --- Operaciones y Propiedades (Reportes) ---------------------------------
-// Trabajos por estatus / Actividad por propiedad / Actividad por empleado /
-// Servicios realizados — "trabajo" acá es Schedule (Horarios), no
-// PayrollEntry. Puerto de la misma lógica ya construida en ops-mobile
-// (catálogo la marcó "móvil primero"), ahora también en la web.
 
 const SCHEDULE_STATUS_ORDER: Schedule['status'][] = ['pending', 'in_progress', 'delivered', 'cancelled', 'rescheduled']
 
@@ -579,9 +486,6 @@ export const SCHEDULE_ACTIVITY_GRANULARITY_OPTIONS: { value: ScheduleActivityGra
 
 export type ScheduleActivityPoint = { key: string; label: string; count: number }
 
-// Evolución de la cantidad de trabajos agendados por semana o por mes —
-// "con su evolución semanal o mensual" del catálogo. Recorta a los últimos
-// 12 puntos para que el chart no se sature en negocios con mucho historial.
 export const computeScheduleActivity = (
   schedules: Schedule[],
   granularity: ScheduleActivityGranularity,
@@ -611,8 +515,6 @@ export const computeScheduleActivity = (
 
 export type PropertyActivity = { propertyId: string; name: string; status: Property['status']; count: number }
 
-// "Actividad por propiedad" — cantidad de trabajos (todo el historial) por
-// propiedad, con su estatus para que la pantalla pueda filtrar inactivas.
 export const computePropertyActivity = (schedules: Schedule[], properties: Property[]): PropertyActivity[] =>
   properties
     .map((p) => ({
@@ -632,9 +534,6 @@ export type EmployeeActivity = {
   pending: number
 }
 
-// "Actividad por empleado" — distribución de la carga de trabajo. A
-// diferencia de computeEmployeeProductivity (solo cuenta "delivered", para
-// el Dashboard), acá se cuenta todo lo asignado.
 export const computeEmployeeActivity = (schedules: Schedule[], employees: Employee[]): EmployeeActivity[] =>
   employees
     .map((e) => {
@@ -657,8 +556,6 @@ export type ServiceTypeActivity = {
   byProperty: { propertyId: string; name: string; count: number }[]
 }
 
-// "Servicios realizados" — cantidad de trabajos por tipo de servicio, con
-// desglose por propiedad (top 5 por tipo).
 export const computeServiceTypeActivity = (
   schedules: Schedule[],
   serviceTypes: ServiceType[],
@@ -681,8 +578,6 @@ export const computeServiceTypeActivity = (
     })
     .sort((a, b) => b.count - a.count)
 
-// --- Alertas ---------------------------------------------------------------
-
 export type DashboardAlert = {
   key: string
   title: string
@@ -693,18 +588,13 @@ const OVERDUE_CHARGE_DAYS = 30
 const LOW_MARGIN_THRESHOLD_PCT = 15
 const HIGH_EXPENSE_INCREASE_PCT = 25
 
-// --- Property Profitability (todas las propiedades) ----------------------
-// Base de "Ganancia estimada por propiedad" (Reportes › Financiero) y de
-// la alerta de margen bajo de abajo (computeLowMarginProperties es ahora
-// un filtro sobre esta misma función, en vez de duplicar la agregación).
-
 export type PropertyProfitability = {
   propertyId: string
   name: string
   revenue: number
   laborCost: number
   estimatedProfit: number
-  margin: number | null // null cuando la propiedad no generó revenue en el período
+  margin: number | null
 }
 
 export const computePropertyProfitability = (
@@ -741,10 +631,6 @@ export const computePropertyProfitability = (
   return result.sort((a, b) => b.estimatedProfit - a.estimatedProfit)
 }
 
-// Margen por propiedad = (Revenue − Labor Cost) / Revenue del período —
-// sin restar gastos generales, que no están atribuidos a una propiedad
-// (ver nota de modelado arriba). Solo propiedades con revenue > 0 en el
-// período aplican (si no generaron nada, "margen bajo" no dice mucho).
 export const computeLowMarginProperties = (
   charges: Charge[],
   payrollEntries: PayrollEntry[],

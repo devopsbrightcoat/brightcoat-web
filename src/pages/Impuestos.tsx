@@ -26,14 +26,6 @@ const PAGE_SIZE = 15
 
 const columnHelper = createColumnHelper<MonthGroup>()
 
-// Resumen del impuesto de ventas (8.25% fijo, SUMADO sobre el monto de
-// cada cobro — no incluido adentro, ver taxOnAmount en lib/tax.ts)
-// agrupado por mes calendario. Solo cuenta cobros con status='paid'
-// ("subidos a OPS"): son los únicos con generatedDate real, y representan
-// el cobro ya finalizado — uno "pendiente por cobrar" todavía no genera
-// obligación de impuesto. Cada mes se puede marcar como pagado/pendiente
-// en bloque, o cobro por cobro desde ImpuestosMonthDetailModal — ambos
-// caminos solo tocan charges.tax_paid/tax_paid_date, nunca amount.
 export const Impuestos = () => {
   const [refreshKey, setRefreshKey] = useState(0)
   const [sorting, setSorting] = useState<SortingState>([])
@@ -71,8 +63,6 @@ export const Impuestos = () => {
           key,
           label: formatMonthLabel(year, month - 1),
           charges: groupCharges,
-          // El impuesto ya no se extrae del cobro — se suma aparte, así que
-          // la base (lo cobrado sin impuesto) es el monto del cobro tal cual.
           totalBase: totalAmount,
           totalTax,
           paidTax,

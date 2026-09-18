@@ -33,20 +33,6 @@ type PayrollRow = PayrollEntry & { sales: number; profit: number | null; tax: nu
 
 const columnHelper = createColumnHelper<PayrollRow>()
 
-// Planillas — pago de mano de obra por trabajo completo (propiedad + unidad
-// + empleado + servicio, todos obligatorios). Cada planilla trae un
-// desglose del servicio (payroll_entry_items): descripción + costo de cada
-// sub-servicio. Cobro (amount, autocompletado desde `charges` al elegir un
-// horario relacionado — ver AddPayrollEntryModal) es lo que se le cobró al
-// cliente por el trabajo completo; Pago (suma del desglose) es lo que se le
-// paga al empleado; Ganancia (Cobro - Pago) se calcula aquí, no se guarda —
-// ver 20260918000000_payroll_service_breakdown.sql. El impuesto de ventas
-// (8.25%, ya incluido en Cobro) solo se muestra para los servicios donde se
-// marcó el checkbox correspondiente (payroll_entries.taxable) — no todos
-// los servicios lo llevan. La carga por Excel se ocultó (Excel import ya no
-// aplica a Planillas — el desglose solo se captura a mano desde la app), y
-// el filtro/búsqueda sigue el mismo patrón de searchbar + modal de Filtros
-// que Cobros/Gastos.
 export const Planillas = () => {
   const [refreshKey, setRefreshKey] = useState(0)
   const [searchText, setSearchText] = useState('')
@@ -91,14 +77,7 @@ export const Planillas = () => {
         return {
           ...e,
           sales,
-          // Ganancia = Cobro - Pago (antes era al revés, cuando "amount" era
-          // el pago al empleado en vez del cobro al cliente).
           profit: e.amount == null ? null : e.amount - sales,
-          // El impuesto (8.25%) se SUMA sobre el Cobro — Cobro + impuesto,
-          // no se extrae de adentro (ver taxOnAmount en lib/tax.ts). Solo
-          // aplica si se marcó el checkbox en el modal; la columna lo oculta
-          // por completo cuando no aplica (ver cell de la columna 'tax' más
-          // abajo).
           tax: e.amount == null ? null : taxOnAmount(e.amount),
         }
       })
@@ -227,9 +206,6 @@ export const Planillas = () => {
     getPaginationRowModel: getPaginationRowModel(),
   })
 
-  // Las columnas dependen de properties/employees, no solo de entries — hay
-  // que esperar las tres consultas para no pintar la tabla con nombres
-  // vacíos que aparecen un instante después.
   const loading = loadingEntries || loadingProperties || loadingEmployees
   const tableState = loading ? 'loading' : error ? 'error' : filtered.length === 0 ? 'empty' : 'ready'
   const tableMessage = loading

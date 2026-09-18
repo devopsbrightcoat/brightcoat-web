@@ -1,8 +1,3 @@
-// ---------------------------------------------------------------------------
-// Genera un Excel con los gastos que estén visibles según el buscador y los
-// filtros aplicados en ese momento (ver botón "Exportar a Excel" en
-// Gastos.tsx) y dispara su descarga en el navegador.
-// ---------------------------------------------------------------------------
 
 import ExcelJS from 'exceljs'
 import type { Expense } from '../types'

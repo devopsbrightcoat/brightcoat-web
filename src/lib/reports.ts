@@ -4,14 +4,8 @@ export type MonthlyExpenses = { month: string; expenses: number }
 
 const MONTH_LABELS = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']
 
-const monthKey = (dateStr: string) => dateStr.slice(0, 7) // 'YYYY-MM'
+const monthKey = (dateStr: string) => dateStr.slice(0, 7)
 
-// Agrupa expenses (por date) en los últimos `monthsBack` meses, para el
-// gráfico de gastos de Dashboard/Reportes. El ingreso ya no se calcula acá
-// desde `services` — el módulo de Trabajos se eliminó; el tracking de
-// cobros (de Excel y de Horarios, unificados) vive ahora en Cobros
-// (tabla `charges`, ver 20260912000000_unify_charges.sql), que todavía no
-// tiene una vista de reportería propia.
 export const computeMonthlyExpenses = (expenses: Expense[], monthsBack = 6): MonthlyExpenses[] => {
   const now = new Date()
   const buckets: { key: string; month: string }[] = []

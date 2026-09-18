@@ -1,7 +1,3 @@
-// ---------------------------------------------------------------------------
-// Genera un Excel con los horarios del día seleccionado (ver botón
-// "Exportar a Excel" en Horarios.tsx) y dispara su descarga en el navegador.
-// ---------------------------------------------------------------------------
 
 import ExcelJS from 'exceljs'
 import type { Schedule } from '../types'

@@ -16,19 +16,6 @@ type AddFixedChargeModalProps = {
   onSaved: () => void
 }
 
-// Único formulario que permite crear un cobro a mano desde Cobros — y solo
-// crea cobros FIJOS (ver createFixedCharge en lib/api.ts), siempre a
-// partir de un cobro fijo del catálogo (Configuración › Cobros fijos, ver
-// ConfiguracionCobrosFijos.tsx): elegirlo es obligatorio y precarga
-// propiedad (ya no se pide por separado — Javier: "el cobro fijo jalaria
-// la propiedad, no necesito agregarla en el formulario") y monto (queda
-// editable por si ese mes varía) — su nombre pasa a la descripción del
-// cobro creado. Solo falta elegir la fecha de cobro. No hay campo de
-// unidad ni de servicio porque un cobro fijo no va amarrado a un
-// apartamento ni a un trabajo puntual — Cobros le muestra "N/A" en la
-// columna Apartamento. Los cobros "regulares" (con unidad/servicio) se
-// siguen generando solo desde Horarios o importándolos de Excel, nunca
-// desde acá.
 export const AddFixedChargeModal = ({ open, properties, onClose, onSaved }: AddFixedChargeModalProps) => {
   const [templateId, setTemplateId] = useState('')
   const [amount, setAmount] = useState('')
@@ -51,12 +38,6 @@ export const AddFixedChargeModal = ({ open, properties, onClose, onSaved }: AddF
     ? properties.find((p) => p.id === selectedTemplate.propertyId)?.name ?? '—'
     : null
 
-  // Elegir un cobro fijo precarga propiedad y monto — el monto queda
-  // editable por si ese mes varía (mismo criterio que "Gasto fijo" en
-  // AddExpenseModal). El nombre de la plantilla no se guarda en ningún
-  // campo del formulario: se manda directo como description al crear el
-  // cobro (ver handleSave), y la propiedad se toma directo de la
-  // plantilla, sin campo propio en este formulario.
   const handleTemplateChange = (id: string) => {
     setTemplateId(id)
     const template = (templates ?? []).find((t) => t.id === id)

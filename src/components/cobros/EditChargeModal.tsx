@@ -13,14 +13,6 @@ type ExtraLine = { key: number; description: string; amount: string }
 
 const emptyExtra = (key: number): ExtraLine => ({ key, description: '', amount: '' })
 
-// Edita los campos generales de un cobro — todo excepto estatus/invoice
-// number, que se siguen editando aparte haciendo clic en el estatus (ver
-// ChargeInvoiceModal). Si el cobro coincide con un horario ya entregado
-// (mismo criterio que charges_unique_identity: propiedad + unidad +
-// servicio + fecha) y se cambia alguno de esos 4 campos, updateCharge
-// actualiza también ese horario para que sigan enlazados — ver el
-// comentario en lib/api.ts. No hace falta ninguna lógica de cascada acá en
-// el modal, solo mandar los campos nuevos.
 type EditChargeModalProps = {
   charge: Charge | null
   properties: Property[]

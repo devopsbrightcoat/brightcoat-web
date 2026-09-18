@@ -1,10 +1,3 @@
-// ---------------------------------------------------------------------------
-// Tipos compartidos de la app. Reflejan el esquema real de Supabase (ver
-// ops-web/supabase/migrations) en camelCase para el frontend. Tanto los
-// datos mockeados (src/mocks/data.ts) como las queries reales (src/lib/api.ts)
-// producen objetos con esta forma, para que las páginas no cambien al pasar
-// de una fuente a otra.
-// ---------------------------------------------------------------------------
 
 export type ClientType = 'residential' | 'multifamily' | 'property_manager'
 export type PropertyStatus = 'active' | 'inactive'
@@ -26,25 +19,15 @@ export type ServiceType = {
   category: ServiceCategory
 }
 
-// Gastos es un módulo totalmente independiente — no está ligado a
-// propiedades, empleados ni servicios. Solo factura, monto, fecha y
-// descripción. Los pagos de mano de obra viven aparte, en payroll_entries
-// (ver PayrollEntry más abajo).
 export type Expense = {
   id: string
   invoiceNumber?: string
   amount: number
   date: string
   description?: string
-  // De qué proveedor fue la compra (opcional) — ver Vendor más abajo.
   vendorId?: string
 }
 
-// "Gastos fijos" — catálogo de tipos de gasto recurrentes (renta, seguro,
-// internet, etc.) que se puede elegir como plantilla al agregar un gasto
-// real (ver AddExpenseModal). Precarga monto y descripción en el
-// formulario nada más — no crea gastos ni queda ligada a ellos de ninguna
-// forma, ni siquiera al elegirla.
 export type ExpenseTemplate = {
   id: string
   name: string
@@ -52,15 +35,6 @@ export type ExpenseTemplate = {
   description?: string
 }
 
-// "Cobros fijos" — catálogo de cargos recurrentes (cuota de
-// administración, mantenimiento mensual, etc.) que sirve como plantilla
-// OBLIGATORIA al agregar un cobro fijo (ver AddFixedChargeModal). A
-// diferencia de ExpenseTemplate, `amount` no es opcional — un cobro fijo
-// siempre tiene un monto conocido. Cada cobro fijo ya trae su propiedad:
-// elegir uno precarga propiedad, monto y servicio (nombre pasa a
-// Charge.description, propertyId pasa a Charge.propertyId) — el formulario
-// de "Agregar cobro fijo" ya no pide propiedad por separado. No queda
-// ningún vínculo guardado hacia charges.
 export type ChargeTemplate = {
   id: string
   propertyId: string
@@ -68,24 +42,12 @@ export type ChargeTemplate = {
   amount: number
 }
 
-// Catálogo de proveedores — de dónde sale cada compra registrada en Gastos
-// (ver Expense.vendorId más arriba). A diferencia de ExpenseTemplate, este sí
-// queda ligado a los gastos que lo usan (expenses.vendor_id).
 export type Vendor = {
   id: string
   name: string
   notes?: string
 }
 
-// Planillas — pago de mano de obra por trabajo completo (propiedad +
-// unidad + empleado + servicio, todos obligatorios). Tabla propia
-// (payroll_entries), separada de expenses desde
-// 20260917000000_split_expenses_payroll.sql. El desglose del servicio
-// (payroll_entry_items) se usa para calcular Ventas/Ganancia en la UI —
-// ver 20260918000000_payroll_service_breakdown.sql. `amount` (Pago) puede
-// quedar en null cuando todavía no se sabe cuánto se le va a pagar al
-// empleado — se completa después editando la planilla — ver
-// 20260919000000_payroll_amount_optional.sql.
 export type PayrollEntryItem = {
   id: string
   description: string
@@ -119,14 +81,6 @@ export type Employee = {
   hourlyRate?: number
 }
 
-// `serviceTypeId` + `generatedDate` (fecha del servicio/cobro) identifican
-// de forma única un cobro junto con propertyId + unitLabel — ver constraint
-// `charges_unique_identity` en 20260912000000_unify_charges.sql. Los cobros
-// importados de Excel normalmente no traen serviceTypeId (la plantilla no
-// lo captura); los generados desde Horarios siempre lo traen. Un tercer
-// origen, "cobro fijo" (isFixed=true, ver 20261001000000_add_charges_is_fixed.sql),
-// se agrega a mano desde Cobros — nunca trae unitLabel ni serviceTypeId,
-// solo propertyId + amount + generatedDate.
 export type ChargeExtra = {
   description: string
   amount: number
@@ -146,20 +100,11 @@ export type Charge = {
   notes?: string
   extras: ChargeExtra[]
   invoiceNumber?: string
-  // Impuesto de ventas (8.25% fijo, ver lib/tax.ts) YA incluido en `amount`
-  // — estos dos campos solo trackean si ya se remitió al estado.
   taxPaid: boolean
   taxPaidDate?: string
-  // true = creado a mano con "Agregar cobro fijo" en Cobros (propiedad +
-  // monto + fecha, sin unidad ni servicio). false = generado desde
-  // Horarios o importado de Excel.
   isFixed: boolean
 }
 
-// Configuración general — tabla singleton (una sola fila) con los datos del
-// negocio y valores por defecto de la app (ver
-// 20260920000000_add_company_settings.sql). `id` siempre viene de la fila
-// existente — la app nunca crea una nueva, solo actualiza.
 export type CompanySettings = {
   id: string
   companyName: string
@@ -182,9 +127,6 @@ export type Schedule = {
   rescheduledToId?: string
 }
 
-// Alertas entre usuarios (owner <-> no-owner) — ver
-// 20260924000000_add_notifications.sql. El nombre AppNotification (y no
-// Notification a secas) evita chocar con el tipo Notification del DOM.
 export type NotificationEntityType = 'property' | 'employee' | 'schedule' | 'expense' | 'payroll_entry' | 'charge'
 
 export type AppNotification = {
@@ -196,4 +138,3 @@ export type AppNotification = {
   readAt?: string
   createdAt: string
 }
-

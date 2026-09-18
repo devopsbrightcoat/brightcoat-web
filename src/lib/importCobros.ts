@@ -1,16 +1,3 @@
-// ---------------------------------------------------------------------------
-// Importador de la plantilla "Cobros" (ver /public/plantilla-cobros.xlsx).
-// Cada PESTAÑA es una propiedad (el nombre de la pestaña = el nombre de la
-// propiedad; la hoja "Instrucciones" se ignora). Dentro de cada pestaña hay
-// dos tablas lado a lado (no apiladas, como en la plantilla de Servicios):
-//
-//   Izquierda (A-F) "Cobros Subidos a OPS"        -> status = 'paid'
-//   Columna G en blanco (separador visual)
-//   Derecha   (H-M) "Pendientes por Subir / Cobrar" -> status = 'pending'
-//
-// Como comparten número de fila, cada fila del Excel puede producir hasta
-// dos filas de datos (una por tabla) — se distinguen con el campo `side`.
-// ---------------------------------------------------------------------------
 
 import ExcelJS from 'exceljs'
 import { fetchCharges, fetchProperties } from './api'
@@ -30,7 +17,6 @@ const cellText = (value: ExcelJS.CellValue): string => {
   return String(value).trim()
 }
 
-// Columnas de la tabla izquierda "Cobros Subidos a OPS" (A-F).
 const LEFT_COLS = {
   unitLabel: 1,
   description: 2,
@@ -40,8 +26,6 @@ const LEFT_COLS = {
   notes: 6,
 } as const
 
-// Columnas de la tabla derecha "Pendientes por Subir / Cobrar" (H-M). La
-// columna G queda en blanco a propósito como separador.
 const RIGHT_COLS = {
   unitLabel: 8,
   description: 9,
@@ -62,9 +46,9 @@ export type ParsedChargeRow = {
   unitLabel: string
   description: string
   amountRaw: string
-  generatedDateRaw: string // solo lado izquierdo (Cobro Generado)
+  generatedDateRaw: string
   payrollPeriod: string
-  responsible: string // solo lado derecho (Pendientes)
+  responsible: string
   notes: string
 }
 
@@ -90,9 +74,6 @@ export type ImportChargeOutcome = {
   side: ChargeSide
   propertyName: string
   success: boolean
-  // true cuando la fila no se insertó porque ya existía un cobro idéntico
-  // (misma propiedad, apartamento, monto, estado, etc.) — evita duplicar
-  // datos si se sube el mismo archivo más de una vez.
   skipped?: boolean
   message: string
 }
@@ -115,7 +96,7 @@ export const parseChargesWorkbook = async (file: File): Promise<ParsedChargeRow[
     const propertyName = sheet.name.trim()
 
     sheet.eachRow((row, rowNumber) => {
-      if (rowNumber <= 2) return // fila 1 = banners de las dos tablas, fila 2 = encabezados
+      if (rowNumber <= 2) return
 
       const get = (col: number) => cellText(row.getCell(col).value)
 
@@ -197,10 +178,6 @@ export const validateChargeRow = (row: ParsedChargeRow): ValidatedChargeRow => {
   }
 }
 
-// Firma única de un cobro (propiedad + apartamento + descripción + monto +
-// estado + fechas + responsable). Se usa para detectar si una fila del
-// Excel ya se había importado antes, de modo que subir el mismo archivo
-// dos veces no duplique los cobros.
 const chargeSignature = (
   propertyId: string,
   unitLabel: string | null,

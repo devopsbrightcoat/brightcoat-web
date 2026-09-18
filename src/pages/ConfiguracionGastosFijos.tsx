@@ -34,11 +34,6 @@ const SortIcon = ({ direction }: { direction: false | 'asc' | 'desc' }) =>
     <ArrowUpDown className="h-3 w-3 opacity-40" />
   )
 
-// Configuración › Gastos fijos — catálogo de tipos de gasto recurrentes que
-// se pueden elegir como plantilla al agregar un gasto real (Finanzas ›
-// Gastos). Mismo patrón que Configuración › Servicios (ConfiguracionServicios.tsx):
-// tabla ordenable + modales de agregar/editar/eliminar sobre expense_templates,
-// sin ningún vínculo hacia la tabla expenses.
 export const ConfiguracionGastosFijos = () => {
   const [refreshKey, setRefreshKey] = useState(0)
   const [addOpen, setAddOpen] = useState(false)

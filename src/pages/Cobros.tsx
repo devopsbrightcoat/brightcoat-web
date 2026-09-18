@@ -32,10 +32,6 @@ const PAGE_SIZE = 15
 
 const columnHelper = createColumnHelper<Charge>()
 
-// Un solo cobro puede venir de Excel (sin serviceTypeId) o de Horarios (con
-// serviceTypeId + fecha siempre presentes) — ver constraint
-// `charges_unique_identity` en 20260912000000_unify_charges.sql, que evita
-// duplicar un cobro para la misma propiedad + unidad + servicio + fecha.
 export const Cobros = () => {
   const [refreshKey, setRefreshKey] = useState(0)
   const [importOpen, setImportOpen] = useState(false)
@@ -196,10 +192,6 @@ export const Cobros = () => {
     getPaginationRowModel: getPaginationRowModel(),
   })
 
-  // Las columnas dependen de properties/serviceTypes (para mostrar nombres,
-  // no solo ids) además de charges — hay que esperar a que las tres
-  // consultas terminen, o si no la tabla se pinta con nombres vacíos que
-  // "aparecen" un instante después, cuando cada query resuelve por separado.
   const loading = loadingCharges || loadingProperties || loadingServiceTypes
   const tableState = loading ? 'loading' : error ? 'error' : filtered.length === 0 ? 'empty' : 'ready'
   const tableMessage = loading

@@ -307,9 +307,6 @@ export const EditPayrollEntryModal = ({ entry, properties, employees, onClose, o
             Pago del desglose: <span className="tabular-nums text-ink-300">{currency(salesTotal)}</span>
           </p>
 
-          {/* Ver el mismo comentario en AddPayrollEntryModal — datalist,
-             no select cerrado: sugiere servicios existentes pero acepta
-             cualquier texto libre. */}
           <datalist id="pe-edit-item-service-types">
             {(serviceTypes ?? []).map((t) => (
               <option key={t.id} value={t.name} />

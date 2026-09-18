@@ -8,8 +8,6 @@ type DashboardPanelProps = {
   className?: string
 }
 
-// Tarjeta genérica para las gráficas y bloques del Dashboard — mismo look
-// que el resto de la app (rounded-xl border border-white/10 bg-surface-alt).
 export const DashboardPanel = ({ title, subtitle, action, children, className = '' }: DashboardPanelProps) => {
   return (
     <div className={`rounded-xl border border-white/10 bg-surface-alt p-5 ${className}`}>

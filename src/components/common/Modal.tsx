@@ -1,12 +1,6 @@
 import { useEffect } from 'react'
 import { X } from 'lucide-react'
 
-// ---------------------------------------------------------------------------
-// Modal genérico reutilizable — fondo oscuro + panel centrado, estilo
-// consistente con el resto de la app (bg-surface-alt, border-white/10,
-// rounded-2xl). Se cierra con el botón X, clic en el fondo, o Escape.
-// ---------------------------------------------------------------------------
-
 type ModalProps = {
   open: boolean
   onClose: () => void

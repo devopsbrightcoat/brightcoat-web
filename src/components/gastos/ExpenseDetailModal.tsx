@@ -11,10 +11,6 @@ const Field = ({ label, value }: { label: string; value: React.ReactNode }) => (
   </div>
 )
 
-// Vista de solo lectura de un gasto — se abre al hacer clic en cualquier
-// parte de una fila de la tabla de Gastos (ver onRowClick en
-// DataTablePanel.tsx). El botón "Editar" detiene la propagación para no
-// chocar con este modal (ver Gastos.tsx).
 type ExpenseDetailModalProps = {
   expense: Expense | null
   vendorName?: string

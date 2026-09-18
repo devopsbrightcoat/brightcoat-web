@@ -67,12 +67,6 @@ const PENDING_COLUMNS = [
   }),
 ]
 
-// Reportes › Planilla — cuarta categoría de la hoja de ruta. Planillas.tsx
-// ya deja ver/filtrar planilla por propiedad, por empleado y por fecha una
-// por una (con Ventas/Ganancia por fila) — no se duplica acá. Lo nuevo son
-// los dos reportes agregados que esa pantalla no puede armar sola: el total
-// pagado agrupado por cada dimensión, y una vista dedicada de "trabajo
-// hecho, pago sin definir" (hoy solo se ve fila por fila como "Pendiente").
 export const ReportesPlanilla = () => {
   const [appliedRange, setAppliedRange] = useState<DateRange | null>(null)
   const [propertySorting, setPropertySorting] = useState<SortingState>([{ id: 'totalPaid', desc: true }])

@@ -2,14 +2,6 @@ import { useState } from 'react'
 import { Modal } from './Modal'
 import { getErrorMessage } from '../../lib/errors'
 
-// ---------------------------------------------------------------------------
-// Modal de confirmación genérico para acciones destructivas (eliminar).
-// Deshabilita los botones mientras la eliminación está en curso y muestra
-// el error real de la base de datos si falla (ej. restricción de llave
-// foránea — "esta propiedad tiene horarios asociados", etc.), traducido a
-// un mensaje claro por cada `delete*` de src/lib/api.ts.
-// ---------------------------------------------------------------------------
-
 type ConfirmModalProps = {
   open: boolean
   onClose: () => void

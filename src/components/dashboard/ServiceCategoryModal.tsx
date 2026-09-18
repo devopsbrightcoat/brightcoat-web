@@ -12,10 +12,6 @@ type ServiceCategoryModalProps = {
   onClose: () => void
 }
 
-// Desglose por tipo de servicio dentro de una categoría — se abre al hacer
-// clic en una barra de "Ingresos por categoría" (Dashboard, Reportes ›
-// Financiero). Reusa el Modal + RankingBars compartidos en vez de un
-// componente de detalle a medida.
 export const ServiceCategoryModal = ({ category, onClose }: ServiceCategoryModalProps) => {
   return (
     <Modal open={category !== null} onClose={onClose} title={category ? `Ingresos — ${category.label}` : ''}>

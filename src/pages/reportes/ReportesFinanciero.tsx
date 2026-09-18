@@ -30,7 +30,6 @@ import {
 } from '../../lib/dashboardMetrics'
 import { useSupabaseQuery } from '../../lib/useSupabaseQuery'
 
-// Paleta idéntica a Dashboard.tsx — misma lectura visual en toda la app.
 const COLOR_GOLD = '#e3a730'
 const COLOR_BLUE = '#3987e5'
 const COLOR_ORANGE = '#d95926'
@@ -55,16 +54,6 @@ const PAGE_SIZE = 15
 
 const columnHelper = createColumnHelper<PropertyProfitability>()
 
-// Reportes › Financiero — primera categoría del módulo de Reportería (ver
-// hoja de ruta acordada con David: Fase 1, categoría Financiero). Reutiliza
-// las agregaciones ya construidas para el Dashboard (dashboardMetrics.ts)
-// en vez de duplicar lógica — el Dashboard es la vista rápida de "todo el
-// negocio ahora mismo" con rankings top-8, esta pantalla es la versión
-// completa y filtrable por período para revisar a fondo. "Ingresos por
-// propiedad" y "Ganancia estimada por propiedad" del catálogo de reportes
-// se combinan en una sola tabla ordenable (computePropertyProfitability)
-// en vez de dos paneles separados — son la misma agrupación con columnas
-// distintas, no dos reportes distintos.
 export const ReportesFinanciero = () => {
   const [appliedRange, setAppliedRange] = useState<DateRange | null>(null)
   const [periodGranularity, setPeriodGranularity] = useState<RevenuePeriodGranularity>('day')

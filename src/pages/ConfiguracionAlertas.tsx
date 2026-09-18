@@ -16,10 +16,6 @@ const roleLabel: Record<ProfileRole, string> = {
 
 const ALL_ROLES: ProfileRole[] = ['owner', 'admin', 'staff', 'finance']
 
-// Alertas de actividad entre roles — separado de Configuración General a
-// propósito (ver 20260926000000_add_notify_roles.sql). No existe para el
-// rol staff: no se agrega su entrada de menú en AppLayout.tsx y esta
-// pantalla también se protege por si alguien entra directo por URL.
 export const ConfiguracionAlertas = () => {
   const { profile, refreshProfile } = useAuth()
   const [savingToggle, setSavingToggle] = useState(false)

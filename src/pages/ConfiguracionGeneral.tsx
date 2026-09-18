@@ -19,19 +19,10 @@ const roleLabel: Record<string, string> = {
   finance: 'Finanzas',
 }
 
-// Datos de la empresa (company_settings, tabla singleton — ver
-// 20260920000000_add_company_settings.sql) + Mi perfil (nombre/correo
-// propios y cambio de contraseña). La gestión de cuentas de acceso
-// (crear/editar otros usuarios) queda fuera a propósito: requiere el API
-// admin de Supabase, no es seguro exponerlo desde la app cliente — se
-// sigue haciendo a mano (dashboard/SQL) como hasta ahora.
 export const ConfiguracionGeneral = () => {
   const { profile, refreshProfile } = useAuth()
-  // Datos de la empresa: solo el owner puede editarlos — el resto de roles
-  // los ve, pero de solo lectura (sin inputs ni botón de guardar).
   const isOwner = profile?.role === 'owner'
 
-  // --- Datos de la empresa -----------------------------------------------
   const { data: companySettings, loading: loadingCompany } = useSupabaseQuery(fetchCompanySettings, [])
   const [companyLoaded, setCompanyLoaded] = useState(false)
   const [address, setAddress] = useState('')
@@ -78,7 +69,6 @@ export const ConfiguracionGeneral = () => {
     }
   }
 
-  // --- Mi perfil -----------------------------------------------------------
   const [profileLoaded, setProfileLoaded] = useState(false)
   const [fullName, setFullName] = useState('')
   const [contactEmail, setContactEmail] = useState('')
@@ -106,7 +96,6 @@ export const ConfiguracionGeneral = () => {
     }
   }
 
-  // --- Cambiar contraseña ---------------------------------------------------
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [savingPassword, setSavingPassword] = useState(false)

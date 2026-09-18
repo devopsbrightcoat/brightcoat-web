@@ -38,8 +38,6 @@ export const AddExpenseModal = ({ open, onClose, onSaved }: AddExpenseModalProps
     setError(null)
   }, [open])
 
-  // Elegir un gasto fijo solo precarga monto y descripción — no queda
-  // ningún vínculo guardado entre el gasto y la plantilla usada.
   const handleTemplateChange = (id: string) => {
     setTemplateId(id)
     const template = (templates ?? []).find((t) => t.id === id)

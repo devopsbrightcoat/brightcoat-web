@@ -1,8 +1,3 @@
-// ---------------------------------------------------------------------------
-// Genera un Excel con los cobros que estén visibles según los filtros
-// aplicados en ese momento (ver botón "Exportar a Excel" en Cobros.tsx) y
-// dispara su descarga en el navegador.
-// ---------------------------------------------------------------------------
 
 import ExcelJS from 'exceljs'
 import type { Charge, Property, ServiceType } from '../types'

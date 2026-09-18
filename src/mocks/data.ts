@@ -1,9 +1,3 @@
-// ---------------------------------------------------------------------------
-// Datos mockeados — SOLO para construir la interfaz visualmente / como
-// respaldo si Supabase no responde. Los tipos viven en src/types.ts y son
-// compartidos con las queries reales (src/lib/api.ts), para que las páginas
-// no cambien al pasar de una fuente a otra.
-// ---------------------------------------------------------------------------
 
 import type { Employee, Expense, PayrollEntry, Property, ServiceType } from '../types'
 
@@ -57,7 +51,6 @@ export const payrollEntries: PayrollEntry[] = [
   },
 ]
 
-// Serie mensual para el gráfico de ingresos vs. gastos del dashboard/reportes
 export const monthlyFinancials = [
   { month: 'Mar', income: 4200, expenses: 2100 },
   { month: 'Abr', income: 5100, expenses: 2800 },

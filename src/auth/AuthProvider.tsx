@@ -10,12 +10,7 @@ export type Profile = {
   fullName: string | null
   email: string | null
   role: ProfileRole
-  // Toggle "Activar alertas" (Configuración -> Alertas) — si es false,
-  // los triggers de notifications no le generan alertas a este usuario.
   notificationsEnabled: boolean
-  // Roles cuya actividad este usuario quiere ver en sus alertas — ver
-  // 20260926000000_add_notify_roles.sql. Vacío para quien nunca configuró
-  // nada (ej. staff, que no tiene esta pantalla).
   notifyRoles: ProfileRole[]
 }
 
@@ -25,10 +20,6 @@ type AuthContextValue = {
   loading: boolean
   signIn: (username: string, password: string) => Promise<{ error: string | null }>
   signOut: () => Promise<void>
-  // Vuelve a cargar el profile actual desde la base — usado por la pantalla
-  // "Mi perfil" (Configuración) tras guardar cambios, para que el nombre
-  // mostrado en el resto de la app (ej. el sidebar) quede al día sin tener
-  // que cerrar sesión.
   refreshProfile: () => Promise<void>
 }
 
@@ -88,8 +79,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     })
 
     if (error) {
-      // Supabase da el mismo mensaje genérico para "no existe" y "password
-      // incorrecto" — es lo correcto de cara al usuario (no revelar cuál).
       return { error: 'Usuario o contraseña incorrectos.' }
     }
 

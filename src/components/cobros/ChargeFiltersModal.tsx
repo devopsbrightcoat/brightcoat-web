@@ -6,14 +6,6 @@ const inputClass =
   'w-full rounded-lg border border-white/10 bg-surface px-3 py-2.5 text-sm text-white outline-none focus:border-gold-500'
 const labelClass = 'mb-1.5 block text-sm font-medium text-ink-200'
 
-// Filtros de la tabla de Cobros — por propiedad, estatus y tipo de
-// servicio. Aplican de inmediato (mismo criterio que
-// ScheduleFiltersModal/ExpenseFiltersModal), este panel (ver FilterPanel.tsx
-// — el "chrome" común, deslizable desde la derecha, que ahora comparten los
-// filtros de las cuatro pantallas) solo agrupa los campos detrás de un
-// botón para no ocupar espacio permanente en la página. El searchbar
-// (propiedad/apartamento/descripción/invoice #) vive aparte, directamente
-// en Cobros.tsx.
 type ChargeFiltersModalProps = {
   open: boolean
   onClose: () => void

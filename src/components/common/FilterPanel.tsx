@@ -1,21 +1,6 @@
 import { useEffect } from 'react'
 import { X } from 'lucide-react'
 
-// ---------------------------------------------------------------------------
-// Panel de filtros reutilizable — se desliza desde el lado derecho de la
-// pantalla (en vez del modal centrado de Modal.tsx), para poder mostrar los
-// filtros de cualquier pantalla sin taparla por completo. Cada pantalla
-// (Cobros, Gastos, Horarios, Planillas) sigue teniendo su propio
-// ChargeFiltersModal/ExpenseFiltersModal/etc. con sus campos específicos —
-// ese componente le pasa los suyos como children y este solo pone el
-// "chrome" común: encabezado, fondo, cierre con Escape/clic afuera, y el pie
-// con "Limpiar filtros" / "Aplicar" que las cuatro pantallas repetían igual.
-//
-// Se queda montado siempre (no `if (!open) return null`) para poder animar
-// tanto la entrada como la salida con transform/opacity — a diferencia de
-// Modal.tsx, que aparece/desaparece de golpe.
-// ---------------------------------------------------------------------------
-
 type FilterPanelProps = {
   open: boolean
   onClose: () => void

@@ -8,10 +8,6 @@ const inputClass =
   'w-full rounded-lg border border-white/10 bg-surface px-3 py-2.5 text-sm text-white outline-none focus:border-gold-500'
 const labelClass = 'mb-1.5 block text-sm font-medium text-ink-200'
 
-// Se abre al hacer clic en el estatus de un cobro (ver Cobros.tsx). Si el
-// cobro está pendiente, pide el invoice number y lo marca como pagado
-// ("subido a OPS") en un solo paso. Si ya está pagado, permite corregir el
-// invoice number sin cambiar el estatus.
 type ChargeInvoiceModalProps = {
   charge: Charge | null
   onClose: () => void

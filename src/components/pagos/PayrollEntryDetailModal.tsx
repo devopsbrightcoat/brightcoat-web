@@ -17,13 +17,6 @@ const Field = ({ label, value }: { label: string; value: React.ReactNode }) => (
   </div>
 )
 
-// Vista de solo lectura de una planilla, con el desglose del servicio y los
-// cálculos de Pago (suma del desglose) y Ganancia (Cobro - Pago) — se abre
-// al hacer clic en cualquier parte de una fila de la tabla de Planillas
-// (ver onRowClick en DataTablePanel.tsx). El botón "Editar" detiene la
-// propagación para no chocar con este modal (ver Planillas.tsx). El botón
-// "Eliminar planilla" avisa al padre (onDelete) — la confirmación real vive
-// en Planillas.tsx con el mismo ConfirmModal que usa el resto de la app.
 type PayrollEntryDetailModalProps = {
   entry: PayrollEntry | null
   properties: Property[]
@@ -37,7 +30,6 @@ export const PayrollEntryDetailModal = ({ entry, properties, employees, onClose,
   const employeeName = employees.find((e) => e.id === entry?.employeeId)?.name
   const sales = entry ? entry.items.reduce((sum, item) => sum + item.amount, 0) : 0
   const profit = entry && entry.amount != null ? entry.amount - sales : null
-  // Impuesto (8.25%) SUMADO sobre el Cobro, no extraído de adentro — ver taxOnAmount en lib/tax.ts.
   const tax = entry && entry.taxable && entry.amount != null ? taxOnAmount(entry.amount) : null
 
   return (

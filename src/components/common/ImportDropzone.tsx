@@ -1,12 +1,6 @@
 import { useRef, useState } from 'react'
 import { AlertTriangle, Upload } from 'lucide-react'
 
-// ---------------------------------------------------------------------------
-// Zona de arrastrar-y-soltar reutilizada por los modales de importación
-// (ImportChargesModal, ImportExpensesModal). Solo se encarga de recibir el
-// archivo; cada modal decide qué hacer con él.
-// ---------------------------------------------------------------------------
-
 type ImportDropzoneProps = {
   onFile: (file: File) => void
   acceptHint: string

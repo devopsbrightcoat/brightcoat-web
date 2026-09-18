@@ -13,22 +13,6 @@ const modeButtonClass = (active: boolean) =>
     active ? 'bg-gold-500 text-brand-900' : 'bg-surface text-ink-300 hover:bg-white/5'
   }`
 
-// Barra "Desde / Hasta + Generar reporte" que usan todas las páginas de
-// Reportes — a pedido de Javier, el reporte ya no se calcula solo con un
-// rango preseleccionado al entrar a la página (como sigue haciendo
-// DashboardDateRangeSelect en el Dashboard, que no cambia): acá primero se
-// pide el rango, "Generar reporte" se habilita recién cuando Desde y
-// Hasta están completos y Desde no es posterior a Hasta, y el reporte no
-// se recalcula solo con cambiar las fechas — hay que volver a darle
-// Generar reporte.
-//
-// Modo "Por quincena" (a pedido de David — quincenas propias, no las de
-// calendario, ver lib/quincena.ts): en vez de escribir Desde/Hasta a mano,
-// se elige mes + 1ra/2da quincena y eso precarga Desde/Hasta — el resto
-// del flujo (Generar reporte, validación, hint) sigue exactamente igual.
-// Cambiar de modo no borra lo ya elegido: pasar a "Rango manual" deja los
-// campos con lo que haya quedado de la quincena, por si quieren ajustar un
-// día puntual.
 type ReportDateRangeBarProps = {
   onGenerate: (range: DateRange) => void
   generated: boolean

@@ -56,7 +56,6 @@ const navItems: NavItem[] = [
     icon: Settings,
     children: [
       { to: '/configuracion/general', label: 'General' },
-      // Sin esta pantalla para staff — ver ConfiguracionAlertas.tsx.
       { to: '/configuracion/alertas', label: 'Alertas', hiddenForRoles: ['staff'] },
       { to: '/configuracion/servicios', label: 'Servicios' },
       { to: '/configuracion/gastos-fijos', label: 'Gastos fijos' },
@@ -78,11 +77,6 @@ export const AppLayout = () => {
   const { profile, signOut } = useAuth()
   const location = useLocation()
   const [openMenu, setOpenMenu] = useState<string | null>(null)
-  // Colapsar la barra lateral a solo íconos — preferencia del usuario, se
-  // recuerda entre sesiones (localStorage, no hace falta guardarlo en la
-  // base de datos). Un item con submenu (Finanzas/Reportes/Configuración)
-  // al hacer clic estando colapsada expande la barra completa en vez de
-  // mostrar un flyout — más simple y sin sorpresas.
   const [collapsed, setCollapsed] = useState(() => {
     try {
       return localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === '1'
@@ -95,12 +89,9 @@ export const AppLayout = () => {
     try {
       localStorage.setItem(SIDEBAR_COLLAPSED_KEY, collapsed ? '1' : '0')
     } catch {
-      // localStorage no disponible (modo privado, etc.) — no es crítico.
     }
   }, [collapsed])
 
-  // Si la ruta actual cae bajo un item con submenu (ej. /finanzas/gastos),
-  // lo abrimos automáticamente para reflejar dónde está el usuario.
   useEffect(() => {
     const match = navItems.find((item) => item.children && location.pathname.startsWith(item.to))
     if (match) setOpenMenu(match.to)

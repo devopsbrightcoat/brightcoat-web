@@ -1,7 +1,3 @@
-// ---------------------------------------------------------------------------
-// Utilidades para el filtro de rango de fechas (última semana, 15 días, etc.)
-// compartido entre Finanzas y Reportes.
-// ---------------------------------------------------------------------------
 
 export type DateRangeKey = 'week' | 'fifteen_days' | 'month' | 'three_months' | 'six_months' | 'all'
 
@@ -22,7 +18,6 @@ const DAYS_BY_RANGE: Record<Exclude<DateRangeKey, 'all'>, number> = {
   six_months: 180,
 }
 
-// Fecha de corte (YYYY-MM-DD) para un rango dado, o null si es "todo".
 export const getDateRangeCutoff = (range: DateRangeKey): string | null => {
   if (range === 'all') return null
   const cutoff = new Date()
@@ -30,8 +25,6 @@ export const getDateRangeCutoff = (range: DateRangeKey): string | null => {
   return cutoff.toISOString().slice(0, 10)
 }
 
-// true si la fecha (formato YYYY-MM-DD) cae dentro del rango seleccionado.
-// Una fecha vacía/indefinida solo pasa el filtro "todo".
 export const isWithinDateRange = (date: string | undefined | null, range: DateRangeKey): boolean => {
   if (range === 'all') return true
   if (!date) return false

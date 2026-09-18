@@ -15,14 +15,6 @@ const modeButtonClass = (active: boolean) =>
     active ? 'bg-gold-500 text-brand-900' : 'bg-surface-alt text-ink-300 hover:bg-white/5'
   }`
 
-// Filtro global de fecha del Dashboard — dos modos: los presets de siempre
-// (Últimos 15 días / Mes actual / Últimos 6 meses / Últimos 12 meses), o
-// una quincena específica al estilo de David (mes + 1ra/2da, ver
-// lib/quincena.ts — a pedido suyo, no son las quincenas de calendario
-// 1-15/16-fin de mes). Aplica a los KPIs, rankings y bloque de alertas;
-// Revenue Trend y Revenue vs Expenses vs Labor siempre muestran los
-// últimos 12 meses (ver dashboardMetrics.ts) y no se ven afectados por
-// ninguno de los dos modos.
 export const DashboardDateRangeSelect = ({ value, onChange }: DashboardDateRangeSelectProps) => {
   return (
     <div className="flex flex-wrap items-center gap-3">

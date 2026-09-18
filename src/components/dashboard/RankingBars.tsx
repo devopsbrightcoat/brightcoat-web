@@ -9,18 +9,9 @@ type RankingBarsProps = {
   formatValue: (value: number) => string
   color: string
   emptyText: string
-  // Cuando se pasa, cada fila se vuelve clickeable (ej. "Ingresos por
-  // categoría" abre el desglose por tipo de servicio) — opcional y
-  // retrocompatible: sin esta prop las filas quedan exactamente igual que
-  // antes, no clickeables.
   onItemPress?: (item: RankingBarsItem) => void
 }
 
-// Lista de barras horizontales para los "top N" del Dashboard (Revenue by
-// Property, Revenue by Service, Employee Productivity) — con valores
-// directamente etiquetados (no hace falta leyenda: cada fila ya dice qué
-// es). Más legible que una gráfica de barras de recharts cuando los
-// nombres son largos (direcciones de propiedades, nombres de empleados).
 export const RankingBars = ({ items, formatValue, color, emptyText, onItemPress }: RankingBarsProps) => {
   if (items.length === 0) {
     return <p className="py-6 text-center text-sm text-ink-500">{emptyText}</p>

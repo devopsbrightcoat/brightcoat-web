@@ -13,10 +13,6 @@ type AddVendorModalProps = {
   onSaved: () => void
 }
 
-// Catálogo de proveedores — a diferencia de "Gastos fijos" (que solo
-// precarga el formulario de Agregar gasto, sin vínculo alguno), un
-// proveedor SÍ queda ligado al gasto (expenses.vendor_id), ver
-// AddExpenseModal.tsx / EditExpenseModal.tsx.
 export const AddVendorModal = ({ open, onClose, onSaved }: AddVendorModalProps) => {
   const [name, setName] = useState('')
   const [notes, setNotes] = useState('')

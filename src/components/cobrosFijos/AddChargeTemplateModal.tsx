@@ -15,12 +15,6 @@ type AddChargeTemplateModalProps = {
   onSaved: () => void
 }
 
-// "Cobros fijos" — catálogo de cargos recurrentes (cuota de
-// administración, mantenimiento mensual, etc.) que sirve como plantilla
-// OBLIGATORIA al agregar un cobro fijo real (ver AddFixedChargeModal en
-// components/cobros/). No crea cobros ni los liga entre sí — solo precarga
-// propiedad, monto y servicio en el formulario; el nombre pasa a la
-// descripción del cobro y la propiedad directo a charges.property_id.
 export const AddChargeTemplateModal = ({ open, properties, onClose, onSaved }: AddChargeTemplateModalProps) => {
   const [propertyId, setPropertyId] = useState('')
   const [name, setName] = useState('')

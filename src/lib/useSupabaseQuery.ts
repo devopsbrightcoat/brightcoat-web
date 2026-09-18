@@ -7,10 +7,6 @@ type QueryState<T> = {
   error: string | null
 }
 
-// Hook chico para no repetir el mismo useEffect/useState de "cargar datos de
-// Supabase" en cada página. No usa cache ni revalidación — para el tamaño de
-// esta app (un puñado de páginas, datos que no cambian todo el tiempo) un
-// fetch simple por página es suficiente.
 export const useSupabaseQuery = <T>(fetcher: () => Promise<T>, deps: unknown[]): QueryState<T> => {
   const [state, setState] = useState<QueryState<T>>({ data: null, loading: true, error: null })
 

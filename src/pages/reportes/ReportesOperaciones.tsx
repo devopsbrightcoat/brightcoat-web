@@ -76,16 +76,6 @@ const serviceActivityColumnHelper = createColumnHelper<ServiceTypeActivity>()
 const chargeColumnHelper = createColumnHelper<Charge>()
 const scheduleColumnHelper = createColumnHelper<Schedule>()
 
-// Reportes › Operaciones — categoría "Operaciones y Propiedades" del
-// catálogo de reportería, que el cliente marcó "móvil primero" (ya
-// construida en ops-mobile). Esta es la versión web de las mismas 5
-// métricas, reutilizando computeScheduleStatusBreakdown/computeScheduleActivity/
-// computePropertyActivity/computeEmployeeActivity/computeServiceTypeActivity
-// de dashboardMetrics.ts (puerto de la misma lógica que ya usa móvil, no
-// una reimplementación distinta). "Historial financiero de propiedad" no es
-// una ruta aparte acá — es la última sección de esta misma página, con un
-// selector de propiedad que también se puede fijar haciendo clic en una
-// fila de "Actividad por propiedad".
 export const ReportesOperaciones = () => {
   const [appliedRange, setAppliedRange] = useState<DateRange | null>(null)
   const [granularity, setGranularity] = useState<ScheduleActivityGranularity>('week')
@@ -121,11 +111,7 @@ export const ReportesOperaciones = () => {
   const rangedSchedules = useMemo(() => filterSchedulesByRange(schedules ?? [], range), [schedules, range])
   const rangedCharges = useMemo(() => filterChargesByRange(charges ?? [], range), [charges, range])
 
-  // --- Trabajos por estatus -------------------------------------------------
   const breakdown = useMemo(() => computeScheduleStatusBreakdown(rangedSchedules), [rangedSchedules])
-  // Atrasados es "a día de hoy", no del rango seleccionado — igual que la
-  // antigüedad de cartera en Reportes · Cobros: un trabajo atrasado lo
-  // sigue estando sin importar qué período estés revisando.
   const overdueCount = useMemo(() => computeOverdueSchedules(schedules ?? []).length, [schedules])
   const activity = useMemo(() => computeScheduleActivity(rangedSchedules, granularity), [rangedSchedules, granularity])
 
@@ -135,7 +121,6 @@ export const ReportesOperaciones = () => {
   const cancelledCount = countOf('cancelled')
   const rescheduledCount = countOf('rescheduled')
 
-  // --- Actividad por propiedad ----------------------------------------------
   const propertyActivity = useMemo(() => {
     const all = computePropertyActivity(rangedSchedules, properties ?? [])
     return propertyFilter === 'all' ? all : all.filter((r) => r.status === propertyFilter)
@@ -170,7 +155,6 @@ export const ReportesOperaciones = () => {
     getPaginationRowModel: getPaginationRowModel(),
   })
 
-  // --- Actividad por empleado ------------------------------------------------
   const employeeActivity = useMemo(() => computeEmployeeActivity(rangedSchedules, employees ?? []), [rangedSchedules, employees])
 
   const employeeColumns = useMemo(
@@ -204,7 +188,6 @@ export const ReportesOperaciones = () => {
     getPaginationRowModel: getPaginationRowModel(),
   })
 
-  // --- Servicios realizados ---------------------------------------------------
   const serviceActivity = useMemo(
     () => computeServiceTypeActivity(rangedSchedules, serviceTypes ?? [], properties ?? []),
     [rangedSchedules, serviceTypes, properties],
@@ -238,7 +221,6 @@ export const ReportesOperaciones = () => {
     getPaginationRowModel: getPaginationRowModel(),
   })
 
-  // --- Historial financiero de propiedad --------------------------------------
   const propertyName = (id: string) => properties?.find((p) => p.id === id)?.name ?? '—'
   const serviceTypeName = (id: string) => serviceTypes?.find((s) => s.id === id)?.name ?? '—'
   const employeeName = (id: string) => employees?.find((e) => e.id === id)?.name ?? 'Sin asignar'
@@ -355,7 +337,6 @@ export const ReportesOperaciones = () => {
         <p className="mx-8 mt-6 text-sm text-ink-500">Cargando…</p>
       ) : (
         <>
-          {/* Trabajos por estatus */}
           <div className="grid grid-cols-2 gap-4 px-8 pt-6 sm:grid-cols-5">
             <StatCard label="Completados" value={String(completedCount)} icon={CheckCircle2} tone="good" />
             <StatCard label="Pendientes" value={String(pendingCount)} icon={Clock} tone="warn" />
@@ -405,7 +386,6 @@ export const ReportesOperaciones = () => {
             </DashboardPanel>
           </div>
 
-          {/* Actividad por propiedad */}
           <div className="mx-8 mt-10 flex flex-wrap items-center justify-between gap-3">
             <p className="text-sm text-ink-400">
               Actividad por propiedad — clic en una fila para ver su historial financiero abajo
@@ -433,7 +413,6 @@ export const ReportesOperaciones = () => {
             onRowClick={handleSelectProperty}
           />
 
-          {/* Actividad por empleado */}
           <div className="mx-8 mt-10">
             <DashboardPanel title="Distribución de carga de trabajo" subtitle="Trabajos asignados por empleado">
               <RankingBars
@@ -455,7 +434,6 @@ export const ReportesOperaciones = () => {
             message={tableMessage('No hay empleados con trabajos asignados.')}
           />
 
-          {/* Servicios realizados */}
           <div className="px-8 pt-10">
             <DashboardPanel title="Trabajos por tipo de servicio" subtitle="Cantidad de trabajos, todo el historial">
               {serviceActivity.length === 0 ? (
@@ -486,7 +464,6 @@ export const ReportesOperaciones = () => {
             message={tableMessage('No hay trabajos registrados.')}
           />
 
-          {/* Historial financiero de propiedad */}
           <div ref={detailRef} className="mx-8 mt-10 flex flex-wrap items-center justify-between gap-3">
             <p className="text-sm text-ink-400">Historial financiero de propiedad — ingresos, cobros y trabajos</p>
             <select

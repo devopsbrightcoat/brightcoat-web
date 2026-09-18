@@ -31,12 +31,6 @@ const SortIcon = ({ direction }: { direction: false | 'asc' | 'desc' }) =>
 
 const PAGE_SIZE = 15
 
-// Finanzas › Proveedores — catálogo de proveedores (de dónde sale cada
-// compra registrada en Gastos). A diferencia de "Gastos fijos" (Configuración,
-// solo precarga el formulario, sin vínculo), acá sí hay una relación real:
-// expenses.vendor_id. Mismo patrón de tabla ordenable + modales de
-// agregar/editar/eliminar que ConfiguracionGastosFijos.tsx /
-// ConfiguracionServicios.tsx.
 export const Proveedores = () => {
   const [refreshKey, setRefreshKey] = useState(0)
   const [addOpen, setAddOpen] = useState(false)

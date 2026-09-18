@@ -1,12 +1,3 @@
-// ---------------------------------------------------------------------------
-// OBSOLETO: la carga de planillas por Excel se eliminó al rediseñar
-// Planillas con desglose de servicio (propiedad/unidad/empleado siempre
-// requeridos, servicio como texto libre + payroll_entry_items) — ver
-// 20260918000000_payroll_service_breakdown.sql. Este archivo ya no lo usa
-// nadie; se deja como stub para no romper el build mientras no se pueda
-// borrar directamente. Se puede eliminar junto con ImportPayrollModal.tsx y
-// public/plantilla-planillas.xlsx.
-// ---------------------------------------------------------------------------
 
 export type ParsedPayrollRow = {
   rowNumber: number

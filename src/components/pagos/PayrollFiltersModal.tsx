@@ -6,13 +6,6 @@ const inputClass =
   'w-full rounded-lg border border-white/10 bg-surface px-3 py-2.5 text-sm text-white outline-none focus:border-gold-500'
 const labelClass = 'mb-1.5 block text-sm font-medium text-ink-200'
 
-// Filtros de Planillas — por propiedad, por empleado y por rango de fechas
-// (con calendario, mismo criterio que ExpenseFiltersModal — desde/hasta en
-// lugar de los presets de DateRangeSelect). Todos aplican de inmediato, este
-// panel (ver FilterPanel.tsx) solo los agrupa detrás de un botón para no
-// ocupar espacio permanente en la página. El searchbar
-// (propiedad/unidad/empleado/servicio) vive aparte, directamente en
-// Planillas.tsx.
 type PayrollFiltersModalProps = {
   open: boolean
   onClose: () => void

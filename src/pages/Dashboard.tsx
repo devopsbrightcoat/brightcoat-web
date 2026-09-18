@@ -55,9 +55,6 @@ import {
 } from '../lib/dashboardMetrics'
 import { useSupabaseQuery } from '../lib/useSupabaseQuery'
 
-// Paleta categórica validada (dataviz skill, pasos "dark") — azul, naranja,
-// aqua para las 3 series de Revenue vs Expenses vs Labor; dorado de marca
-// para la línea única de Revenue Trend.
 const COLOR_GOLD = '#e3a730'
 const COLOR_BLUE = '#3987e5'
 const COLOR_ORANGE = '#d95926'
@@ -160,7 +157,6 @@ export const Dashboard = () => {
         <p className="mx-8 mt-6 text-sm text-ink-500">Cargando…</p>
       ) : (
         <>
-          {/* Fila 1 — KPIs */}
           <div className="grid grid-cols-2 gap-4 px-8 pt-6 sm:grid-cols-3 xl:grid-cols-7">
             <StatCard label="Ingresos" value={currency(kpis.revenue)} icon={DollarSign} hint={revenueHint} />
             <StatCard label="Cobrado" value={currency(kpis.collected)} icon={Wallet} tone="good" />
@@ -181,7 +177,6 @@ export const Dashboard = () => {
             />
           </div>
 
-          {/* Fila A — Tendencia de ingresos */}
           <div className="px-8 pt-6">
             <DashboardPanel title="Tendencia de ingresos" subtitle="Últimos 12 meses">
               <div className="h-72">
@@ -198,7 +193,6 @@ export const Dashboard = () => {
             </DashboardPanel>
           </div>
 
-          {/* Fila B — Ingresos vs. gastos vs. pago a empleados | Ingresos por servicio */}
           <div className="grid grid-cols-1 gap-4 px-8 pt-4 lg:grid-cols-2">
             <DashboardPanel title="Ingresos vs. gastos vs. pago a empleados" subtitle="Últimos 12 meses">
               <div className="h-72">
@@ -228,7 +222,6 @@ export const Dashboard = () => {
             </DashboardPanel>
           </div>
 
-          {/* Fila C — Ingresos por propiedad | Productividad de empleados */}
           <div className="grid grid-cols-1 gap-4 px-8 pt-4 lg:grid-cols-2">
             <DashboardPanel title="Ingresos por propiedad" subtitle="Top propiedades — período seleccionado">
               <RankingBars
@@ -249,7 +242,6 @@ export const Dashboard = () => {
             </DashboardPanel>
           </div>
 
-          {/* Fila D — Operativo */}
           <div className="grid grid-cols-1 gap-4 px-8 pt-4 lg:grid-cols-3">
             <DashboardPanel title="Trabajos de hoy" subtitle="Programación del día" action={<CalendarDays className="h-4 w-4 text-ink-500" />}>
               {todaySchedules.length === 0 ? (
@@ -308,7 +300,6 @@ export const Dashboard = () => {
             </DashboardPanel>
           </div>
 
-          {/* Fila E — Alertas */}
           <div className="px-8 pt-4">
             <DashboardPanel title="Alertas" subtitle="Cosas que vale la pena revisar">
               {alerts.length === 0 ? (

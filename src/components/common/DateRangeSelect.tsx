@@ -1,10 +1,5 @@
 import { DATE_RANGE_OPTIONS, type DateRangeKey } from '../../lib/dateRange'
 
-// ---------------------------------------------------------------------------
-// Select reutilizable para el filtro de rango de fechas. Mismo estilo que
-// los demás selects de filtro (Finanzas, Reportes).
-// ---------------------------------------------------------------------------
-
 type DateRangeSelectProps = {
   value: DateRangeKey
   onChange: (value: DateRangeKey) => void

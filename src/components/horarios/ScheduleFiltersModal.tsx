@@ -5,10 +5,6 @@ const inputClass =
   'w-full rounded-lg border border-white/10 bg-surface px-3 py-2.5 text-sm text-white outline-none focus:border-gold-500'
 const labelClass = 'mb-1.5 block text-sm font-medium text-ink-200'
 
-// Filtros de la agenda del día en Horarios.tsx — por propiedad y por
-// empleado. Los selects aplican de inmediato (mismo criterio que los
-// filtros de Cobros), este panel (ver FilterPanel.tsx) solo los agrupa
-// detrás de un botón para no ocupar espacio permanente en la página.
 type ScheduleFiltersModalProps = {
   open: boolean
   onClose: () => void

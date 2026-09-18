@@ -29,10 +29,6 @@ const PAGE_SIZE = 15
 
 const columnHelper = createColumnHelper<Expense>()
 
-// Gastos es un módulo totalmente independiente — CRUD sin delete (view,
-// edit, create), sin propiedad/empleado/categoría. Sigue el mismo patrón de
-// searchbar + filtros de Propiedades/Empleados, y el de fila-clic-abre-
-// detalle de Cobros/Horarios.
 export const Gastos = () => {
   const [refreshKey, setRefreshKey] = useState(0)
   const { data: expenses, loading, error } = useSupabaseQuery(fetchExpenses, [refreshKey])

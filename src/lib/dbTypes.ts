@@ -1,8 +1,3 @@
-// ---------------------------------------------------------------------------
-// Forma cruda de las filas tal como las devuelve Supabase (snake_case),
-// según supabase/migrations. Solo se usan dentro de src/lib/api.ts para
-// mapear a los tipos de la app (src/types.ts, camelCase).
-// ---------------------------------------------------------------------------
 
 export type PropertyRow = {
   id: string
@@ -129,4 +124,3 @@ export type NotificationRow = {
   read_at: string | null
   created_at: string
 }
-

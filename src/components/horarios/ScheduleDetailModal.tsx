@@ -9,10 +9,6 @@ const Field = ({ label, value }: { label: string; value: React.ReactNode }) => (
   </div>
 )
 
-// Vista de solo lectura con el detalle de un horario — se abre al hacer
-// clic en cualquier parte de una fila en Horarios.tsx. Los botones de
-// Estatus y Editar dentro de la fila detienen la propagación para no abrir
-// este modal a la vez que el suyo.
 type ScheduleDetailModalProps = {
   schedule: Schedule | null
   propertyMap: Map<string, string>
@@ -30,10 +26,6 @@ export const ScheduleDetailModal = ({
   allSchedules,
   onClose,
 }: ScheduleDetailModalProps) => {
-  // Si este horario fue reagendado, rescheduledTo es el horario nuevo (con
-  // la fecha nueva); si este horario ES el resultado de reagendar otro,
-  // rescheduledFrom es ese horario viejo — ver rescheduleSchedule() en
-  // src/lib/api.ts.
   const rescheduledTo = schedule?.rescheduledToId
     ? allSchedules.find((s) => s.id === schedule.rescheduledToId)
     : undefined

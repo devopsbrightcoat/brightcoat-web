@@ -9,9 +9,6 @@ import type { Charge, Property } from '../../types'
 const currency = (value: number) =>
   value.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 2 })
 
-// Un grupo de cobros de un mismo mes calendario (por generatedDate) — ver
-// pages/Impuestos.tsx, que arma esta lista y la pasa tanto a la tabla
-// principal como a este modal de detalle.
 export type MonthGroup = {
   key: string
   label: string
@@ -30,11 +27,6 @@ type ImpuestosMonthDetailModalProps = {
   onChanged: () => void
 }
 
-// Detalle de un mes del resumen de Impuestos — lista cada cobro que compone
-// ese mes con su impuesto individual (sumado sobre el monto, no extraído
-// de adentro — ver taxOnAmount en lib/tax.ts) y permite marcar cobros
-// sueltos como pagados/pendientes, además del botón "en bloque" de la
-// tabla principal.
 export const ImpuestosMonthDetailModal = ({ month, properties, onClose, onChanged }: ImpuestosMonthDetailModalProps) => {
   const [savingId, setSavingId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)

@@ -13,10 +13,6 @@ type AddExpenseTemplateModalProps = {
   onSaved: () => void
 }
 
-// "Gastos fijos" — catálogo de tipos de gasto recurrentes (renta, seguro,
-// internet, etc.) que se puede elegir como plantilla al agregar un gasto
-// real (ver AddExpenseModal). No crea gastos ni los liga entre sí — solo
-// precarga monto y descripción en el formulario.
 export const AddExpenseTemplateModal = ({ open, onClose, onSaved }: AddExpenseTemplateModalProps) => {
   const [name, setName] = useState('')
   const [amount, setAmount] = useState('')

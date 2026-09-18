@@ -6,11 +6,6 @@ const inputClass =
   'w-full rounded-lg border border-white/10 bg-surface px-3 py-2.5 text-sm text-white outline-none focus:border-gold-500'
 const labelClass = 'mb-1.5 block text-sm font-medium text-ink-200'
 
-// Filtros de la tabla de Gastos — rango de fecha y rango de monto. Los
-// campos aplican de inmediato (mismo criterio que ScheduleFiltersModal),
-// este panel (ver FilterPanel.tsx) solo los agrupa detrás de un botón para
-// no ocupar espacio permanente en la página. El searchbar
-// (factura/descripción) vive aparte, directamente en Gastos.tsx.
 type ExpenseFiltersModalProps = {
   open: boolean
   onClose: () => void

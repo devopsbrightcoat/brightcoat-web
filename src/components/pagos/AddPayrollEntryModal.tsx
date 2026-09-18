@@ -28,17 +28,6 @@ const SCHEDULE_STATUS_LABELS: Record<Schedule['status'], string> = {
   rescheduled: 'Reagendado',
 }
 
-// Blanca recibe de un empleado "hoy trabajé en tal unidad, tal propiedad,
-// tal servicio" — con el Cobro total del trabajo (autocompletado desde
-// Cobros al elegir un horario relacionado, ver fetchChargeForSchedule) y un
-// desglose de los sub-servicios que lo componen, cuya suma es el Pago al
-// empleado. La Ganancia (Cobro - Pago) se calcula en Planillas.tsx (ver
-// lib/api.ts createPayrollEntry).
-//
-// Formulario dividido en tres secciones, a pedido de Javier: 1) Empleado
-// (con el buscador de horarios relacionados, colapsable, justo debajo) 2)
-// Propiedad — propiedad/unidad/fecha/servicio y 3) Cobro — cobro/impuesto
-// (checkbox, no todos los servicios lo llevan)/notas/desglose (= Pago).
 type AddPayrollEntryModalProps = {
   open: boolean
   properties: Property[]
@@ -65,15 +54,8 @@ export const AddPayrollEntryModal = ({ open, properties, employees, onClose, onS
   const [scheduleTo, setScheduleTo] = useState('')
   const [selectedScheduleId, setSelectedScheduleId] = useState('')
   const [chargeNotFound, setChargeNotFound] = useState(false)
-  // Fuerza a fetchSchedulesForEmployee a volver a consultarse con el mismo
-  // empleado/rango de fechas después de guardar una planilla — ese fetch ya
-  // excluye los horarios que ya tienen payroll_entry (ver comentario en
-  // fetchSchedulesForEmployee), así que basta con re-disparar la consulta
-  // para que el horario recién usado desaparezca del select.
   const [scheduleRefreshKey, setScheduleRefreshKey] = useState(0)
 
-  // Sin rango de fechas no se pide nada al servidor — el select de
-  // horarios se queda vacío hasta que Desde y Hasta estén completos.
   const { data: schedules, loading: schedulesLoading } = useSupabaseQuery(
     () =>
       employeeId && scheduleFrom && scheduleTo
@@ -110,12 +92,6 @@ export const AddPayrollEntryModal = ({ open, properties, employees, onClose, onS
   const addItem = () => setItems((prev) => [...prev, emptyItem((prev.at(-1)?.key ?? 0) + 1)])
   const removeItem = (key: number) => setItems((prev) => (prev.length > 1 ? prev.filter((item) => item.key !== key) : prev))
 
-  // Atajo de Javier: elegir un horario ya trabajado por este empleado
-  // precarga Propiedad/Unidad/Fecha/Servicio Y el Cobro (buscado en Cobros
-  // por esa misma propiedad+unidad+servicio+fecha) — el resto de la
-  // planilla (Notas, Desglose) se sigue llenando a mano.
-  // fetchSchedulesForEmployee ya viene filtrado por empleado + rango desde
-  // el servidor, así que acá no hace falta volver a filtrar.
   const employeeSchedules = schedules ?? []
 
   const handleEmployeeChange = (id: string) => {
@@ -149,8 +125,6 @@ export const AddPayrollEntryModal = ({ open, properties, employees, onClose, onS
         setChargeNotFound(true)
       }
     } catch {
-      // Si falla la búsqueda del cobro no bloquea el resto del prefill — el
-      // Cobro se puede completar a mano.
       setChargeNotFound(true)
     }
   }
@@ -158,11 +132,6 @@ export const AddPayrollEntryModal = ({ open, properties, employees, onClose, onS
   const filledItems = items.filter((item) => item.description.trim() || item.amount.trim())
   const salesTotal = filledItems.reduce((sum, item) => sum + (Number(item.amount) || 0), 0)
 
-  // Validación + armado del payload, compartidos entre "Agregar planilla"
-  // (guarda y sigue en el modal, para capturar varias planillas seguidas
-  // del mismo empleado/propiedad sin volver a llenarlos) y "Finalizar
-  // planilla" (guarda esta última y cierra) — ver comentario más abajo,
-  // junto a los botones.
   const buildPayload = ():
     | { error: string }
     | {
@@ -216,13 +185,6 @@ export const AddPayrollEntryModal = ({ open, properties, employees, onClose, onS
     }
   }
 
-  // Empleado y el rango Desde/Hasta del buscador de horarios se dejan tal
-  // cual — a pedido de Javier: es el filtro que arma la lista de horarios
-  // de ese empleado, y se reutiliza para ir eligiendo uno por uno sin
-  // volver a escribirlo. Lo que sí se limpia: cuál horario estaba
-  // seleccionado (para forzar a elegir el siguiente), la sección Propiedad
-  // (propiedad/unidad/fecha/servicio — se vuelve a llenar sola al elegir
-  // el próximo horario) y el Cobro + Desglose.
   const resetForNextEntry = () => {
     setSelectedScheduleId('')
     setChargeNotFound(false)
@@ -543,11 +505,6 @@ export const AddPayrollEntryModal = ({ open, properties, employees, onClose, onS
               Pago del desglose: <span className="tabular-nums text-ink-300">{currency(salesTotal)}</span>
             </p>
 
-            {/* Cada línea del desglose es un input de texto libre con este
-               datalist — el navegador ofrece los servicios existentes como
-               sugerencias desplegables, pero el usuario puede escribir
-               cualquier otro texto y se guarda tal cual (no es un select
-               cerrado). */}
             <datalist id="pe-item-service-types">
               {(serviceTypes ?? []).map((t) => (
                 <option key={t.id} value={t.name} />

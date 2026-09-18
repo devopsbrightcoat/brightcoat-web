@@ -35,12 +35,6 @@ const chartTooltipStyle = {
 
 const axisTick = { fontSize: 12, fill: '#94a3b8' }
 
-// Reportes › Gastos — tercera categoría de la hoja de ruta. "Detalle de
-// gastos" (factura, fecha, descripción, monto) ya está cubierto por la
-// pantalla Gastos existente, que además ya tiene su propio filtro de fecha
-// — no se duplica acá. Esta pantalla agrega lo que faltaba: evolución del
-// gasto por período con granularidad elegible, y la comparación mes actual
-// vs. meses anteriores que el catálogo pide explícitamente.
 export const ReportesGastos = () => {
   const [appliedRange, setAppliedRange] = useState<DateRange | null>(null)
   const [granularity, setGranularity] = useState<RevenuePeriodGranularity>('day')

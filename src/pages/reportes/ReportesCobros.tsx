@@ -43,14 +43,6 @@ const SEVERE_BUCKETS = new Set(['61–90 días', '+90 días'])
 const chargeColumnHelper = createColumnHelper<Charge>()
 const agingColumnHelper = createColumnHelper<AgingDetailRow>()
 
-// Reportes › Cobros — segunda categoría de la hoja de ruta de reportería.
-// "Cobros pendientes", "Cobros por propiedad" e "Historial de pagos" del
-// catálogo del cliente ya están cubiertos por la pantalla Cobros existente
-// (filtro por estatus, por propiedad, y columna Fecha ordenable) — no se
-// duplican acá. Lo genuinamente nuevo son los reportes que Cobros.tsx no
-// puede hacer porque no tiene filtro de fecha ("Cobrado vs. pendiente" e
-// "Invoices por período", por rango), más el drill-down de antigüedad (el
-// Dashboard solo muestra los 4 totales por bucket, no el detalle por cobro).
 export const ReportesCobros = () => {
   const [appliedRange, setAppliedRange] = useState<DateRange | null>(null)
   const [bucketFilter, setBucketFilter] = useState<string>('all')
@@ -79,10 +71,6 @@ export const ReportesCobros = () => {
   const totalPeriod = collected + outstanding
   const collectedPct = totalPeriod > 0 ? (collected / totalPeriod) * 100 : null
 
-  // La antigüedad es sobre TODA la cartera pendiente ahora mismo, no sobre
-  // el rango de fecha de arriba — igual que en el Dashboard (ver nota en
-  // dashboardMetrics.ts): "cuántos días lleva sin cobrarse" no depende del
-  // período que estés revisando.
   const agingBuckets = useMemo(() => computeOutstandingAging(charges ?? []), [charges])
   const agingDetail = useMemo(() => computeAgingDetail(charges ?? [], properties ?? []), [charges, properties])
   const agingDetailFiltered = useMemo(
