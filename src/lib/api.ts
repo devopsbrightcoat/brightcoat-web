@@ -927,6 +927,19 @@ export const createScheduleCharge = async (
     }
   }
 
+  // Si ya existe una entrada de planilla ligada a este horario (se armó
+  // copiando el monto del cobro al momento de crearla, ver
+  // AddPayrollEntryModal/fetchChargeForSchedule), la sincronizamos con el
+  // monto corregido — igual que updateCharge ya hace desde Cobros. Sin
+  // esto, corregir el monto desde el horario dejaría la planilla con el
+  // monto viejo. Si no hay ninguna planilla ligada, este update no afecta
+  // ninguna fila y no genera error.
+  const { error: payrollError } = await supabase
+    .from('payroll_entries')
+    .update({ amount })
+    .eq('schedule_id', scheduleId)
+  if (payrollError) throw payrollError
+
   const { error: statusError } = await supabase.from('schedules').update({ status: 'delivered' }).eq('id', scheduleId)
   if (statusError) throw statusError
 }

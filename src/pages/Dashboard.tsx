@@ -187,22 +187,24 @@ export const Dashboard = () => {
       ) : (
         <>
           <div className="grid grid-cols-2 gap-4 px-8 pt-6 sm:grid-cols-3 xl:grid-cols-7">
-            <StatCard label="Ingresos" value={currency(kpis.revenue)} icon={DollarSign} hint={revenueHint} />
-            <StatCard label="Cobrado" value={currency(kpis.collected)} icon={Wallet} tone="good" />
-            <StatCard label="Pendiente" value={currency(kpis.outstanding)} icon={Clock} tone="warn" />
-            <StatCard label="Pago a empleados" value={currency(kpis.laborCost)} icon={Banknote} />
-            <StatCard label="Gastos" value={currency(kpis.expenses)} icon={TrendingDown} />
+            <StatCard label="Ingresos" value={currency(kpis.revenue)} icon={DollarSign} hint={revenueHint} size="compact" />
+            <StatCard label="Cobrado" value={currency(kpis.collected)} icon={Wallet} tone="good" size="compact" />
+            <StatCard label="Pendiente" value={currency(kpis.outstanding)} icon={Clock} tone="warn" size="compact" />
+            <StatCard label="Pago a empleados" value={currency(kpis.laborCost)} icon={Banknote} size="compact" />
+            <StatCard label="Gastos" value={currency(kpis.expenses)} icon={TrendingDown} size="compact" />
             <StatCard
               label="Ganancia estimada"
               value={currency(kpis.estimatedProfit)}
               icon={TrendingUp}
               tone={kpis.estimatedProfit >= 0 ? 'good' : 'warn'}
+              size="compact"
             />
             <StatCard
               label="Margen de ganancia"
               value={kpis.profitMargin == null ? '—' : percent(kpis.profitMargin)}
               icon={Percent}
               tone={kpis.profitMargin == null ? 'default' : kpis.profitMargin < 15 ? 'warn' : 'good'}
+              size="compact"
             />
           </div>
 
@@ -321,12 +323,12 @@ export const Dashboard = () => {
               )}
             </DashboardPanel>
 
-            <DashboardPanel title="Antigüedad de cobros pendientes" subtitle="Días desde que se generó el cobro">
+            <DashboardPanel title="Antigüedad de cobros pendientes" subtitle="Días desde que se generó el cobro" titleTone="danger">
               <div className="space-y-3">
                 {outstandingAging.map((bucket) => (
                   <div key={bucket.label} className="flex items-center justify-between text-sm">
                     <span className="text-ink-300">{bucket.label}</span>
-                    <span className="tabular-nums text-white">
+                    <span className="tabular-nums text-red-400">
                       {currency(bucket.amount)} <span className="text-ink-500">({bucket.count})</span>
                     </span>
                   </div>

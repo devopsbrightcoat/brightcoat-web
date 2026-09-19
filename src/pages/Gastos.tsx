@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { DollarSign, Download, Filter, Pencil, Plus, Search, Upload } from 'lucide-react'
+import { DollarSign, Download, Filter, Pencil, Plus, Search } from 'lucide-react'
 import {
   createColumnHelper,
   getCoreRowModel,
@@ -166,14 +166,6 @@ export const Gastos = () => {
         subtitle="Facturas y gastos generales"
         action={
           <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setImportOpen(true)}
-              className="flex items-center gap-2 rounded-lg border border-white/10 bg-surface-alt px-3.5 py-2 text-sm font-medium text-ink-300 hover:bg-white/5"
-            >
-              <Upload className="h-4 w-4" />
-              Cargar Excel
-            </button>
             <button
               type="button"
               onClick={() => setAddOpen(true)}

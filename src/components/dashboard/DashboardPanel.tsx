@@ -6,14 +6,20 @@ type DashboardPanelProps = {
   action?: ReactNode
   children: ReactNode
   className?: string
+  titleTone?: 'default' | 'danger'
 }
 
-export const DashboardPanel = ({ title, subtitle, action, children, className = '' }: DashboardPanelProps) => {
+const titleToneClasses: Record<NonNullable<DashboardPanelProps['titleTone']>, string> = {
+  default: 'text-white',
+  danger: 'text-red-400',
+}
+
+export const DashboardPanel = ({ title, subtitle, action, children, className = '', titleTone = 'default' }: DashboardPanelProps) => {
   return (
     <div className={`rounded-xl border border-white/10 bg-surface-alt p-5 ${className}`}>
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="text-sm font-semibold text-white">{title}</p>
+          <p className={`text-sm font-semibold ${titleToneClasses[titleTone]}`}>{title}</p>
           {subtitle && <p className="text-xs text-ink-500">{subtitle}</p>}
         </div>
         {action}

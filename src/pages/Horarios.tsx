@@ -239,6 +239,12 @@ export const Horarios = () => {
               <tbody>
                 {dayRows.map((row) => {
                   const locked = row.status === 'delivered' || row.status === 'rescheduled'
+                  // El botón de estatus sí debe seguir habilitado para un
+                  // horario ya entregado (no de cobro fijo) — es la única
+                  // forma de reabrirlo y corregir el monto del cobro. Un
+                  // horario de cobro fijo ya entregado no tiene cobro que
+                  // corregir, y uno reagendado queda completamente cerrado.
+                  const statusLocked = row.status === 'rescheduled' || (row.status === 'delivered' && row.isFixedCharge)
                   return (
                   <tr
                     key={row.id}
@@ -261,13 +267,19 @@ export const Horarios = () => {
                     <td className="px-5 py-3">
                       <button
                         type="button"
-                        disabled={locked}
+                        disabled={statusLocked}
                         onClick={(e) => {
                           e.stopPropagation()
                           setActionSchedule(row)
                         }}
                         className="disabled:cursor-not-allowed"
-                        title={locked ? 'Ya entregado/cobrado o reagendado — el estatus no se puede cambiar.' : undefined}
+                        title={
+                          statusLocked
+                            ? 'Ya entregado (cobro fijo, sin cobro que corregir) o reagendado — el estatus no se puede cambiar.'
+                            : row.status === 'delivered'
+                              ? 'Ya entregado — clic para corregir el monto del cobro.'
+                              : undefined
+                        }
                       >
                         <StatusPill status={row.status} />
                       </button>

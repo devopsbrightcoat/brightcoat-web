@@ -37,7 +37,6 @@ const columnHelper = createColumnHelper<PayrollRow>()
 export const Planillas = () => {
   const [refreshKey, setRefreshKey] = useState(0)
   const [searchText, setSearchText] = useState('')
-  const [propertyId, setPropertyId] = useState('all')
   const [employeeId, setEmployeeId] = useState('all')
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
@@ -60,7 +59,6 @@ export const Planillas = () => {
   const filtered = useMemo(() => {
     const q = searchText.trim().toLowerCase()
     const rows: PayrollRow[] = (entries ?? [])
-      .filter((e) => propertyId === 'all' || e.propertyId === propertyId)
       .filter((e) => employeeId === 'all' || e.employeeId === employeeId)
       .filter((e) => {
         if (!q) return true
@@ -83,10 +81,9 @@ export const Planillas = () => {
         }
       })
     return rows
-  }, [entries, properties, employees, propertyId, employeeId, searchText])
+  }, [entries, properties, employees, employeeId, searchText])
 
-  const activeFilterCount =
-    (propertyId !== 'all' ? 1 : 0) + (employeeId !== 'all' ? 1 : 0) + (dateFrom ? 1 : 0) + (dateTo ? 1 : 0)
+  const activeFilterCount = (employeeId !== 'all' ? 1 : 0) + (dateFrom ? 1 : 0) + (dateTo ? 1 : 0)
 
   const totalSales = filtered.reduce((sum, e) => sum + e.sales, 0)
   const totalProfit = filtered.reduce((sum, e) => sum + (e.profit ?? 0), 0)
@@ -319,13 +316,10 @@ export const Planillas = () => {
       <PayrollFiltersModal
         open={filtersOpen}
         onClose={() => setFiltersOpen(false)}
-        properties={properties ?? []}
         employees={employees ?? []}
-        propertyId={propertyId}
         employeeId={employeeId}
         dateFrom={dateFrom}
         dateTo={dateTo}
-        onPropertyChange={setPropertyId}
         onEmployeeChange={setEmployeeId}
         onDateFromChange={setDateFrom}
         onDateToChange={setDateTo}
