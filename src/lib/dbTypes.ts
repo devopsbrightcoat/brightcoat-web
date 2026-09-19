@@ -74,6 +74,7 @@ export type ChargeTemplateRow = {
   property_id: string
   name: string
   amount: number | string
+  service_type_id: string | null
 }
 
 export type ChargeRow = {
@@ -93,6 +94,7 @@ export type ChargeRow = {
   tax_paid: boolean
   tax_paid_date: string | null
   is_fixed: boolean
+  schedule_id: string | null
 }
 
 export type ScheduleRow = {
@@ -104,6 +106,7 @@ export type ScheduleRow = {
   scheduled_date: string
   status: 'pending' | 'in_progress' | 'delivered' | 'cancelled' | 'rescheduled'
   rescheduled_to_id: string | null
+  is_fixed_charge: boolean
 }
 
 export type CompanySettingsRow = {

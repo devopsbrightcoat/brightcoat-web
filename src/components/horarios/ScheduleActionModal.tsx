@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Plus, X } from 'lucide-react'
 import { Modal } from '../common/Modal'
-import { createScheduleCharge, rescheduleSchedule, updateScheduleStatus } from '../../lib/api'
+import { createScheduleCharge, fetchChargeByScheduleId, rescheduleSchedule, updateScheduleStatus } from '../../lib/api'
 import type { Schedule, ScheduleStatus } from '../../types'
 import { getErrorMessage } from '../../lib/errors'
 
@@ -47,7 +47,35 @@ export const ScheduleActionModal = ({ schedule, onClose, onSaved }: ScheduleActi
 
   const handlePickStatus = async (status: ScheduleStatus) => {
     if (!schedule) return
-    if (status === 'delivered') {
+    // Un servicio de cobro fijo (ej. limpieza de oficina mensual) se marca
+    // "Entregado" directo, igual que Pendiente/En proceso/Cancelado — sin
+    // pedir costo ni crear un cobro, porque el cobro real ya se captura a
+    // mano en Cobros como cobro fijo recurrente.
+    if (status === 'delivered' && !schedule.isFixedCharge) {
+      if (schedule.status === 'delivered') {
+        // Ya estaba entregado y cobrado — se precarga el cobro existente
+        // para editarlo en vez de partir de un formulario en blanco.
+        setSaving(true)
+        setError(null)
+        try {
+          const existing = await fetchChargeByScheduleId(schedule.id)
+          if (existing) {
+            setTotalCost(String(existing.amount))
+            setNotes(existing.notes ?? '')
+            setExtras(
+              existing.extras.map((extra, i) => ({
+                key: i + 1,
+                description: extra.description,
+                amount: String(extra.amount),
+              })),
+            )
+          }
+        } catch (err) {
+          setError(getErrorMessage(err, 'No se pudo cargar el cobro existente — puedes capturarlo de nuevo.'))
+        } finally {
+          setSaving(false)
+        }
+      }
       setStep('charge')
       return
     }
@@ -176,7 +204,7 @@ export const ScheduleActionModal = ({ schedule, onClose, onSaved }: ScheduleActi
 
   if (step === 'charge') {
     return (
-      <Modal open={schedule !== null} onClose={onClose} title="Cobro del servicio">
+      <Modal open={schedule !== null} onClose={onClose} title={schedule?.status === 'delivered' ? 'Editar cobro' : 'Cobro del servicio'}>
         <div className="space-y-4">
           <div>
             <label htmlFor="chg-total" className={labelClass}>
@@ -268,7 +296,7 @@ export const ScheduleActionModal = ({ schedule, onClose, onSaved }: ScheduleActi
               onClick={handleSaveCharge}
               className="rounded-lg bg-gold-500 px-4 py-2 text-sm font-semibold text-brand-900 transition hover:bg-gold-400 disabled:opacity-60"
             >
-              {saving ? 'Guardando…' : 'Confirmar entrega y cobro'}
+              {saving ? 'Guardando…' : schedule?.status === 'delivered' ? 'Guardar cambios' : 'Confirmar entrega y cobro'}
             </button>
           </div>
         </div>

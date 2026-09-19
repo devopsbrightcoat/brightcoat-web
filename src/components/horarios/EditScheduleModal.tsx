@@ -30,6 +30,7 @@ export const EditScheduleModal = ({
   const [date, setDate] = useState('')
   const [unitLabel, setUnitLabel] = useState('')
   const [serviceTypeId, setServiceTypeId] = useState('')
+  const [isFixedCharge, setIsFixedCharge] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -40,6 +41,7 @@ export const EditScheduleModal = ({
     setDate(schedule.scheduledDate)
     setUnitLabel(schedule.unitLabel ?? '')
     setServiceTypeId(schedule.serviceTypeId)
+    setIsFixedCharge(schedule.isFixedCharge)
     setError(null)
   }, [schedule])
 
@@ -71,6 +73,7 @@ export const EditScheduleModal = ({
         scheduledDate: date,
         unitLabel,
         serviceTypeId,
+        isFixedCharge,
       })
       onSaved()
       onClose()
@@ -137,24 +140,57 @@ export const EditScheduleModal = ({
         </div>
 
         <div>
-          <label className={labelClass}>Unidad y servicio</label>
-          <div className="grid grid-cols-2 gap-2.5">
+          <label className="mb-2.5 flex items-start gap-2 text-xs text-ink-300">
             <input
-              type="text"
-              placeholder="Unidad (ej. L303)"
-              value={unitLabel}
-              onChange={(e) => setUnitLabel(e.target.value)}
-              className={inputClass}
+              type="checkbox"
+              checked={isFixedCharge}
+              onChange={(e) => {
+                setIsFixedCharge(e.target.checked)
+                setUnitLabel(e.target.checked ? 'N/A' : '')
+              }}
+              className="mt-0.5 h-3.5 w-3.5 rounded border-white/20 bg-surface accent-gold-500"
             />
-            <select value={serviceTypeId} onChange={(e) => setServiceTypeId(e.target.value)} className={inputClass}>
-              <option value="">Servicio…</option>
-              {serviceTypes.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.name}
-                </option>
-              ))}
-            </select>
-          </div>
+            <span>
+              Servicio de cobro fijo
+              <span className="block text-ink-500">
+                Se cobra por un monto fijo recurrente (ej. limpieza de oficina mensual) — al marcarlo "Entregado" se marca directo, sin pedir costo ni crear un cobro. No lleva unidad — se guarda como "N/A".
+              </span>
+            </span>
+          </label>
+          {isFixedCharge ? (
+            <div>
+              <label className={labelClass}>Servicio</label>
+              <select value={serviceTypeId} onChange={(e) => setServiceTypeId(e.target.value)} className={inputClass}>
+                <option value="">Servicio…</option>
+                {serviceTypes.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          ) : (
+            <div>
+              <label className={labelClass}>Unidad y servicio</label>
+              <div className="grid grid-cols-2 gap-2.5">
+                <input
+                  type="text"
+                  placeholder="Unidad (ej. L303)"
+                  value={unitLabel}
+                  onChange={(e) => setUnitLabel(e.target.value)}
+                  className={inputClass}
+                />
+                <select value={serviceTypeId} onChange={(e) => setServiceTypeId(e.target.value)} className={inputClass}>
+                  <option value="">Servicio…</option>
+                  {serviceTypes.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          )}
         </div>
 
         {error && <p className="rounded-lg bg-red-500/10 px-3 py-2 text-sm text-red-400">{error}</p>}

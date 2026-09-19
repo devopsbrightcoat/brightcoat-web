@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   AlertTriangle,
   Banknote,
@@ -29,6 +29,7 @@ import { StatCard } from '../components/common/StatCard'
 import { StatusPill } from '../components/common/StatusPill'
 import { DashboardPanel } from '../components/dashboard/DashboardPanel'
 import { DashboardDateRangeSelect } from '../components/dashboard/DashboardDateRangeSelect'
+import { Pagination } from '../components/common/Pagination'
 import { RankingBars } from '../components/dashboard/RankingBars'
 import { ServiceCategoryModal } from '../components/dashboard/ServiceCategoryModal'
 import { useReferenceData } from '../contexts/ReferenceDataContext'
@@ -41,13 +42,19 @@ import {
   computeKpis,
   computeMonthlyFinancials,
   computeOutstandingAging,
-  computeOverdueSchedules,
+  computePendingSchedules,
   computeRevenueByCategory,
   computeRevenueByProperty,
   computeTodaySchedules,
   type DashboardDateRangeSelection,
 } from '../lib/dashboardMetrics'
 import { useSupabaseQuery } from '../lib/useSupabaseQuery'
+
+// Cantidad fija de trabajos pendientes que se muestran por página en el
+// panel "Trabajos Pendientes de Total" del Dashboard — evita que el panel
+// crezca sin límite cuando hay muchos trabajos pendientes; en vez de eso se
+// pagina, como el resto de las tablas de la app.
+const PENDING_SCHEDULES_PAGE_SIZE = 5
 
 const COLOR_GOLD = '#e3a730'
 const COLOR_BLUE = '#3987e5'
@@ -72,6 +79,7 @@ const axisTick = { fontSize: 12, fill: '#94a3b8' }
 export const Dashboard = () => {
   const [rangeSelection, setRangeSelection] = useState<DashboardDateRangeSelection>({ kind: 'preset', key: 'this_month' })
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null)
+  const [pendingPage, setPendingPage] = useState(1)
 
   // El Dashboard solo necesita datos de los últimos ~14 meses (ver
   // computeDashboardFetchWindowStart) — antes traía TODO el historial en
@@ -132,8 +140,21 @@ export const Dashboard = () => {
   )
 
   const todaySchedules = useMemo(() => computeTodaySchedules(schedules ?? []), [schedules])
-  const overdueSchedules = useMemo(() => computeOverdueSchedules(schedules ?? []), [schedules])
+  const pendingSchedules = useMemo(() => computePendingSchedules(schedules ?? []), [schedules])
   const outstandingAging = useMemo(() => computeOutstandingAging(charges ?? []), [charges])
+
+  const pendingTotalPages = Math.max(1, Math.ceil(pendingSchedules.length / PENDING_SCHEDULES_PAGE_SIZE))
+  // Si el rango de fechas cambia (o llegan datos nuevos) y la lista se
+  // encoge, volvemos a la página 1 en vez de quedarnos en una página vacía.
+  useEffect(() => setPendingPage(1), [pendingSchedules])
+  const pendingCurrentPage = Math.min(pendingPage, pendingTotalPages)
+  const pendingPageItems = useMemo(
+    () => pendingSchedules.slice(
+      (pendingCurrentPage - 1) * PENDING_SCHEDULES_PAGE_SIZE,
+      pendingCurrentPage * PENDING_SCHEDULES_PAGE_SIZE,
+    ),
+    [pendingSchedules, pendingCurrentPage],
+  )
 
   const alerts = useMemo(
     () => computeAlerts(charges ?? [], payrollEntries ?? [], expenses ?? [], properties ?? [], range, currency),
@@ -271,26 +292,32 @@ export const Dashboard = () => {
               )}
             </DashboardPanel>
 
-            <DashboardPanel title="Trabajos atrasados" subtitle="Fecha programada ya pasada" action={<CalendarClock className="h-4 w-4 text-amber-400" />}>
-              {overdueSchedules.length === 0 ? (
-                <p className="py-4 text-center text-sm text-ink-500">No hay trabajos atrasados.</p>
+            <DashboardPanel
+              title="Trabajos Pendientes de Total"
+              subtitle={`${pendingSchedules.length} de ${(schedules ?? []).length} trabajos`}
+              action={<CalendarClock className="h-4 w-4 text-amber-400" />}
+            >
+              {pendingSchedules.length === 0 ? (
+                <p className="py-4 text-center text-sm text-ink-500">No hay trabajos pendientes.</p>
               ) : (
-                <div className="space-y-3">
-                  {overdueSchedules.slice(0, 6).map((s) => (
-                    <div key={s.id} className="flex items-start justify-between gap-3 border-b border-white/5 pb-3 last:border-0 last:pb-0">
-                      <div className="min-w-0">
-                        <p className="truncate text-sm text-ink-200">{propertyName(s.propertyId)}</p>
-                        <p className="truncate text-xs text-ink-500">
-                          {serviceTypeName(s.serviceTypeId)} · {employeeName(s.employeeId)} · {s.scheduledDate}
-                        </p>
+                <>
+                  <div className="space-y-3">
+                    {pendingPageItems.map((s) => (
+                      <div key={s.id} className="flex items-start justify-between gap-3 border-b border-white/5 pb-3 last:border-0 last:pb-0">
+                        <div className="min-w-0">
+                          <p className="truncate text-sm text-ink-200">{propertyName(s.propertyId)}</p>
+                          <p className="truncate text-xs text-ink-500">
+                            {serviceTypeName(s.serviceTypeId)} · {employeeName(s.employeeId)} · {s.scheduledDate}
+                          </p>
+                        </div>
+                        <StatusPill status={s.status} />
                       </div>
-                      <StatusPill status={s.status} />
-                    </div>
-                  ))}
-                  {overdueSchedules.length > 6 && (
-                    <p className="text-xs text-ink-500">y {overdueSchedules.length - 6} más…</p>
-                  )}
-                </div>
+                    ))}
+                  </div>
+                  <div className="-mx-5 -mb-5 mt-2">
+                    <Pagination page={pendingCurrentPage} totalPages={pendingTotalPages} onChange={setPendingPage} />
+                  </div>
+                </>
               )}
             </DashboardPanel>
 

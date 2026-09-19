@@ -300,6 +300,7 @@ export const Cobros = () => {
       <AddFixedChargeModal
         open={addFixedOpen}
         properties={properties ?? []}
+        serviceTypes={serviceTypes ?? []}
         onClose={() => setAddFixedOpen(false)}
         onSaved={() => setRefreshKey((k) => k + 1)}
       />

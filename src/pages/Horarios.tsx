@@ -247,7 +247,16 @@ export const Horarios = () => {
                   >
                     <td className="px-5 py-3 text-ink-200">{propertyMap.get(row.propertyId) ?? '—'}</td>
                     <td className="px-5 py-3 text-ink-400">{row.unitLabel || '—'}</td>
-                    <td className="px-5 py-3 text-ink-400">{serviceTypeMap.get(row.serviceTypeId) ?? '—'}</td>
+                    <td className="px-5 py-3 text-ink-400">
+                      <div className="flex items-center gap-1.5">
+                        <span>{serviceTypeMap.get(row.serviceTypeId) ?? '—'}</span>
+                        {row.isFixedCharge && (
+                          <span className="rounded-full bg-gold-500/10 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-gold-400 ring-1 ring-inset ring-gold-500/20">
+                            Fijo
+                          </span>
+                        )}
+                      </div>
+                    </td>
                     <td className="px-5 py-3 text-ink-400">{employeeMap.get(row.employeeId) ?? '—'}</td>
                     <td className="px-5 py-3">
                       <button

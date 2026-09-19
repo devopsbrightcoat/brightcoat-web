@@ -327,6 +327,15 @@ export const computeOverdueSchedules = (schedules: Schedule[]): Schedule[] => {
     .sort((a, b) => a.scheduledDate.localeCompare(b.scheduledDate))
 }
 
+// Todos los trabajos pendientes/en proceso, ya sea que su fecha ya pasó o
+// no — a diferencia de computeOverdueSchedules, que solo cuenta los que ya
+// pasaron su fecha. Usado por el panel "Trabajos Pendientes de Total" del
+// Dashboard (David pidió ver el resumen completo, no solo los atrasados).
+export const computePendingSchedules = (schedules: Schedule[]): Schedule[] =>
+  schedules
+    .filter((s) => s.status === 'pending' || s.status === 'in_progress')
+    .sort((a, b) => a.scheduledDate.localeCompare(b.scheduledDate))
+
 export type AgingBucket = { label: string; amount: number; count: number }
 
 const AGING_BUCKET_LABELS = ['0–30 días', '31–60 días', '61–90 días', '+90 días'] as const

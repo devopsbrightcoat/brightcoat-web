@@ -3,7 +3,7 @@ import { Modal } from '../common/Modal'
 import { createFixedCharge, fetchChargeTemplates } from '../../lib/api'
 import { getErrorMessage } from '../../lib/errors'
 import { useSupabaseQuery } from '../../lib/useSupabaseQuery'
-import type { Property } from '../../types'
+import type { Property, ServiceType } from '../../types'
 
 const inputClass =
   'w-full rounded-lg border border-white/10 bg-surface px-3 py-2.5 text-sm text-white outline-none focus:border-gold-500'
@@ -12,11 +12,12 @@ const labelClass = 'mb-1.5 block text-sm font-medium text-ink-200'
 type AddFixedChargeModalProps = {
   open: boolean
   properties: Property[]
+  serviceTypes: ServiceType[]
   onClose: () => void
   onSaved: () => void
 }
 
-export const AddFixedChargeModal = ({ open, properties, onClose, onSaved }: AddFixedChargeModalProps) => {
+export const AddFixedChargeModal = ({ open, properties, serviceTypes, onClose, onSaved }: AddFixedChargeModalProps) => {
   const [templateId, setTemplateId] = useState('')
   const [amount, setAmount] = useState('')
   const [date, setDate] = useState('')
@@ -36,6 +37,9 @@ export const AddFixedChargeModal = ({ open, properties, onClose, onSaved }: AddF
   const selectedTemplate = (templates ?? []).find((t) => t.id === templateId)
   const selectedPropertyName = selectedTemplate
     ? properties.find((p) => p.id === selectedTemplate.propertyId)?.name ?? '—'
+    : null
+  const selectedServiceTypeName = selectedTemplate?.serviceTypeId
+    ? serviceTypes.find((t) => t.id === selectedTemplate.serviceTypeId)?.name ?? '—'
     : null
 
   const handleTemplateChange = (id: string) => {
@@ -68,6 +72,7 @@ export const AddFixedChargeModal = ({ open, properties, onClose, onSaved }: AddF
         amount: amountValue,
         generatedDate: date,
         description: template.name,
+        serviceTypeId: template.serviceTypeId,
       })
       onSaved()
       onClose()
@@ -106,6 +111,9 @@ export const AddFixedChargeModal = ({ open, properties, onClose, onSaved }: AddF
           {selectedPropertyName && (
             <p className="mt-1.5 text-xs text-ink-500">Propiedad: {selectedPropertyName}</p>
           )}
+          {selectedServiceTypeName && (
+            <p className="mt-1.5 text-xs text-ink-500">Tipo de servicio: {selectedServiceTypeName}</p>
+          )}
         </div>
 
         <div>
@@ -137,8 +145,8 @@ export const AddFixedChargeModal = ({ open, properties, onClose, onSaved }: AddF
         </div>
 
         <p className="text-xs text-ink-500">
-          Un cobro fijo no lleva apartamento ni tipo de servicio — queda ligado solo a la propiedad. Cobros lo
-          muestra con "N/A" en la columna Apartamento.
+          Un cobro fijo no lleva apartamento — queda ligado a la propiedad y, si el cobro fijo del catálogo tiene uno
+          asignado, a su tipo de servicio. Cobros lo muestra con "N/A" en la columna Apartamento.
         </p>
 
         {error && <p className="rounded-lg bg-red-500/10 px-3 py-2 text-sm text-red-400">{error}</p>}

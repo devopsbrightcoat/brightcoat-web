@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Modal } from '../common/Modal'
 import { createChargeTemplate } from '../../lib/api'
 import { getErrorMessage } from '../../lib/errors'
-import type { Property } from '../../types'
+import type { Property, ServiceType } from '../../types'
 
 const inputClass =
   'w-full rounded-lg border border-white/10 bg-surface px-3 py-2.5 text-sm text-white outline-none focus:border-gold-500'
@@ -11,12 +11,14 @@ const labelClass = 'mb-1.5 block text-sm font-medium text-ink-200'
 type AddChargeTemplateModalProps = {
   open: boolean
   properties: Property[]
+  serviceTypes: ServiceType[]
   onClose: () => void
   onSaved: () => void
 }
 
-export const AddChargeTemplateModal = ({ open, properties, onClose, onSaved }: AddChargeTemplateModalProps) => {
+export const AddChargeTemplateModal = ({ open, properties, serviceTypes, onClose, onSaved }: AddChargeTemplateModalProps) => {
   const [propertyId, setPropertyId] = useState('')
+  const [serviceTypeId, setServiceTypeId] = useState('')
   const [name, setName] = useState('')
   const [amount, setAmount] = useState('')
   const [saving, setSaving] = useState(false)
@@ -25,6 +27,7 @@ export const AddChargeTemplateModal = ({ open, properties, onClose, onSaved }: A
   useEffect(() => {
     if (!open) return
     setPropertyId('')
+    setServiceTypeId('')
     setName('')
     setAmount('')
     setError(null)
@@ -35,8 +38,12 @@ export const AddChargeTemplateModal = ({ open, properties, onClose, onSaved }: A
       setError('Selecciona una propiedad.')
       return
     }
+    if (!serviceTypeId) {
+      setError('Selecciona un tipo de servicio.')
+      return
+    }
     if (!name.trim()) {
-      setError('El nombre es obligatorio.')
+      setError('La descripción es obligatoria.')
       return
     }
     const amountValue = Number(amount)
@@ -47,7 +54,7 @@ export const AddChargeTemplateModal = ({ open, properties, onClose, onSaved }: A
     setSaving(true)
     setError(null)
     try {
-      await createChargeTemplate({ propertyId, name: name.trim(), amount: amountValue })
+      await createChargeTemplate({ propertyId, name: name.trim(), amount: amountValue, serviceTypeId })
       onSaved()
       onClose()
     } catch (err) {
@@ -80,8 +87,27 @@ export const AddChargeTemplateModal = ({ open, properties, onClose, onSaved }: A
         </div>
 
         <div>
+          <label htmlFor="new-chgtpl-service" className={labelClass}>
+            Tipo de servicio
+          </label>
+          <select
+            id="new-chgtpl-service"
+            value={serviceTypeId}
+            onChange={(e) => setServiceTypeId(e.target.value)}
+            className={inputClass}
+          >
+            <option value="">Selecciona…</option>
+            {serviceTypes.map((t) => (
+              <option key={t.id} value={t.id}>
+                {t.name}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div>
           <label htmlFor="new-chgtpl-name" className={labelClass}>
-            Servicio
+            Descripción
           </label>
           <input
             id="new-chgtpl-name"

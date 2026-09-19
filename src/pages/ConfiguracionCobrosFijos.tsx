@@ -41,13 +41,19 @@ export const ConfiguracionCobrosFijos = () => {
   const [editingTemplate, setEditingTemplate] = useState<ChargeTemplate | null>(null)
   const [deletingTemplate, setDeletingTemplate] = useState<ChargeTemplate | null>(null)
   const { data: templates, loading, error } = useSupabaseQuery(fetchChargeTemplates, [refreshKey])
-  const { properties } = useReferenceData()
+  const { properties, serviceTypes } = useReferenceData()
 
   const propertyNameById = useMemo(() => {
     const map = new Map<string, string>()
     for (const p of properties ?? []) map.set(p.id, p.name)
     return map
   }, [properties])
+
+  const serviceTypeNameById = useMemo(() => {
+    const map = new Map<string, string>()
+    for (const t of serviceTypes ?? []) map.set(t.id, t.name)
+    return map
+  }, [serviceTypes])
 
   const [sorting, setSorting] = useState<SortingState>([])
   const [pageIndex, setPageIndex] = useState(0)
@@ -58,9 +64,13 @@ export const ConfiguracionCobrosFijos = () => {
         id: 'property',
         header: 'Propiedad',
       }),
+      columnHelper.accessor((row) => (row.serviceTypeId ? serviceTypeNameById.get(row.serviceTypeId) ?? '—' : '—'), {
+        id: 'serviceType',
+        header: 'Tipo de servicio',
+      }),
       columnHelper.accessor('name', {
         id: 'name',
-        header: 'Servicio',
+        header: 'Descripción',
       }),
       columnHelper.accessor('amount', {
         id: 'amount',
@@ -92,7 +102,7 @@ export const ConfiguracionCobrosFijos = () => {
         ),
       }),
     ],
-    [propertyNameById],
+    [propertyNameById, serviceTypeNameById],
   )
 
   const pageCount = Math.max(1, Math.ceil((templates ?? []).length / PAGE_SIZE))
@@ -187,6 +197,7 @@ export const ConfiguracionCobrosFijos = () => {
       <AddChargeTemplateModal
         open={addOpen}
         properties={properties ?? []}
+        serviceTypes={serviceTypes ?? []}
         onClose={() => setAddOpen(false)}
         onSaved={() => setRefreshKey((k) => k + 1)}
       />
@@ -194,6 +205,7 @@ export const ConfiguracionCobrosFijos = () => {
       <EditChargeTemplateModal
         template={editingTemplate}
         properties={properties ?? []}
+        serviceTypes={serviceTypes ?? []}
         onClose={() => setEditingTemplate(null)}
         onSaved={() => setRefreshKey((k) => k + 1)}
       />

@@ -13,9 +13,10 @@ type Line = {
   key: number
   unitLabel: string
   serviceTypeId: string
+  isFixedCharge: boolean
 }
 
-const emptyLine = (key: number): Line => ({ key, unitLabel: '', serviceTypeId: '' })
+const emptyLine = (key: number): Line => ({ key, unitLabel: '', serviceTypeId: '', isFixedCharge: false })
 
 type AddScheduleModalProps = {
   open: boolean
@@ -94,6 +95,7 @@ export const AddScheduleModal = ({
           scheduledDate: date,
           unitLabel: line.unitLabel,
           serviceTypeId: line.serviceTypeId,
+          isFixedCharge: line.isFixedCharge,
         })),
       )
       onSaved()
@@ -188,14 +190,26 @@ export const AddScheduleModal = ({
                     </button>
                   )}
                 </div>
-                <div className="grid grid-cols-2 gap-2.5">
+                <label className="mb-2.5 flex items-start gap-2 text-xs text-ink-300">
                   <input
-                    type="text"
-                    placeholder="Unidad (ej. L303)"
-                    value={line.unitLabel}
-                    onChange={(e) => updateLine(line.key, { unitLabel: e.target.value })}
-                    className={inputClass}
+                    type="checkbox"
+                    checked={line.isFixedCharge}
+                    onChange={(e) =>
+                      updateLine(line.key, {
+                        isFixedCharge: e.target.checked,
+                        unitLabel: e.target.checked ? 'N/A' : '',
+                      })
+                    }
+                    className="mt-0.5 h-3.5 w-3.5 rounded border-white/20 bg-surface accent-gold-500"
                   />
+                  <span>
+                    Servicio de cobro fijo
+                    <span className="block text-ink-500">
+                      Se cobra por un monto fijo recurrente (ej. limpieza de oficina mensual) — al marcarlo "Entregado" se marca directo, sin pedir costo ni crear un cobro. No lleva unidad — se guarda como "N/A".
+                    </span>
+                  </span>
+                </label>
+                {line.isFixedCharge ? (
                   <select
                     value={line.serviceTypeId}
                     onChange={(e) => updateLine(line.key, { serviceTypeId: e.target.value })}
@@ -208,7 +222,29 @@ export const AddScheduleModal = ({
                       </option>
                     ))}
                   </select>
-                </div>
+                ) : (
+                  <div className="grid grid-cols-2 gap-2.5">
+                    <input
+                      type="text"
+                      placeholder="Unidad (ej. L303)"
+                      value={line.unitLabel}
+                      onChange={(e) => updateLine(line.key, { unitLabel: e.target.value })}
+                      className={inputClass}
+                    />
+                    <select
+                      value={line.serviceTypeId}
+                      onChange={(e) => updateLine(line.key, { serviceTypeId: e.target.value })}
+                      className={inputClass}
+                    >
+                      <option value="">Servicio…</option>
+                      {serviceTypes.map((t) => (
+                        <option key={t.id} value={t.id}>
+                          {t.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
               </div>
             ))}
           </div>

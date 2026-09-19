@@ -341,6 +341,7 @@ const mapCharge = (row: ChargeRow): Charge => ({
   taxPaid: row.tax_paid,
   taxPaidDate: row.tax_paid_date ?? undefined,
   isFixed: row.is_fixed,
+  scheduleId: row.schedule_id ?? undefined,
 })
 
 // dateFrom/dateTo opcionales — filtran por generated_date, mismo patrón que
@@ -359,12 +360,14 @@ export const createFixedCharge = async (data: {
   amount: number
   generatedDate: string
   description?: string
+  serviceTypeId?: string
 }): Promise<void> => {
   const { error } = await supabase.from('charges').insert({
     property_id: data.propertyId,
     amount: data.amount,
     generated_date: data.generatedDate,
     description: data.description || null,
+    service_type_id: data.serviceTypeId || null,
     status: 'pending',
     is_fixed: true,
   })
@@ -376,6 +379,7 @@ const mapChargeTemplate = (row: ChargeTemplateRow): ChargeTemplate => ({
   propertyId: row.property_id,
   name: row.name,
   amount: Number(row.amount),
+  serviceTypeId: row.service_type_id ?? undefined,
 })
 
 export const fetchChargeTemplates = async (): Promise<ChargeTemplate[]> => {
@@ -388,22 +392,29 @@ export const createChargeTemplate = async (data: {
   propertyId: string
   name: string
   amount: number
+  serviceTypeId?: string
 }): Promise<void> => {
   const { error } = await supabase.from('charge_templates').insert({
     property_id: data.propertyId,
     name: data.name.trim(),
     amount: data.amount,
+    service_type_id: data.serviceTypeId || null,
   })
   if (error) throw error
 }
 
 export const updateChargeTemplate = async (
   id: string,
-  patch: { propertyId: string; name: string; amount: number },
+  patch: { propertyId: string; name: string; amount: number; serviceTypeId?: string },
 ): Promise<void> => {
   const { error } = await supabase
     .from('charge_templates')
-    .update({ property_id: patch.propertyId, name: patch.name.trim(), amount: patch.amount })
+    .update({
+      property_id: patch.propertyId,
+      name: patch.name.trim(),
+      amount: patch.amount,
+      service_type_id: patch.serviceTypeId || null,
+    })
     .eq('id', id)
   if (error) throw error
 }
@@ -701,6 +712,7 @@ const mapSchedule = (row: ScheduleRow): Schedule => ({
   scheduledDate: row.scheduled_date,
   status: row.status,
   rescheduledToId: row.rescheduled_to_id ?? undefined,
+  isFixedCharge: row.is_fixed_charge,
 })
 
 // dateFrom opcional — mismo patrón que fetchCharges/fetchExpenses. Se usa
@@ -748,6 +760,7 @@ export const createSchedules = async (
     scheduledDate: string
     unitLabel: string
     serviceTypeId: string
+    isFixedCharge?: boolean
   }[],
 ): Promise<void> => {
   const { error } = await supabase.from('schedules').insert(
@@ -757,6 +770,7 @@ export const createSchedules = async (
       scheduled_date: r.scheduledDate,
       unit_label: r.unitLabel || null,
       service_type_id: r.serviceTypeId,
+      is_fixed_charge: r.isFixedCharge ?? false,
     })),
   )
   if (error) throw error
@@ -770,6 +784,7 @@ export const updateSchedule = async (
     scheduledDate: string
     unitLabel: string
     serviceTypeId: string
+    isFixedCharge?: boolean
   },
 ): Promise<void> => {
   const { error } = await supabase
@@ -780,6 +795,7 @@ export const updateSchedule = async (
       scheduled_date: patch.scheduledDate,
       unit_label: patch.unitLabel || null,
       service_type_id: patch.serviceTypeId,
+      is_fixed_charge: patch.isFixedCharge ?? false,
     })
     .eq('id', id)
     .neq('status', 'delivered')
@@ -802,7 +818,7 @@ export const updateScheduleStatus = async (id: string, status: Schedule['status'
 export const rescheduleSchedule = async (id: string, newDate: string): Promise<void> => {
   const { data: schedule, error: fetchError } = await supabase
     .from('schedules')
-    .select('property_id, employee_id, unit_label, service_type_id')
+    .select('property_id, employee_id, unit_label, service_type_id, is_fixed_charge')
     .eq('id', id)
     .neq('status', 'delivered')
     .neq('status', 'rescheduled')
@@ -821,6 +837,7 @@ export const rescheduleSchedule = async (id: string, newDate: string): Promise<v
       employee_id: schedule.employee_id,
       unit_label: schedule.unit_label,
       service_type_id: schedule.service_type_id,
+      is_fixed_charge: schedule.is_fixed_charge,
       scheduled_date: newDate,
     })
     .select('id')
@@ -851,6 +868,16 @@ export const deleteSchedule = async (id: string): Promise<void> => {
   }
 }
 
+// Un horario tiene a lo más un cobro (charges.schedule_id es único cuando
+// está presente, ver 20261005000000_add_charges_schedule_id.sql) — la
+// pantalla de Horarios usa esto para precargar el formulario de cobro al
+// hacer clic en "Entregado" sobre un horario que ya fue cobrado antes.
+export const fetchChargeByScheduleId = async (scheduleId: string): Promise<Charge | null> => {
+  const { data, error } = await supabase.from('charges').select('*').eq('schedule_id', scheduleId).maybeSingle()
+  if (error) throw error
+  return data ? mapCharge(data as ChargeRow) : null
+}
+
 export const createScheduleCharge = async (
   scheduleId: string,
   data: { totalCost: number; notes: string; extras: { description: string; amount: number }[] },
@@ -864,21 +891,40 @@ export const createScheduleCharge = async (
 
   const amount = data.totalCost
 
-  const { error } = await supabase.from('charges').insert({
-    property_id: schedule.property_id,
-    unit_label: schedule.unit_label,
-    service_type_id: schedule.service_type_id,
-    amount,
-    status: 'pending',
-    generated_date: schedule.scheduled_date,
-    notes: data.notes.trim() || null,
-    extras: data.extras,
-  })
-  if (error) {
-    if (error.code === '23505') {
-      throw new Error('Ya existe un cobro para este mismo servicio, unidad, propiedad y fecha.')
+  const { data: existing, error: existingError } = await supabase
+    .from('charges')
+    .select('id')
+    .eq('schedule_id', scheduleId)
+    .maybeSingle()
+  if (existingError) throw existingError
+
+  if (existing) {
+    // El horario ya tenía un cobro (se le dio "Entregado" antes) — se edita
+    // en vez de intentar crear uno nuevo, que chocaría contra el índice
+    // único de charges_schedule_id_idx.
+    const { error } = await supabase
+      .from('charges')
+      .update({ amount, notes: data.notes.trim() || null, extras: data.extras })
+      .eq('id', existing.id)
+    if (error) throw error
+  } else {
+    const { error } = await supabase.from('charges').insert({
+      property_id: schedule.property_id,
+      unit_label: schedule.unit_label,
+      service_type_id: schedule.service_type_id,
+      schedule_id: scheduleId,
+      amount,
+      status: 'pending',
+      generated_date: schedule.scheduled_date,
+      notes: data.notes.trim() || null,
+      extras: data.extras,
+    })
+    if (error) {
+      if (error.code === '23505') {
+        throw new Error('Ya existe un cobro para este horario.')
+      }
+      throw error
     }
-    throw error
   }
 
   const { error: statusError } = await supabase.from('schedules').update({ status: 'delivered' }).eq('id', scheduleId)

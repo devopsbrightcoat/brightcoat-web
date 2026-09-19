@@ -40,6 +40,7 @@ export type ChargeTemplate = {
   propertyId: string
   name: string
   amount: number
+  serviceTypeId?: string
 }
 
 export type Vendor = {
@@ -103,6 +104,7 @@ export type Charge = {
   taxPaid: boolean
   taxPaidDate?: string
   isFixed: boolean
+  scheduleId?: string
 }
 
 export type CompanySettings = {
@@ -125,6 +127,7 @@ export type Schedule = {
   scheduledDate: string
   status: ScheduleStatus
   rescheduledToId?: string
+  isFixedCharge: boolean
 }
 
 export type NotificationEntityType = 'property' | 'employee' | 'schedule' | 'expense' | 'payroll_entry' | 'charge'
