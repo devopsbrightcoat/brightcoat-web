@@ -59,7 +59,7 @@ export const ConfirmModal = ({
             type="button"
             disabled={deleting}
             onClick={handleConfirm}
-            className="rounded-lg bg-red-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-red-400 disabled:opacity-60"
+            className="rounded-lg bg-red-500 px-4 py-2 text-sm font-semibold text-[#ffffff] transition hover:bg-red-400 disabled:opacity-60"
           >
             {deleting ? 'Eliminando…' : confirmLabel}
           </button>

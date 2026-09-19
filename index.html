@@ -4,6 +4,18 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/png" href="/favicon.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script>
+      // Aplica el tema guardado ANTES del primer render/pintado, para que no
+      // se vea un parpadeo del tema equivocado al cargar la página.
+      (function () {
+        try {
+          var pref = localStorage.getItem('brightcoat-ops-theme')
+          if (pref === 'light' || pref === 'dark') {
+            document.documentElement.setAttribute('data-theme', pref)
+          }
+        } catch (e) {}
+      })()
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link

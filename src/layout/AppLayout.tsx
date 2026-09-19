@@ -17,6 +17,7 @@ import type { LucideIcon } from 'lucide-react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { useAuth, type ProfileRole } from '../auth/AuthProvider'
 import { NotificationBell } from '../components/notifications/NotificationBell'
+import { ThemeToggle } from '../components/common/ThemeToggle'
 
 type NavChild = { to: string; label: string; hiddenForRoles?: ProfileRole[] }
 type NavItem = { to: string; label: string; icon: LucideIcon; end?: boolean; children?: NavChild[] }
@@ -110,7 +111,7 @@ export const AppLayout = () => {
     <div className="flex h-screen bg-surface">
       <aside
         className={[
-          'flex h-screen shrink-0 flex-col bg-brand-900 transition-[width] duration-200',
+          'theme-pin-dark flex h-screen shrink-0 flex-col bg-brand-900 transition-[width] duration-200',
           collapsed ? 'w-[76px]' : 'w-64',
         ].join(' ')}
       >
@@ -118,6 +119,7 @@ export const AppLayout = () => {
           <div className="flex flex-col items-center gap-3 border-b border-white/10 px-2 py-5">
             <img src="/favicon.png" alt="BrightCoat" className="h-9 w-9 shrink-0" />
             {profile?.role !== 'staff' && <NotificationBell />}
+            <ThemeToggle />
             <button
               type="button"
               onClick={() => setCollapsed(false)}
@@ -135,6 +137,7 @@ export const AppLayout = () => {
               <p className="truncate text-xs text-brand-300">Panel interno</p>
             </div>
             {profile?.role !== 'staff' && <NotificationBell />}
+            <ThemeToggle />
             <button
               type="button"
               onClick={() => setCollapsed(true)}

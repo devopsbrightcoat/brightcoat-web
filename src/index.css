@@ -60,10 +60,111 @@
   --breakpoint-3xl: 120rem; /* 1920px — monitores ultra-wide / 4K */
 }
 
+/*
+ * Light mode
+ * -----------
+ * La app nació 100% oscura: cada componente usa directamente clases como
+ * bg-surface, text-ink-500, border-white/10, etc. En vez de reescribir cada
+ * archivo, aprovechamos que Tailwind v4 define sus colores de tema como
+ * variables CSS reales (--color-*) y las utilidades las referencian en
+ * tiempo de ejecución (incluidas las variantes con opacidad, ej. white/10
+ * usa --color-white por dentro) — así que con solo redefinir esas variables
+ * para el tema claro, TODA la app cambia de color sin tocar componente por
+ * componente.
+ *
+ * La escala --color-ink-* ya es una rampa neutra estándar (50 = más clara,
+ * 900 = más oscura). En modo oscuro se usan las tonalidades claras (200-500)
+ * como texto/bordes legibles sobre un fondo oscuro. Para que esos mismos
+ * "text-ink-300", "text-ink-500", etc. sigan siendo legibles sobre un fondo
+ * CLARO, en modo claro cada nivel toma el valor que hoy tiene su espejo
+ * (ink-200 claro = valor actual de ink-700, ink-500 claro = valor actual de
+ * ink-400, etc.) — se preserva el mismo contraste relativo, nada más que
+ * invertido. --color-white (usado como "texto principal sobre la
+ * superficie") pasa a un navy casi negro en vez de blanco puro.
+ *
+ * --color-black no se toca: se usa únicamente como scrim detrás de modales,
+ * y ese fondo debe seguir oscureciendo lo de atrás en ambos temas.
+ *
+ * Se define dos veces a propósito (misma lista de variables): una vez bajo
+ * prefers-color-scheme para seguir el sistema operativo automáticamente, y
+ * otra bajo [data-theme="light"] para cuando el usuario fuerza el tema a
+ * mano con el selector (ThemeToggle). El selector explícito siempre gana
+ * sobre la preferencia del sistema gracias al :not([data-theme="dark"]).
+ */
+:root {
+  color-scheme: dark;
+}
+
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme='dark']) {
+    color-scheme: light;
+
+    --color-white: #0b1c38;
+    --color-surface: #f8fafc;
+    --color-surface-alt: #ffffff;
+
+    --color-ink-50: #0f172a;
+    --color-ink-100: #1e293b;
+    --color-ink-200: #334155;
+    --color-ink-300: #475569;
+    --color-ink-400: #64748b;
+    --color-ink-500: #94a3b8;
+    --color-ink-600: #cbd5e1;
+    --color-ink-700: #e2e8f0;
+    --color-ink-800: #f1f5f9;
+    --color-ink-900: #f8fafc;
+  }
+}
+
+:root[data-theme='light'] {
+  color-scheme: light;
+
+  --color-white: #0b1c38;
+  --color-surface: #f8fafc;
+  --color-surface-alt: #ffffff;
+
+  --color-ink-50: #0f172a;
+  --color-ink-100: #1e293b;
+  --color-ink-200: #334155;
+  --color-ink-300: #475569;
+  --color-ink-400: #64748b;
+  --color-ink-500: #94a3b8;
+  --color-ink-600: #cbd5e1;
+  --color-ink-700: #e2e8f0;
+  --color-ink-800: #f1f5f9;
+  --color-ink-900: #f8fafc;
+}
+
+/*
+ * El sidebar (bg-brand-900, navy) y el dropdown de alertas que cuelga de él
+ * son un rincón de marca que se queda oscuro siempre, sin importar el tema
+ * general de la app — así que sus propios "text-white"/"bg-white/10" (que
+ * ahí significan "sobre el navy", no "sobre la superficie") se vuelven a
+ * fijar a los valores oscuros originales, sin importar qué tema tenga el
+ * resto de la página. Ver AppLayout.tsx.
+ */
+.theme-pin-dark {
+  color-scheme: dark;
+  --color-white: #ffffff;
+  --color-surface: #17181d;
+  --color-surface-alt: #1e1f25;
+  --color-ink-50: #f8fafc;
+  --color-ink-100: #f1f5f9;
+  --color-ink-200: #e2e8f0;
+  --color-ink-300: #cbd5e1;
+  --color-ink-400: #94a3b8;
+  --color-ink-500: #64748b;
+  --color-ink-600: #475569;
+  --color-ink-700: #334155;
+  --color-ink-800: #1e293b;
+  --color-ink-900: #0f172a;
+}
+
 body {
   margin: 0;
   font-family: var(--font-sans);
   background: var(--color-surface);
+  transition: background-color 0.15s ease;
 }
 
 h1,
