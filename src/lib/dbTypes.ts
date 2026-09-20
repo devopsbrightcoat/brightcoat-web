@@ -93,6 +93,7 @@ export type ChargeRow = {
   invoice_number: string | null
   tax_paid: boolean
   tax_paid_date: string | null
+  tax_included: boolean
   is_fixed: boolean
   schedule_id: string | null
 }

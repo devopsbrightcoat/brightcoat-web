@@ -30,6 +30,7 @@ type ScheduleActionModalProps = {
 export const ScheduleActionModal = ({ schedule, onClose, onSaved }: ScheduleActionModalProps) => {
   const [step, setStep] = useState<'status' | 'charge' | 'reschedule'>('status')
   const [totalCost, setTotalCost] = useState('')
+  const [taxIncluded, setTaxIncluded] = useState(false)
   const [notes, setNotes] = useState('')
   const [extras, setExtras] = useState<ExtraLine[]>([])
   const [newDate, setNewDate] = useState('')
@@ -39,6 +40,7 @@ export const ScheduleActionModal = ({ schedule, onClose, onSaved }: ScheduleActi
   useEffect(() => {
     setStep('status')
     setTotalCost('')
+    setTaxIncluded(false)
     setNotes('')
     setExtras([])
     setNewDate('')
@@ -56,6 +58,7 @@ export const ScheduleActionModal = ({ schedule, onClose, onSaved }: ScheduleActi
         .then((existing) => {
           if (existing) {
             setTotalCost(String(existing.amount))
+            setTaxIncluded(existing.taxIncluded)
             setNotes(existing.notes ?? '')
             setExtras(
               existing.extras.map((extra, i) => ({
@@ -132,7 +135,7 @@ export const ScheduleActionModal = ({ schedule, onClose, onSaved }: ScheduleActi
     setSaving(true)
     setError(null)
     try {
-      await createScheduleCharge(schedule.id, { totalCost: totalCostValue, notes, extras: parsedExtras })
+      await createScheduleCharge(schedule.id, { totalCost: totalCostValue, notes, extras: parsedExtras, taxIncluded })
       onSaved()
       onClose()
     } catch (err) {
@@ -223,6 +226,21 @@ export const ScheduleActionModal = ({ schedule, onClose, onSaved }: ScheduleActi
               className={inputClass}
             />
           </div>
+
+          <label className="flex items-start gap-2 text-xs text-ink-300">
+            <input
+              type="checkbox"
+              checked={taxIncluded}
+              onChange={(e) => setTaxIncluded(e.target.checked)}
+              className="mt-0.5 h-3.5 w-3.5 rounded border-white/20 bg-surface accent-gold-500"
+            />
+            <span>
+              Impuesto incluido en el cobro
+              <span className="block text-ink-500">
+                Márcalo si el monto de arriba ya trae el 8.25% de impuesto de ventas incluido (ej. el cliente pagó "todo incluido"). En Impuestos se desglosará hacia atrás en vez de sumarse aparte.
+              </span>
+            </span>
+          </label>
 
           <div>
             <label htmlFor="chg-notes" className={labelClass}>

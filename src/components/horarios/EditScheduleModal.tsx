@@ -153,7 +153,7 @@ export const EditScheduleModal = ({
             <span>
               Servicio de cobro fijo
               <span className="block text-ink-500">
-                Se cobra por un monto fijo recurrente (ej. limpieza de oficina mensual) — al marcarlo "Entregado" se marca directo, sin pedir costo ni crear un cobro. No lleva unidad — se guarda como "N/A".
+                Se cobra por un monto fijo recurrente (ej. limpieza de oficina mensual). No lleva unidad — se guarda como "N/A".
               </span>
             </span>
           </label>

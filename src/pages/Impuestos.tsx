@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { CheckCircle2, Clock, Receipt } from 'lucide-react'
+import { CalendarDays, CheckCircle2, Clock, Receipt } from 'lucide-react'
 import {
   createColumnHelper,
   getCoreRowModel,
@@ -12,18 +12,25 @@ import { PageHeader } from '../components/common/PageHeader'
 import { StatCard } from '../components/common/StatCard'
 import { DataTablePanel } from '../components/common/DataTablePanel'
 import { StatusPill } from '../components/common/StatusPill'
+import { FilterPanel } from '../components/common/FilterPanel'
+import { QuincenaDateFilter } from '../components/dashboard/QuincenaDateFilter'
 import { ImpuestosMonthDetailModal, type MonthGroup } from '../components/impuestos/ImpuestosMonthDetailModal'
 import { useReferenceData } from '../contexts/ReferenceDataContext'
 import { fetchCharges, updateChargesTaxPaid } from '../lib/api'
 import { useSupabaseQuery } from '../lib/useSupabaseQuery'
-import { formatMonthLabel, parseISODate } from '../lib/scheduleDates'
-import { taxOnAmount, SALES_TAX_RATE } from '../lib/tax'
+import { formatMonthLabel, parseISODate, MONTH_NAMES } from '../lib/scheduleDates'
+import { computeChargeTax, SALES_TAX_RATE } from '../lib/tax'
 import { getErrorMessage } from '../lib/errors'
 
 const currency = (value: number) =>
   value.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 2 })
 
 const PAGE_SIZE = 15
+
+const shortDateLabel = (iso: string) => {
+  const date = new Date(`${iso}T00:00:00`)
+  return `${date.getDate()} ${MONTH_NAMES[date.getMonth()].slice(0, 3)}`
+}
 
 const columnHelper = createColumnHelper<MonthGroup>()
 
@@ -34,8 +41,14 @@ export const Impuestos = () => {
   const [detailMonthKey, setDetailMonthKey] = useState<string | null>(null)
   const [savingMonthKey, setSavingMonthKey] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
+  const [dateFrom, setDateFrom] = useState('')
+  const [dateTo, setDateTo] = useState('')
+  const [dateFilterOpen, setDateFilterOpen] = useState(false)
 
-  const { data: charges, loading: loadingCharges, error } = useSupabaseQuery(fetchCharges, [refreshKey])
+  const { data: charges, loading: loadingCharges, error } = useSupabaseQuery(
+    () => fetchCharges(dateFrom || undefined, dateTo || undefined),
+    [refreshKey, dateFrom, dateTo],
+  )
   const { properties, loadingProperties } = useReferenceData()
 
   const months = useMemo<MonthGroup[]>(() => {
@@ -50,21 +63,22 @@ export const Impuestos = () => {
     return Array.from(groups.entries())
       .map(([key, groupCharges]) => {
         const [year, month] = key.split('-').map(Number)
+        let totalBase = 0
         let totalTax = 0
         let paidTax = 0
         for (const c of groupCharges) {
-          const tax = taxOnAmount(c.amount)
+          const { base, tax } = computeChargeTax(c.amount, c.taxIncluded)
+          totalBase += base
           totalTax += tax
           if (c.taxPaid) paidTax += tax
         }
-        const totalAmount = groupCharges.reduce((sum, c) => sum + c.amount, 0)
         const allPaid = groupCharges.every((c) => c.taxPaid)
         const nonePaid = groupCharges.every((c) => !c.taxPaid)
         return {
           key,
           label: formatMonthLabel(year, month - 1),
           charges: groupCharges,
-          totalBase: totalAmount,
+          totalBase,
           totalTax,
           paidTax,
           pendingTax: totalTax - paidTax,
@@ -75,6 +89,16 @@ export const Impuestos = () => {
   }, [charges])
 
   const activeMonth = months.find((m) => m.key === detailMonthKey) ?? null
+
+  const hasDateFilter = Boolean(dateFrom) || Boolean(dateTo)
+  const dateRangeLabel =
+    dateFrom && dateTo
+      ? `${shortDateLabel(dateFrom)} – ${shortDateLabel(dateTo)}`
+      : dateFrom
+        ? `Desde ${shortDateLabel(dateFrom)}`
+        : dateTo
+          ? `Hasta ${shortDateLabel(dateTo)}`
+          : 'Todas las fechas'
 
   const totalTax = months.reduce((sum, m) => sum + m.totalTax, 0)
   const totalPaid = months.reduce((sum, m) => sum + m.paidTax, 0)
@@ -182,7 +206,37 @@ export const Impuestos = () => {
       <PageHeader
         title="Impuestos"
         subtitle={`Impuesto de ventas (${(SALES_TAX_RATE * 100).toFixed(2)}% fijo) sobre los cobros subidos a OPS — por mes`}
+        action={
+          <button
+            type="button"
+            onClick={() => setDateFilterOpen(true)}
+            className="flex items-center gap-2 rounded-lg border border-white/10 bg-surface-alt px-3.5 py-2 text-sm font-medium text-ink-300 hover:bg-white/5"
+          >
+            <CalendarDays className="h-4 w-4" />
+            {dateRangeLabel}
+          </button>
+        }
       />
+
+      <FilterPanel
+        open={dateFilterOpen}
+        onClose={() => setDateFilterOpen(false)}
+        title="Quincena"
+        hasFilters={hasDateFilter}
+        onClear={() => {
+          setDateFrom('')
+          setDateTo('')
+        }}
+      >
+        <QuincenaDateFilter
+          dateFrom={dateFrom}
+          dateTo={dateTo}
+          onDateFromChange={setDateFrom}
+          onDateToChange={setDateTo}
+          fromId="impuestos-date-from"
+          toId="impuestos-date-to"
+        />
+      </FilterPanel>
 
       {actionError && <p className="mx-8 mt-4 text-sm text-red-400">{actionError}</p>}
 

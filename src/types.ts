@@ -103,6 +103,7 @@ export type Charge = {
   invoiceNumber?: string
   taxPaid: boolean
   taxPaidDate?: string
+  taxIncluded: boolean
   isFixed: boolean
   scheduleId?: string
 }

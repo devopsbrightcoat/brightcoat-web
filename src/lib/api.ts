@@ -340,6 +340,7 @@ const mapCharge = (row: ChargeRow): Charge => ({
   invoiceNumber: row.invoice_number ?? undefined,
   taxPaid: row.tax_paid,
   taxPaidDate: row.tax_paid_date ?? undefined,
+  taxIncluded: row.tax_included,
   isFixed: row.is_fixed,
   scheduleId: row.schedule_id ?? undefined,
 })
@@ -474,6 +475,7 @@ export const updateCharge = async (
     payrollPeriod?: string
     notes?: string
     extras: { description: string; amount: number }[]
+    taxIncluded?: boolean
   },
 ): Promise<void> => {
   const { data: existing, error: fetchError } = await supabase
@@ -500,6 +502,7 @@ export const updateCharge = async (
       payroll_period: patch.payrollPeriod?.trim() || null,
       notes: patch.notes?.trim() || null,
       extras: patch.extras,
+      ...(patch.taxIncluded !== undefined ? { tax_included: patch.taxIncluded } : {}),
     })
     .eq('id', id)
   if (error) {
@@ -880,7 +883,7 @@ export const fetchChargeByScheduleId = async (scheduleId: string): Promise<Charg
 
 export const createScheduleCharge = async (
   scheduleId: string,
-  data: { totalCost: number; notes: string; extras: { description: string; amount: number }[] },
+  data: { totalCost: number; notes: string; extras: { description: string; amount: number }[]; taxIncluded: boolean },
 ): Promise<void> => {
   const { data: schedule, error: scheduleError } = await supabase
     .from('schedules')
@@ -904,7 +907,7 @@ export const createScheduleCharge = async (
     // único de charges_schedule_id_idx.
     const { error } = await supabase
       .from('charges')
-      .update({ amount, notes: data.notes.trim() || null, extras: data.extras })
+      .update({ amount, notes: data.notes.trim() || null, extras: data.extras, tax_included: data.taxIncluded })
       .eq('id', existing.id)
     if (error) throw error
   } else {
@@ -918,6 +921,7 @@ export const createScheduleCharge = async (
       generated_date: schedule.scheduled_date,
       notes: data.notes.trim() || null,
       extras: data.extras,
+      tax_included: data.taxIncluded,
     })
     if (error) {
       if (error.code === '23505') {

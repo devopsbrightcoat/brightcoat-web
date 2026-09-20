@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Modal } from '../common/Modal'
 import { StatusPill } from '../common/StatusPill'
-import { taxOnAmount } from '../../lib/tax'
+import { computeChargeTax } from '../../lib/tax'
 import { updateChargesTaxPaid } from '../../lib/api'
 import { getErrorMessage } from '../../lib/errors'
 import type { Charge, Property } from '../../types'
@@ -61,8 +61,7 @@ export const ImpuestosMonthDetailModal = ({ month, properties, onClose, onChange
                 <tr className="border-b border-white/5">
                   <th className="px-4 py-2.5 font-medium">Propiedad</th>
                   <th className="px-4 py-2.5 font-medium">Fecha</th>
-                  <th className="px-4 py-2.5 font-medium">Monto</th>
-                  <th className="px-4 py-2.5 font-medium">Impuesto</th>
+                  <th className="px-4 py-2.5 font-medium">Cobro</th>
                   <th className="px-4 py-2.5 font-medium">Estado</th>
                   <th className="px-4 py-2.5 font-medium" />
                 </tr>
@@ -70,7 +69,7 @@ export const ImpuestosMonthDetailModal = ({ month, properties, onClose, onChange
               <tbody>
                 {month.charges.map((charge) => {
                   const propertyName = properties.find((p) => p.id === charge.propertyId)?.name ?? '—'
-                  const tax = taxOnAmount(charge.amount)
+                  const { base, tax, total } = computeChargeTax(charge.amount, charge.taxIncluded)
                   return (
                     <tr key={charge.id} className="border-b border-white/5 last:border-0">
                       <td className="px-4 py-2.5 text-ink-200">
@@ -78,8 +77,22 @@ export const ImpuestosMonthDetailModal = ({ month, properties, onClose, onChange
                         {charge.unitLabel ? ` — ${charge.unitLabel}` : ''}
                       </td>
                       <td className="px-4 py-2.5 text-ink-300">{charge.generatedDate || '—'}</td>
-                      <td className="px-4 py-2.5 tabular-nums text-ink-200">{currency(charge.amount)}</td>
-                      <td className="px-4 py-2.5 tabular-nums text-gold-400">{currency(tax)}</td>
+                      <td className="px-4 py-2.5">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="tabular-nums text-ink-200">
+                            {charge.taxIncluded
+                              ? `${currency(total)} − ${currency(tax)} (8.25%) = ${currency(base)} base`
+                              : `${currency(base)} + ${currency(tax)} (8.25%) = ${currency(total)} total`}
+                          </span>
+                          <span
+                            className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium ${
+                              charge.taxIncluded ? 'bg-amber-400/10 text-amber-300' : 'bg-white/5 text-ink-400'
+                            }`}
+                          >
+                            {charge.taxIncluded ? 'Impuesto incluido' : 'Impuesto aparte'}
+                          </span>
+                        </div>
+                      </td>
                       <td className="px-4 py-2.5">
                         <StatusPill status={charge.taxPaid ? 'paid' : 'pending'} />
                       </td>

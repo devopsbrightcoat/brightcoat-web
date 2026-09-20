@@ -30,6 +30,7 @@ export const EditChargeModal = ({ charge, properties, serviceTypes, onClose, onS
   const [responsible, setResponsible] = useState('')
   const [payrollPeriod, setPayrollPeriod] = useState('')
   const [description, setDescription] = useState('')
+  const [taxIncluded, setTaxIncluded] = useState(false)
   const [notes, setNotes] = useState('')
   const [extras, setExtras] = useState<ExtraLine[]>([])
   const [saving, setSaving] = useState(false)
@@ -45,6 +46,7 @@ export const EditChargeModal = ({ charge, properties, serviceTypes, onClose, onS
     setResponsible(charge.responsible ?? '')
     setPayrollPeriod(charge.payrollPeriod ?? '')
     setDescription(charge.description ?? '')
+    setTaxIncluded(charge.taxIncluded)
     setNotes(charge.notes ?? '')
     setExtras(
       charge.extras.map((e, i) => ({ key: i + 1, description: e.description, amount: String(e.amount) })),
@@ -99,6 +101,7 @@ export const EditChargeModal = ({ charge, properties, serviceTypes, onClose, onS
         payrollPeriod: payrollPeriod.trim() || undefined,
         notes: notes.trim() || undefined,
         extras: parsedExtras,
+        taxIncluded,
       })
       onSaved()
       onClose()
@@ -238,6 +241,22 @@ export const EditChargeModal = ({ charge, properties, serviceTypes, onClose, onS
             className={inputClass}
           />
         </div>
+
+        <label className="flex items-start gap-2 text-xs text-ink-300">
+          <input
+            type="checkbox"
+            checked={taxIncluded}
+            onChange={(e) => setTaxIncluded(e.target.checked)}
+            className="mt-0.5 h-3.5 w-3.5 rounded border-white/20 bg-surface accent-gold-500"
+          />
+          <span>
+            Impuesto incluido en el cobro
+            <span className="block text-ink-500">
+              Márcalo si el monto ya trae el 8.25% de impuesto de ventas incluido. En Impuestos se desglosará hacia
+              atrás en vez de sumarse aparte.
+            </span>
+          </span>
+        </label>
 
         <div>
           <label htmlFor="edit-chg-notes" className={labelClass}>
