@@ -801,13 +801,12 @@ export const updateSchedule = async (
       is_fixed_charge: patch.isFixedCharge ?? false,
     })
     .eq('id', id)
-    .neq('status', 'delivered')
     .neq('status', 'rescheduled')
     .select('id')
     .single()
   if (error) {
     if (error.code === 'PGRST116') {
-      throw new Error('Este horario ya fue entregado/cobrado o reagendado — no se puede editar.')
+      throw new Error('Este horario ya fue reagendado — no se puede editar.')
     }
     throw error
   }

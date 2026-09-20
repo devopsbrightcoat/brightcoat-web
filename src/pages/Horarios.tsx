@@ -239,6 +239,12 @@ export const Horarios = () => {
               <tbody>
                 {dayRows.map((row) => {
                   const locked = row.status === 'delivered' || row.status === 'rescheduled'
+                  // Editar sigue permitido para un horario ya entregado —
+                  // solo corrige los datos del horario en sí; el cobro o
+                  // la planilla ya generados a partir de él no se tocan
+                  // automáticamente. Uno reagendado queda cerrado porque
+                  // fue reemplazado por un horario nuevo.
+                  const editLocked = row.status === 'rescheduled'
                   // El botón de estatus sí debe seguir habilitado para un
                   // horario ya entregado (no de cobro fijo) — es la única
                   // forma de reabrirlo y corregir el monto del cobro. Un
@@ -288,12 +294,12 @@ export const Horarios = () => {
                       <div className="flex items-center gap-2">
                         <button
                           type="button"
-                          disabled={locked}
+                          disabled={editLocked}
                           onClick={(e) => {
                             e.stopPropagation()
                             setEditingSchedule(row)
                           }}
-                          title={locked ? 'Ya entregado/cobrado o reagendado — no se puede editar.' : undefined}
+                          title={editLocked ? 'Reagendado — no se puede editar.' : undefined}
                           className="flex items-center gap-1.5 rounded-lg border border-white/10 px-2.5 py-1.5 text-xs font-medium text-ink-300 hover:bg-white/5 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
                         >
                           <Pencil className="h-3.5 w-3.5" />

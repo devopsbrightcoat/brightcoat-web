@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react'
-import { Clock, DollarSign, Download, Filter, Pencil, Plus, Search, Trash2 } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
+import { Building2, ChevronLeft, Clock, DollarSign, Download, Filter, Pencil, Plus, Search, Trash2 } from 'lucide-react'
 import {
   createColumnHelper,
   getCoreRowModel,
@@ -10,6 +10,7 @@ import {
 } from '@tanstack/react-table'
 import { PageHeader } from '../components/common/PageHeader'
 import { StatCard } from '../components/common/StatCard'
+import { StatusPill } from '../components/common/StatusPill'
 import { DataTablePanel } from '../components/common/DataTablePanel'
 import { AddFixedChargeModal } from '../components/cobros/AddFixedChargeModal'
 import { ImportChargesModal } from '../components/cobros/ImportChargesModal'
@@ -18,7 +19,6 @@ import { ChargeDetailModal } from '../components/cobros/ChargeDetailModal'
 import { EditChargeModal } from '../components/cobros/EditChargeModal'
 import { ChargeFiltersModal } from '../components/cobros/ChargeFiltersModal'
 import { ConfirmModal } from '../components/common/ConfirmModal'
-import { StatusPill } from '../components/common/StatusPill'
 import { useReferenceData } from '../contexts/ReferenceDataContext'
 import { deleteCharge, fetchCharges } from '../lib/api'
 import { useSupabaseQuery } from '../lib/useSupabaseQuery'
@@ -31,10 +31,14 @@ const currency = (value: number) =>
 
 const PAGE_SIZE = 15
 
+type PropertyStats = { count: number; paid: number; pending: number; pendingCount: number }
+
 const columnHelper = createColumnHelper<Charge>()
 
 export const Cobros = () => {
   const [refreshKey, setRefreshKey] = useState(0)
+  const [cardsView, setCardsView] = useState(true)
+  const [propertySearchText, setPropertySearchText] = useState('')
   const [importOpen, setImportOpen] = useState(false)
   const [addFixedOpen, setAddFixedOpen] = useState(false)
   const [invoiceCharge, setInvoiceCharge] = useState<Charge | null>(null)
@@ -58,6 +62,44 @@ export const Cobros = () => {
     [refreshKey, dateFrom, dateTo],
   )
   const { properties, loadingProperties, serviceTypes, loadingServiceTypes } = useReferenceData()
+
+  useEffect(() => setPageIndex(0), [propertyId])
+
+  const selectedProperty = propertyId !== 'all' ? properties?.find((p) => p.id === propertyId) ?? null : null
+
+  const handleSelectProperty = (id: string) => {
+    setPropertyId(id)
+    setCardsView(false)
+  }
+
+  const handleShowAllProperties = () => {
+    setPropertyId('all')
+    setCardsView(false)
+  }
+
+  const handleBackToCards = () => setCardsView(true)
+
+  const propertyStats = useMemo(() => {
+    const map = new Map<string, PropertyStats>()
+    for (const c of charges ?? []) {
+      const current = map.get(c.propertyId) ?? { count: 0, paid: 0, pending: 0, pendingCount: 0 }
+      current.count += 1
+      if (c.status === 'paid') current.paid += c.amount
+      else {
+        current.pending += c.amount
+        current.pendingCount += 1
+      }
+      map.set(c.propertyId, current)
+    }
+    return map
+  }, [charges])
+
+  const propertyCards = useMemo(() => {
+    const q = propertySearchText.trim().toLowerCase()
+    return (properties ?? [])
+      .filter((p) => !q || p.name.toLowerCase().includes(q))
+      .map((property) => ({ property, stats: propertyStats.get(property.id) }))
+  }, [properties, propertySearchText, propertyStats])
 
   const filtered = useMemo(() => {
     const q = searchText.trim().toLowerCase()
@@ -84,13 +126,17 @@ export const Cobros = () => {
     (dateFrom ? 1 : 0) +
     (dateTo ? 1 : 0)
 
+  const scopedCharges = useMemo(
+    () => (propertyId !== 'all' ? (charges ?? []).filter((c) => c.propertyId === propertyId) : charges ?? []),
+    [charges, propertyId],
+  )
   const totalPaid = useMemo(
-    () => (charges ?? []).filter((c) => c.status === 'paid').reduce((sum, c) => sum + c.amount, 0),
-    [charges],
+    () => scopedCharges.filter((c) => c.status === 'paid').reduce((sum, c) => sum + c.amount, 0),
+    [scopedCharges],
   )
   const totalPending = useMemo(
-    () => (charges ?? []).filter((c) => c.status === 'pending').reduce((sum, c) => sum + c.amount, 0),
-    [charges],
+    () => scopedCharges.filter((c) => c.status === 'pending').reduce((sum, c) => sum + c.amount, 0),
+    [scopedCharges],
   )
 
   const handleExport = async () => {
@@ -211,7 +257,13 @@ export const Cobros = () => {
     <div className="h-screen overflow-hidden flex flex-col">
       <PageHeader
         title="Cobros"
-        subtitle="Cobros por apartamento — subidos a OPS, pendientes, capturados desde Horarios y cobros fijos"
+        subtitle={
+          cardsView
+            ? 'Cobros por apartamento — subidos a OPS, pendientes, capturados desde Horarios y cobros fijos'
+            : selectedProperty
+              ? selectedProperty.name
+              : 'Todas las propiedades'
+        }
         action={
           <div className="flex items-center gap-2">
             <button
@@ -226,62 +278,149 @@ export const Cobros = () => {
         }
       />
 
-      <div className="mx-8 mt-6 flex flex-wrap items-center justify-between gap-3">
-        <div className="relative max-w-sm flex-1 min-w-[220px]">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-500" />
-          <input
-            type="text"
-            value={searchText}
-            onChange={(e) => setSearchText(e.target.value)}
-            placeholder="Buscar por propiedad, apartamento, descripción o invoice #…"
-            className="w-full rounded-lg border border-white/10 bg-surface-alt py-2 pl-9 pr-3 text-sm text-ink-200 placeholder:text-ink-500"
+      {cardsView ? (
+        <>
+          <div className="mx-8 mt-6 flex flex-wrap items-center justify-between gap-3">
+            <div className="relative max-w-sm flex-1 min-w-[220px]">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-500" />
+              <input
+                type="text"
+                value={propertySearchText}
+                onChange={(e) => setPropertySearchText(e.target.value)}
+                placeholder="Buscar propiedad por nombre…"
+                className="w-full rounded-lg border border-white/10 bg-surface-alt py-2 pl-9 pr-3 text-sm text-ink-200 placeholder:text-ink-500"
+              />
+            </div>
+
+            <button
+              type="button"
+              onClick={handleShowAllProperties}
+              className="flex items-center gap-2 rounded-lg border border-white/10 bg-surface-alt px-3.5 py-2 text-sm font-medium text-ink-300 hover:bg-white/5"
+            >
+              <Building2 className="h-4 w-4" />
+              Todas las propiedades
+            </button>
+          </div>
+
+          {loadingProperties ? (
+            <p className="mx-8 mt-6 text-sm text-ink-500">Cargando propiedades…</p>
+          ) : !properties || properties.length === 0 ? (
+            <p className="mx-8 mt-6 text-sm text-ink-500">Todavía no hay propiedades registradas.</p>
+          ) : propertyCards.length === 0 ? (
+            <p className="mx-8 mt-6 text-sm text-ink-500">Ninguna propiedad coincide con "{propertySearchText}".</p>
+          ) : (
+            <div className="mx-8 mt-6 flex-1 min-h-0 overflow-auto pb-6">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {propertyCards.map(({ property, stats }) => (
+                  <button
+                    key={property.id}
+                    type="button"
+                    onClick={() => handleSelectProperty(property.id)}
+                    className="rounded-xl border border-white/10 bg-surface-alt p-5 text-left transition hover:border-gold-500/40 hover:bg-white/5"
+                  >
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <p className="font-semibold text-white">{property.name}</p>
+                        <p className="text-sm text-ink-400">{property.address || '—'}</p>
+                      </div>
+                      <StatusPill status={property.status} />
+                    </div>
+                    <div className="mt-4 grid grid-cols-2 gap-3 border-t border-white/5 pt-3">
+                      <div>
+                        <p className="text-xs text-ink-500">Cobrado</p>
+                        <p className="mt-0.5 text-sm font-semibold tabular-nums text-emerald-400">
+                          {currency(stats?.paid ?? 0)}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-ink-500">Pendiente</p>
+                        <p className="mt-0.5 text-sm font-semibold tabular-nums text-amber-400">
+                          {currency(stats?.pending ?? 0)}
+                        </p>
+                      </div>
+                    </div>
+                    {stats && stats.pendingCount > 0 && (
+                      <p className="mt-2 text-xs text-amber-400">
+                        {stats.pendingCount} {stats.pendingCount === 1 ? 'cobro pendiente' : 'cobros pendientes'}
+                      </p>
+                    )}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </>
+      ) : (
+        <>
+          <div className="mx-8 mt-6">
+            <button
+              type="button"
+              onClick={handleBackToCards}
+              className="flex items-center gap-1.5 text-sm font-medium text-ink-300 hover:text-white"
+            >
+              <ChevronLeft className="h-4 w-4" />
+              Propiedades
+            </button>
+          </div>
+
+          <div className="mx-8 mt-4 flex flex-wrap items-center justify-between gap-3">
+            <div className="relative max-w-sm flex-1 min-w-[220px]">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-500" />
+              <input
+                type="text"
+                value={searchText}
+                onChange={(e) => setSearchText(e.target.value)}
+                placeholder="Buscar por propiedad, apartamento, descripción o invoice #…"
+                className="w-full rounded-lg border border-white/10 bg-surface-alt py-2 pl-9 pr-3 text-sm text-ink-200 placeholder:text-ink-500"
+              />
+            </div>
+
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => setFiltersOpen(true)}
+                className="flex items-center gap-2 rounded-lg border border-white/10 bg-surface-alt px-3.5 py-2 text-sm font-medium text-ink-300 hover:bg-white/5"
+              >
+                <Filter className="h-4 w-4" />
+                Filtros
+                {activeFilterCount > 0 && (
+                  <span className="flex h-5 w-5 items-center justify-center rounded-full bg-gold-500 text-xs font-semibold text-brand-900">
+                    {activeFilterCount}
+                  </span>
+                )}
+              </button>
+
+              <button
+                type="button"
+                disabled={exporting || filtered.length === 0}
+                onClick={handleExport}
+                className="flex items-center gap-2 rounded-lg border border-white/10 px-3.5 py-2 text-sm font-medium text-ink-300 hover:bg-white/5 disabled:opacity-60"
+              >
+                <Download className="h-4 w-4" />
+                {exporting ? 'Generando…' : 'Exportar a Excel'}
+              </button>
+            </div>
+          </div>
+
+          {exportError && <p className="mx-8 mt-3 text-sm text-red-400">{exportError}</p>}
+
+          <div className="mx-8 mt-4 grid grid-cols-2 gap-3 sm:max-w-sm">
+            <StatCard label="Cobrado" value={currency(totalPaid)} icon={DollarSign} tone="good" size="compact" />
+            <StatCard label="Pendiente" value={currency(totalPending)} icon={Clock} tone="warn" size="compact" />
+          </div>
+
+          <DataTablePanel
+            title="Cobros"
+            table={table}
+            page={currentPageIndex + 1}
+            totalPages={pageCount}
+            onPageChange={(p) => setPageIndex(p - 1)}
+            state={tableState}
+            message={tableMessage}
+            onRowClick={setDetailCharge}
           />
-        </div>
-
-        <div className="flex items-center gap-3">
-          <button
-            type="button"
-            onClick={() => setFiltersOpen(true)}
-            className="flex items-center gap-2 rounded-lg border border-white/10 bg-surface-alt px-3.5 py-2 text-sm font-medium text-ink-300 hover:bg-white/5"
-          >
-            <Filter className="h-4 w-4" />
-            Filtros
-            {activeFilterCount > 0 && (
-              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-gold-500 text-xs font-semibold text-brand-900">
-                {activeFilterCount}
-              </span>
-            )}
-          </button>
-
-          <button
-            type="button"
-            disabled={exporting || filtered.length === 0}
-            onClick={handleExport}
-            className="flex items-center gap-2 rounded-lg border border-white/10 px-3.5 py-2 text-sm font-medium text-ink-300 hover:bg-white/5 disabled:opacity-60"
-          >
-            <Download className="h-4 w-4" />
-            {exporting ? 'Generando…' : 'Exportar a Excel'}
-          </button>
-        </div>
-      </div>
-
-      {exportError && <p className="mx-8 mt-3 text-sm text-red-400">{exportError}</p>}
-
-      <div className="grid grid-cols-2 gap-3 px-8 pt-6 sm:max-w-sm">
-        <StatCard label="Cobrado" value={currency(totalPaid)} icon={DollarSign} tone="good" size="compact" />
-        <StatCard label="Pendiente" value={currency(totalPending)} icon={Clock} tone="warn" size="compact" />
-      </div>
-
-      <DataTablePanel
-        title="Cobros"
-        table={table}
-        page={currentPageIndex + 1}
-        totalPages={pageCount}
-        onPageChange={(p) => setPageIndex(p - 1)}
-        state={tableState}
-        message={tableMessage}
-        onRowClick={setDetailCharge}
-      />
+        </>
+      )}
 
       <ImportChargesModal
         open={importOpen}
