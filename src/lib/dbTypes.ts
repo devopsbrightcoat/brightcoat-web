@@ -20,9 +20,10 @@ export type EmployeeRow = {
   role: string | null
   contact_number: string | null
   address: string | null
-  hourly_rate: number | string | null
   status: 'active' | 'inactive'
   w2_status: 'approved' | 'pending'
+  ssn: string | null
+  itin: string | null
 }
 
 export type ExpenseRow = {

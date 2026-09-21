@@ -79,7 +79,8 @@ export type Employee = {
   address?: string
   status: 'active' | 'inactive'
   w2Status: W2Status
-  hourlyRate?: number
+  ssn?: string
+  itin?: string
 }
 
 export type ChargeExtra = {

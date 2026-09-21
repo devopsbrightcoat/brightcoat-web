@@ -78,7 +78,8 @@ const mapEmployee = (row: EmployeeRow): Employee => ({
   address: row.address ?? undefined,
   status: row.status,
   w2Status: row.w2_status,
-  hourlyRate: row.hourly_rate != null ? Number(row.hourly_rate) : undefined,
+  ssn: row.ssn ?? undefined,
+  itin: row.itin ?? undefined,
 })
 
 export const fetchEmployees = async (): Promise<Employee[]> => {
@@ -630,7 +631,8 @@ export const updateEmployee = async (
     address: string
     status: Employee['status']
     w2Status: Employee['w2Status']
-    hourlyRate: number | null
+    ssn: string
+    itin: string
   },
 ): Promise<void> => {
   const { error } = await supabase
@@ -642,7 +644,8 @@ export const updateEmployee = async (
       address: patch.address || null,
       status: patch.status,
       w2_status: patch.w2Status,
-      hourly_rate: patch.hourlyRate,
+      ssn: patch.ssn || null,
+      itin: patch.itin || null,
     })
     .eq('id', id)
   if (error) throw error
@@ -655,7 +658,8 @@ export const createEmployee = async (data: {
   address: string
   status: Employee['status']
   w2Status: Employee['w2Status']
-  hourlyRate: number | null
+  ssn: string
+  itin: string
 }): Promise<void> => {
   const { error } = await supabase.from('employees').insert({
     name: data.name,
@@ -664,7 +668,8 @@ export const createEmployee = async (data: {
     address: data.address || null,
     status: data.status,
     w2_status: data.w2Status,
-    hourly_rate: data.hourlyRate,
+    ssn: data.ssn || null,
+    itin: data.itin || null,
   })
   if (error) throw error
 }

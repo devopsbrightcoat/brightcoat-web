@@ -281,6 +281,64 @@ export const computeRevenueByCategory = (
     .sort((a, b) => b.revenue - a.revenue)
 }
 
+// Vendido, pagado y ganancia por categoría de servicio (ej. "hicimos 30
+// limpiezas, se vendieron $X, se pagó $Y a los empleados y la ganancia fue
+// $Z"). Los tres salen de Planillas (Cobro e items de cada planilla, igual
+// que computeEmployeeProfit) porque ahí es donde vive el desglose que da la
+// ganancia — Cobros no lo tiene. La categoría se obtiene siguiendo planilla
+// → horario (scheduleId) → tipo de servicio del horario; una planilla
+// creada a mano sin horario ligado cae en "Sin categoría", igual que ya
+// hace Ingresos por servicio.
+export type CategoryProfit = {
+  category: ServiceCategory | null
+  label: string
+  jobCount: number
+  sold: number
+  paid: number
+  profit: number
+}
+
+export const computeProfitByCategory = (
+  payrollEntries: PayrollEntry[],
+  schedules: Schedule[],
+  serviceTypes: ServiceType[],
+  range: DateRange,
+): CategoryProfit[] => {
+  const scheduleCategory = new Map<string, ServiceCategory | null>()
+  for (const s of schedules) {
+    scheduleCategory.set(s.id, serviceTypes.find((t) => t.id === s.serviceTypeId)?.category ?? null)
+  }
+
+  const period = filterPayrollByRange(payrollEntries, range).filter((e) => e.amount != null)
+  const totals = new Map<string, { sold: number; paid: number; profit: number; jobCount: number }>()
+  for (const e of period) {
+    const category = e.scheduleId ? scheduleCategory.get(e.scheduleId) ?? null : null
+    const key = category ?? '__none__'
+    const itemsSum = e.items.reduce((sum, item) => sum + item.amount, 0)
+    const amount = e.amount as number
+    const current = totals.get(key) ?? { sold: 0, paid: 0, profit: 0, jobCount: 0 }
+    current.sold += amount
+    current.paid += itemsSum
+    current.profit += amount - itemsSum
+    current.jobCount += 1
+    totals.set(key, current)
+  }
+
+  return Array.from(totals.entries())
+    .map(([key, { sold, paid, profit, jobCount }]) => {
+      const category = key === '__none__' ? null : (key as ServiceCategory)
+      return {
+        category,
+        label: category ? SERVICE_CATEGORY_LABELS[category] : 'Sin categoría',
+        jobCount,
+        sold,
+        paid,
+        profit,
+      }
+    })
+    .sort((a, b) => b.sold - a.sold)
+}
+
 export type PropertyRevenue = { propertyId: string; name: string; revenue: number }
 
 export const computeRevenueByProperty = (
@@ -312,6 +370,52 @@ export const computeEmployeeProductivity = (
   return Array.from(totals.entries())
     .map(([employeeId, completedJobs]) => ({ employeeId, name: employees.find((e) => e.id === employeeId)?.name ?? '—', completedJobs }))
     .sort((a, b) => b.completedJobs - a.completedJobs)
+    .slice(0, limit)
+}
+
+// Vendido = Cobro (amount, lo que se le cobró al cliente en esos trabajos).
+// Pagado = el desglose del servicio (items), lo que se le pagó al empleado
+// por esos trabajos. Ganancia = Vendido menos Pagado — el mismo cálculo que
+// usa Planillas para la columna "Ganancia". Solo cuenta planillas ya
+// cobradas (amount != null); una pendiente de cobro todavía no tiene
+// ganancia definida.
+export type EmployeeProfit = {
+  employeeId: string
+  name: string
+  sold: number
+  paid: number
+  profit: number
+  jobCount: number
+}
+
+export const computeEmployeeProfit = (
+  payrollEntries: PayrollEntry[],
+  employees: Employee[],
+  range: DateRange,
+  limit = 8,
+): EmployeeProfit[] => {
+  const period = filterPayrollByRange(payrollEntries, range).filter((e) => e.amount != null)
+  const totals = new Map<string, { sold: number; paid: number; profit: number; jobCount: number }>()
+  for (const e of period) {
+    const itemsSum = e.items.reduce((sum, item) => sum + item.amount, 0)
+    const amount = e.amount as number
+    const current = totals.get(e.employeeId) ?? { sold: 0, paid: 0, profit: 0, jobCount: 0 }
+    current.sold += amount
+    current.paid += itemsSum
+    current.profit += amount - itemsSum
+    current.jobCount += 1
+    totals.set(e.employeeId, current)
+  }
+  return Array.from(totals.entries())
+    .map(([employeeId, { sold, paid, profit, jobCount }]) => ({
+      employeeId,
+      name: employees.find((e) => e.id === employeeId)?.name ?? '—',
+      sold,
+      paid,
+      profit,
+      jobCount,
+    }))
+    .sort((a, b) => b.profit - a.profit)
     .slice(0, limit)
 }
 

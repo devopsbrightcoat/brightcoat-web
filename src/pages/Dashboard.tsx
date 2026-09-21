@@ -39,10 +39,12 @@ import {
   computeDashboardFetchWindowStart,
   computeDateRange,
   computeEmployeeProductivity,
+  computeEmployeeProfit,
   computeKpis,
   computeMonthlyFinancials,
   computeOutstandingAging,
   computePendingSchedules,
+  computeProfitByCategory,
   computeRevenueByCategory,
   computeRevenueByProperty,
   computeTodaySchedules,
@@ -66,6 +68,14 @@ const currency = (value: number) =>
 
 const percent = (value: number) => `${value.toFixed(1)}%`
 
+// Los montos del eje Y pueden llegar a 5+ cifras (ej. "14000") — se abrevia
+// a formato "14k" para que nunca se corte ni empuje el gráfico, igual que
+// ya se hace en los charts de la app móvil.
+const formatYAxisLabel = (value: number) => {
+  if (Math.abs(value) < 1000) return String(Math.round(value))
+  return `${(value / 1000).toFixed(1)}k`
+}
+
 const chartTooltipStyle = {
   fontSize: 12,
   borderRadius: 8,
@@ -75,6 +85,37 @@ const chartTooltipStyle = {
 }
 
 const axisTick = { fontSize: 12, fill: '#94a3b8' }
+
+// Tooltip a la medida para "Ganancia por empleado" y "Ventas y ganancia por
+// servicio": además de los montos de cada barra, muestra cuántos trabajos
+// componen esa barra (ej. "30 trabajos") — dato que un BarChart normal no
+// puede meter en una sola barra. Sirve para ambos charts porque los dos
+// traen jobCount en sus datos (EmployeeProfit y CategoryProfit).
+const ProfitTooltip = ({
+  active,
+  payload,
+  label,
+}: {
+  active?: boolean
+  payload?: { value: number; name: string; color: string }[]
+  label?: string
+}) => {
+  if (!active || !payload || payload.length === 0) return null
+  const jobCount = (payload[0] as unknown as { payload: { jobCount: number } }).payload.jobCount
+  return (
+    <div style={chartTooltipStyle} className="px-3 py-2">
+      <p className="mb-1 font-medium">{label}</p>
+      <p className="text-ink-400">
+        {jobCount} {jobCount === 1 ? 'trabajo' : 'trabajos'}
+      </p>
+      {payload.map((entry) => (
+        <p key={entry.name} style={{ color: entry.color }}>
+          {entry.name}: {currency(entry.value)}
+        </p>
+      ))}
+    </div>
+  )
+}
 
 export const Dashboard = () => {
   const [rangeSelection, setRangeSelection] = useState<DashboardDateRangeSelection>({ kind: 'preset', key: 'this_month' })
@@ -137,6 +178,16 @@ export const Dashboard = () => {
   const employeeProductivity = useMemo(
     () => computeEmployeeProductivity(schedules ?? [], employees ?? [], range),
     [schedules, employees, range],
+  )
+
+  const employeeProfit = useMemo(
+    () => computeEmployeeProfit(payrollEntries ?? [], employees ?? [], range),
+    [payrollEntries, employees, range],
+  )
+
+  const profitByCategory = useMemo(
+    () => computeProfitByCategory(payrollEntries ?? [], schedules ?? [], serviceTypes ?? [], range),
+    [payrollEntries, schedules, serviceTypes, range],
   )
 
   const todaySchedules = useMemo(() => computeTodaySchedules(schedules ?? []), [schedules])
@@ -215,7 +266,7 @@ export const Dashboard = () => {
                   <LineChart data={monthlyFinancials} margin={{ left: -20, right: 10 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#ffffff1a" />
                     <XAxis dataKey="month" tick={axisTick} axisLine={false} tickLine={false} />
-                    <YAxis tick={axisTick} axisLine={false} tickLine={false} />
+                    <YAxis tick={axisTick} axisLine={false} tickLine={false} tickFormatter={formatYAxisLabel} />
                     <Tooltip formatter={(value) => currency(Number(value))} contentStyle={chartTooltipStyle} />
                     <Line type="monotone" dataKey="revenue" name="Ingresos" stroke={COLOR_GOLD} strokeWidth={2} dot={false} />
                   </LineChart>
@@ -231,7 +282,7 @@ export const Dashboard = () => {
                   <BarChart data={monthlyFinancials} margin={{ left: -20, right: 10 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#ffffff1a" />
                     <XAxis dataKey="month" tick={axisTick} axisLine={false} tickLine={false} />
-                    <YAxis tick={axisTick} axisLine={false} tickLine={false} />
+                    <YAxis tick={axisTick} axisLine={false} tickLine={false} tickFormatter={formatYAxisLabel} />
                     <Tooltip formatter={(value) => currency(Number(value))} contentStyle={chartTooltipStyle} />
                     <Legend wrapperStyle={{ fontSize: 12, color: '#94a3b8' }} />
                     <Bar dataKey="revenue" name="Ingresos" fill={COLOR_BLUE} radius={[4, 4, 0, 0]} />
@@ -270,6 +321,50 @@ export const Dashboard = () => {
                 color={COLOR_AQUA}
                 emptyText="No hay trabajos completados en este período."
               />
+            </DashboardPanel>
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 px-8 pt-4 lg:grid-cols-2">
+            <DashboardPanel title="Vendido, pagado y ganancia por empleado" subtitle="Cobro, pago al empleado y ganancia — período seleccionado">
+              {employeeProfit.length === 0 ? (
+                <p className="py-6 text-center text-sm text-ink-500">No hay planillas cobradas en este período.</p>
+              ) : (
+                <div className="h-72">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={employeeProfit} margin={{ left: -20, right: 10 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#ffffff1a" />
+                      <XAxis dataKey="name" tick={axisTick} axisLine={false} tickLine={false} />
+                      <YAxis tick={axisTick} axisLine={false} tickLine={false} tickFormatter={formatYAxisLabel} />
+                      <Tooltip content={<ProfitTooltip />} cursor={{ fill: '#ffffff0a' }} />
+                      <Legend wrapperStyle={{ fontSize: 12, color: '#94a3b8' }} />
+                      <Bar dataKey="sold" name="Vendido" fill={COLOR_BLUE} radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="paid" name="Pagado" fill={COLOR_AQUA} radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="profit" name="Ganancia" fill={COLOR_GOLD} radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
+            </DashboardPanel>
+
+            <DashboardPanel title="Vendido, pagado y ganancia por servicio" subtitle="Por categoría — período seleccionado">
+              {profitByCategory.length === 0 ? (
+                <p className="py-6 text-center text-sm text-ink-500">No hay planillas cobradas en este período.</p>
+              ) : (
+                <div className="h-72">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={profitByCategory} margin={{ left: -20, right: 10 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#ffffff1a" />
+                      <XAxis dataKey="label" tick={axisTick} axisLine={false} tickLine={false} />
+                      <YAxis tick={axisTick} axisLine={false} tickLine={false} tickFormatter={formatYAxisLabel} />
+                      <Tooltip content={<ProfitTooltip />} cursor={{ fill: '#ffffff0a' }} />
+                      <Legend wrapperStyle={{ fontSize: 12, color: '#94a3b8' }} />
+                      <Bar dataKey="sold" name="Vendido" fill={COLOR_BLUE} radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="paid" name="Pagado" fill={COLOR_AQUA} radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="profit" name="Ganancia" fill={COLOR_GOLD} radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
             </DashboardPanel>
           </div>
 

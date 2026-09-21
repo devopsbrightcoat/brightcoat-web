@@ -34,7 +34,8 @@ export const EditEmployeeModal = ({ employee, onClose, onSaved }: EditEmployeeMo
   const [address, setAddress] = useState('')
   const [status, setStatus] = useState<EmployeeStatus>('active')
   const [w2Status, setW2Status] = useState<W2Status>('pending')
-  const [hourlyRate, setHourlyRate] = useState('')
+  const [ssn, setSsn] = useState('')
+  const [itin, setItin] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -46,7 +47,8 @@ export const EditEmployeeModal = ({ employee, onClose, onSaved }: EditEmployeeMo
     setAddress(employee.address ?? '')
     setStatus(employee.status)
     setW2Status(employee.w2Status)
-    setHourlyRate(employee.hourlyRate != null ? String(employee.hourlyRate) : '')
+    setSsn(employee.ssn ?? '')
+    setItin(employee.itin ?? '')
     setError(null)
   }, [employee])
 
@@ -55,15 +57,6 @@ export const EditEmployeeModal = ({ employee, onClose, onSaved }: EditEmployeeMo
     if (!name.trim()) {
       setError('El nombre del empleado es obligatorio.')
       return
-    }
-    let hourlyRateValue: number | null = null
-    if (hourlyRate.trim()) {
-      const parsed = Number(hourlyRate.replace(/[^0-9.-]/g, ''))
-      if (Number.isNaN(parsed) || parsed < 0) {
-        setError('La tarifa por hora no es un número válido.')
-        return
-      }
-      hourlyRateValue = parsed
     }
 
     setSaving(true)
@@ -76,7 +69,8 @@ export const EditEmployeeModal = ({ employee, onClose, onSaved }: EditEmployeeMo
         address,
         status,
         w2Status,
-        hourlyRate: hourlyRateValue,
+        ssn: ssn.trim(),
+        itin: itin.trim(),
       })
       onSaved()
       onClose()
@@ -104,33 +98,17 @@ export const EditEmployeeModal = ({ employee, onClose, onSaved }: EditEmployeeMo
           <input id="emp-role" type="text" value={role} onChange={(e) => setRole(e.target.value)} className={inputClass} />
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label htmlFor="emp-contact" className={labelClass}>
-              Número de contacto
-            </label>
-            <input
-              id="emp-contact"
-              type="text"
-              value={contactNumber}
-              onChange={(e) => setContactNumber(e.target.value)}
-              className={inputClass}
-            />
-          </div>
-          <div>
-            <label htmlFor="emp-rate" className={labelClass}>
-              Tarifa por hora (opcional)
-            </label>
-            <input
-              id="emp-rate"
-              type="text"
-              inputMode="decimal"
-              value={hourlyRate}
-              onChange={(e) => setHourlyRate(e.target.value)}
-              placeholder="ej. 25"
-              className={inputClass}
-            />
-          </div>
+        <div>
+          <label htmlFor="emp-contact" className={labelClass}>
+            Número de contacto
+          </label>
+          <input
+            id="emp-contact"
+            type="text"
+            value={contactNumber}
+            onChange={(e) => setContactNumber(e.target.value)}
+            className={inputClass}
+          />
         </div>
 
         <div>
@@ -144,6 +122,35 @@ export const EditEmployeeModal = ({ employee, onClose, onSaved }: EditEmployeeMo
             onChange={(e) => setAddress(e.target.value)}
             className={inputClass}
           />
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label htmlFor="emp-ssn" className={labelClass}>
+              SSN (opcional)
+            </label>
+            <input
+              id="emp-ssn"
+              type="text"
+              value={ssn}
+              onChange={(e) => setSsn(e.target.value)}
+              placeholder="ej. 123-45-6789"
+              className={inputClass}
+            />
+          </div>
+          <div>
+            <label htmlFor="emp-itin" className={labelClass}>
+              ITIN (opcional)
+            </label>
+            <input
+              id="emp-itin"
+              type="text"
+              value={itin}
+              onChange={(e) => setItin(e.target.value)}
+              placeholder="ej. 9XX-XX-XXXX"
+              className={inputClass}
+            />
+          </div>
         </div>
 
         <div className="grid grid-cols-2 gap-3">

@@ -34,7 +34,8 @@ export const AddEmployeeModal = ({ open, onClose, onSaved }: AddEmployeeModalPro
   const [address, setAddress] = useState('')
   const [status, setStatus] = useState<EmployeeStatus>('active')
   const [w2Status, setW2Status] = useState<W2Status>('pending')
-  const [hourlyRate, setHourlyRate] = useState('')
+  const [ssn, setSsn] = useState('')
+  const [itin, setItin] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -46,7 +47,8 @@ export const AddEmployeeModal = ({ open, onClose, onSaved }: AddEmployeeModalPro
     setAddress('')
     setStatus('active')
     setW2Status('pending')
-    setHourlyRate('')
+    setSsn('')
+    setItin('')
     setError(null)
   }, [open])
 
@@ -54,15 +56,6 @@ export const AddEmployeeModal = ({ open, onClose, onSaved }: AddEmployeeModalPro
     if (!name.trim()) {
       setError('El nombre del empleado es obligatorio.')
       return
-    }
-    let hourlyRateValue: number | null = null
-    if (hourlyRate.trim()) {
-      const parsed = Number(hourlyRate.replace(/[^0-9.-]/g, ''))
-      if (Number.isNaN(parsed) || parsed < 0) {
-        setError('La tarifa por hora no es un número válido.')
-        return
-      }
-      hourlyRateValue = parsed
     }
 
     setSaving(true)
@@ -75,7 +68,8 @@ export const AddEmployeeModal = ({ open, onClose, onSaved }: AddEmployeeModalPro
         address,
         status,
         w2Status,
-        hourlyRate: hourlyRateValue,
+        ssn: ssn.trim(),
+        itin: itin.trim(),
       })
       onSaved()
       onClose()
@@ -115,33 +109,17 @@ export const AddEmployeeModal = ({ open, onClose, onSaved }: AddEmployeeModalPro
           />
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label htmlFor="new-emp-contact" className={labelClass}>
-              Número de contacto
-            </label>
-            <input
-              id="new-emp-contact"
-              type="text"
-              value={contactNumber}
-              onChange={(e) => setContactNumber(e.target.value)}
-              className={inputClass}
-            />
-          </div>
-          <div>
-            <label htmlFor="new-emp-rate" className={labelClass}>
-              Tarifa por hora (opcional)
-            </label>
-            <input
-              id="new-emp-rate"
-              type="text"
-              inputMode="decimal"
-              value={hourlyRate}
-              onChange={(e) => setHourlyRate(e.target.value)}
-              placeholder="ej. 25"
-              className={inputClass}
-            />
-          </div>
+        <div>
+          <label htmlFor="new-emp-contact" className={labelClass}>
+            Número de contacto
+          </label>
+          <input
+            id="new-emp-contact"
+            type="text"
+            value={contactNumber}
+            onChange={(e) => setContactNumber(e.target.value)}
+            className={inputClass}
+          />
         </div>
 
         <div>
@@ -155,6 +133,35 @@ export const AddEmployeeModal = ({ open, onClose, onSaved }: AddEmployeeModalPro
             onChange={(e) => setAddress(e.target.value)}
             className={inputClass}
           />
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label htmlFor="new-emp-ssn" className={labelClass}>
+              SSN (opcional)
+            </label>
+            <input
+              id="new-emp-ssn"
+              type="text"
+              value={ssn}
+              onChange={(e) => setSsn(e.target.value)}
+              placeholder="ej. 123-45-6789"
+              className={inputClass}
+            />
+          </div>
+          <div>
+            <label htmlFor="new-emp-itin" className={labelClass}>
+              ITIN (opcional)
+            </label>
+            <input
+              id="new-emp-itin"
+              type="text"
+              value={itin}
+              onChange={(e) => setItin(e.target.value)}
+              placeholder="ej. 9XX-XX-XXXX"
+              className={inputClass}
+            />
+          </div>
         </div>
 
         <div className="grid grid-cols-2 gap-3">

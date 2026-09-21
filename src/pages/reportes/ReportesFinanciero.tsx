@@ -41,6 +41,14 @@ const currency = (value: number) =>
 
 const percent = (value: number) => `${value.toFixed(1)}%`
 
+// Los montos del eje Y pueden llegar a 5+ cifras (ej. "14000") — se abrevia
+// a formato "14k" para que nunca se corte ni empuje el gráfico, igual que
+// ya se hace en los charts de la app móvil.
+const formatYAxisLabel = (value: number) => {
+  if (Math.abs(value) < 1000) return String(Math.round(value))
+  return `${(value / 1000).toFixed(1)}k`
+}
+
 const chartTooltipStyle = {
   fontSize: 12,
   borderRadius: 8,
@@ -231,7 +239,7 @@ export const ReportesFinanciero = () => {
                     <LineChart data={revenueByPeriod} margin={{ left: -20, right: 10 }}>
                       <CartesianGrid strokeDasharray="3 3" stroke="#ffffff1a" />
                       <XAxis dataKey="label" tick={axisTick} axisLine={false} tickLine={false} />
-                      <YAxis tick={axisTick} axisLine={false} tickLine={false} />
+                      <YAxis tick={axisTick} axisLine={false} tickLine={false} tickFormatter={formatYAxisLabel} />
                       <Tooltip formatter={(value) => currency(Number(value))} contentStyle={chartTooltipStyle} />
                       <Line type="monotone" dataKey="revenue" name="Ingresos" stroke={COLOR_GOLD} strokeWidth={2} dot={false} />
                     </LineChart>
@@ -248,7 +256,7 @@ export const ReportesFinanciero = () => {
                   <BarChart data={monthlyFinancials} margin={{ left: -20, right: 10 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#ffffff1a" />
                     <XAxis dataKey="month" tick={axisTick} axisLine={false} tickLine={false} />
-                    <YAxis tick={axisTick} axisLine={false} tickLine={false} />
+                    <YAxis tick={axisTick} axisLine={false} tickLine={false} tickFormatter={formatYAxisLabel} />
                     <Tooltip formatter={(value) => currency(Number(value))} contentStyle={chartTooltipStyle} />
                     <Legend wrapperStyle={{ fontSize: 12, color: '#94a3b8' }} />
                     <Bar dataKey="revenue" name="Ingresos" fill={COLOR_BLUE} radius={[4, 4, 0, 0]} />

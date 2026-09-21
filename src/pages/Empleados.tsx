@@ -81,8 +81,7 @@ export const Empleados = () => {
                     <p>{employee.contactNumber || 'Sin número de contacto'}</p>
                     <p>{employee.address || 'Sin dirección'}</p>
                   </div>
-                  <div className="mt-3 flex items-center justify-between border-t border-white/5 pt-3 text-xs text-ink-500">
-                    {employee.hourlyRate ? <span className="tabular-nums">${employee.hourlyRate}/hr</span> : <span />}
+                  <div className="mt-3 flex items-center justify-end border-t border-white/5 pt-3 text-xs text-ink-500">
                     <span className="flex items-center gap-1.5">
                       W2
                       <StatusPill status={employee.w2Status} />
