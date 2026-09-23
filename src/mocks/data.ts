@@ -20,10 +20,10 @@ export const serviceTypes: ServiceType[] = [
 ]
 
 export const employees: Employee[] = [
-  { id: 'e1', name: 'David L.', role: 'Owner / Project Manager', status: 'active', w2Status: 'approved' },
-  { id: 'e2', name: 'Marco R.', role: 'Painter', status: 'active', w2Status: 'approved' },
-  { id: 'e3', name: 'Sandra P.', role: 'Cleaning Lead', status: 'active', w2Status: 'approved' },
-  { id: 'e4', name: 'Tony G.', role: 'Drywall / Repairs', status: 'active', w2Status: 'pending' },
+  { id: 'e1', name: 'David L.', role: 'Owner / Project Manager', status: 'active', w2Status: 'approved', hidden: false },
+  { id: 'e2', name: 'Marco R.', role: 'Painter', status: 'active', w2Status: 'approved', hidden: false },
+  { id: 'e3', name: 'Sandra P.', role: 'Cleaning Lead', status: 'active', w2Status: 'approved', hidden: false },
+  { id: 'e4', name: 'Tony G.', role: 'Drywall / Repairs', status: 'active', w2Status: 'pending', hidden: false },
 ]
 
 export const expenses: Expense[] = [

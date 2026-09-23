@@ -24,6 +24,7 @@ export type EmployeeRow = {
   w2_status: 'approved' | 'pending'
   ssn: string | null
   itin: string | null
+  hidden: boolean
 }
 
 export type ExpenseRow = {

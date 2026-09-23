@@ -81,6 +81,7 @@ export type Employee = {
   w2Status: W2Status
   ssn?: string
   itin?: string
+  hidden: boolean
 }
 
 export type ChargeExtra = {

@@ -80,6 +80,7 @@ const mapEmployee = (row: EmployeeRow): Employee => ({
   w2Status: row.w2_status,
   ssn: row.ssn ?? undefined,
   itin: row.itin ?? undefined,
+  hidden: row.hidden ?? false,
 })
 
 export const fetchEmployees = async (): Promise<Employee[]> => {
@@ -682,6 +683,14 @@ export const deleteEmployee = async (id: string): Promise<void> => {
     }
     throw error
   }
+}
+
+// Ocultar/mostrar un empleado (owner/admin, solo desde la app móvil) — no
+// borra nada ni afecta horarios/planillas/cobros ya existentes; solo lo
+// saca de Empleados y de los selectores para asignar trabajo nuevo.
+export const updateEmployeeHidden = async (id: string, hidden: boolean): Promise<void> => {
+  const { error } = await supabase.from('employees').update({ hidden }).eq('id', id)
+  if (error) throw error
 }
 
 export const createProperty = async (data: {

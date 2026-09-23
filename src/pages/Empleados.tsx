@@ -18,11 +18,15 @@ export const Empleados = () => {
   const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null)
   const [deletingEmployee, setDeletingEmployee] = useState<Employee | null>(null)
 
+  // Los empleados ocultos (owner/admin desde la app móvil) no se muestran
+  // aquí — la gestión de ocultos vive solo en mobile.
+  const activeEmployees = useMemo(() => (employees ?? []).filter((e) => !e.hidden), [employees])
+
   const filteredEmployees = useMemo(() => {
     const q = searchText.trim().toLowerCase()
-    if (!q) return employees ?? []
-    return (employees ?? []).filter((e) => e.name.toLowerCase().includes(q))
-  }, [employees, searchText])
+    if (!q) return activeEmployees
+    return activeEmployees.filter((e) => e.name.toLowerCase().includes(q))
+  }, [activeEmployees, searchText])
 
   const { page, setPage, totalPages, pageItems } = usePagination(filteredEmployees, 12)
 
@@ -30,7 +34,7 @@ export const Empleados = () => {
     <div className="h-screen overflow-hidden flex flex-col">
       <PageHeader
         title="Empleados"
-        subtitle={employees ? `${employees.length} empleados registrados` : 'Cargando…'}
+        subtitle={employees ? `${activeEmployees.length} empleados registrados` : 'Cargando…'}
         action={
           <button
             type="button"
@@ -60,7 +64,7 @@ export const Empleados = () => {
         <p className="mx-8 mt-6 text-sm text-ink-500">Cargando empleados…</p>
       ) : errorEmployees ? (
         <p className="mx-8 mt-6 text-sm text-red-400">No se pudieron cargar los empleados: {errorEmployees}</p>
-      ) : !employees || employees.length === 0 ? (
+      ) : !employees || activeEmployees.length === 0 ? (
         <p className="mx-8 mt-6 text-sm text-ink-500">Todavía no hay empleados registrados.</p>
       ) : filteredEmployees.length === 0 ? (
         <p className="mx-8 mt-6 text-sm text-ink-500">Ningún empleado coincide con "{searchText}".</p>

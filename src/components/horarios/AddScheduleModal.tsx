@@ -140,11 +140,13 @@ export const AddScheduleModal = ({
               className={inputClass}
             >
               <option value="">Selecciona…</option>
-              {employees.map((e) => (
-                <option key={e.id} value={e.id}>
-                  {e.name}
-                </option>
-              ))}
+              {employees
+                .filter((e) => !e.hidden)
+                .map((e) => (
+                  <option key={e.id} value={e.id}>
+                    {e.name}
+                  </option>
+                ))}
             </select>
           </div>
         </div>

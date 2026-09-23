@@ -183,11 +183,13 @@ export const EditPayrollEntryModal = ({ entry, properties, employees, onClose, o
               className={inputClass}
             >
               <option value="">Selecciona…</option>
-              {employees.map((e) => (
-                <option key={e.id} value={e.id}>
-                  {e.name}
-                </option>
-              ))}
+              {employees
+                .filter((e) => !e.hidden || e.id === employeeId)
+                .map((e) => (
+                  <option key={e.id} value={e.id}>
+                    {e.name}
+                  </option>
+                ))}
             </select>
           </div>
           <div>
