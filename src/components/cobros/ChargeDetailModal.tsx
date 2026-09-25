@@ -34,7 +34,7 @@ export const ChargeDetailModal = ({ charge, properties, serviceTypes, onClose }:
             <Field label="Apartamento" value={charge.isFixed ? 'N/A' : charge.unitLabel || '—'} />
             <Field label="Servicio" value={serviceTypeName ?? '—'} />
             <Field label="Fecha" value={charge.generatedDate || '—'} />
-            <Field label="Estatus" value={<StatusPill status={charge.status} />} />
+            <Field label="Estatus" value={<StatusPill status={charge.status} label={charge.status === 'paid' ? 'Subido a OPS' : undefined} />} />
             <Field label="Invoice #" value={charge.invoiceNumber || '—'} />
             <Field label="Monto" value={<span className="tabular-nums">{currency(charge.amount)}</span>} />
             <Field label="Responsable" value={charge.responsible || '—'} />

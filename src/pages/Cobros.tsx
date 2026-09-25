@@ -188,7 +188,10 @@ export const Cobros = () => {
               setInvoiceCharge(info.row.original)
             }}
           >
-            <StatusPill status={info.getValue()} />
+            <StatusPill
+              status={info.getValue()}
+              label={info.getValue() === 'paid' ? 'Subido a OPS' : undefined}
+            />
           </button>
         ),
       }),
@@ -327,7 +330,7 @@ export const Cobros = () => {
                     </div>
                     <div className="mt-4 grid grid-cols-2 gap-3 border-t border-white/5 pt-3">
                       <div>
-                        <p className="text-xs text-ink-500">Cobrado</p>
+                        <p className="text-xs text-ink-500">Subido a OPS</p>
                         <p className="mt-0.5 text-sm font-semibold tabular-nums text-emerald-400">
                           {currency(stats?.paid ?? 0)}
                         </p>
@@ -405,7 +408,7 @@ export const Cobros = () => {
           {exportError && <p className="mx-8 mt-3 text-sm text-red-400">{exportError}</p>}
 
           <div className="mx-8 mt-4 grid grid-cols-2 gap-3 sm:max-w-sm">
-            <StatCard label="Cobrado" value={currency(totalPaid)} icon={DollarSign} tone="good" size="compact" />
+            <StatCard label="Subido a OPS" value={currency(totalPaid)} icon={DollarSign} tone="good" size="compact" />
             <StatCard label="Pendiente" value={currency(totalPending)} icon={Clock} tone="warn" size="compact" />
           </div>
 

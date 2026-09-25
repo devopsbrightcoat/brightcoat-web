@@ -1,5 +1,11 @@
 type StatusPillProps = {
   status: string
+  // Sobreescribe el texto sin tocar el color (que sigue por `status`) —
+  // para cuando la misma clave necesita decir algo distinto según la
+  // pantalla (ej. charges.status "paid" es "Subido a OPS" en Cobros, pero
+  // sigue siendo "Pagado" en Impuestos, que usa la misma clave para el
+  // estado del impuesto).
+  label?: string
 }
 
 const statusStyles: Record<string, string> = {
@@ -28,14 +34,14 @@ const statusLabels: Record<string, string> = {
   inactive: 'Inactivo',
 }
 
-export const StatusPill = ({ status }: StatusPillProps) => {
+export const StatusPill = ({ status, label }: StatusPillProps) => {
   return (
     <span
       className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ring-1 ring-inset ${
         statusStyles[status] ?? 'bg-white/5 text-ink-400 ring-white/10'
       }`}
     >
-      {statusLabels[status] ?? status}
+      {label ?? statusLabels[status] ?? status}
     </span>
   )
 }

@@ -14,7 +14,7 @@ type ServiceCategoryModalProps = {
 
 export const ServiceCategoryModal = ({ category, onClose }: ServiceCategoryModalProps) => {
   return (
-    <Modal open={category !== null} onClose={onClose} title={category ? `Ingresos — ${category.label}` : ''}>
+    <Modal open={category !== null} onClose={onClose} title={category ? `Ventas — ${category.label}` : ''}>
       <RankingBars
         items={(category?.services ?? []).map((s) => ({ id: s.serviceTypeId ?? s.label, label: s.label, value: s.revenue }))}
         formatValue={currency}

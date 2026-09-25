@@ -8,6 +8,7 @@ import {
   Clock,
   DollarSign,
   Percent,
+  Receipt,
   TrendingDown,
   TrendingUp,
   Wallet,
@@ -124,8 +125,16 @@ export const Dashboard = () => {
 
   // El Dashboard solo necesita datos de los últimos ~14 meses (ver
   // computeDashboardFetchWindowStart) — antes traía TODO el historial en
-  // cada una de estas 4 consultas.
-  const fetchWindowStart = useMemo(() => computeDashboardFetchWindowStart(), [])
+  // cada una de estas 4 consultas. Si el usuario elige un rango
+  // personalizado que arranca antes de esa ventana, se extiende el fetch
+  // hasta ahí para no dejar el rango elegido con datos incompletos.
+  const fetchWindowStart = useMemo(() => {
+    const defaultStart = computeDashboardFetchWindowStart()
+    if (rangeSelection.kind === 'custom' && rangeSelection.start && rangeSelection.start < defaultStart) {
+      return rangeSelection.start
+    }
+    return defaultStart
+  }, [rangeSelection])
   const { data: charges, loading: loadingCharges, error: errorCharges } = useSupabaseQuery(
     () => fetchCharges(fetchWindowStart),
     [fetchWindowStart],
@@ -237,12 +246,13 @@ export const Dashboard = () => {
         <p className="mx-8 mt-6 text-sm text-ink-500">Cargando…</p>
       ) : (
         <>
-          <div className="grid grid-cols-2 gap-4 px-8 pt-6 sm:grid-cols-3 xl:grid-cols-7">
-            <StatCard label="Ingresos" value={currency(kpis.revenue)} icon={DollarSign} hint={revenueHint} size="compact" />
-            <StatCard label="Cobrado" value={currency(kpis.collected)} icon={Wallet} tone="good" size="compact" />
+          <div className="grid grid-cols-2 gap-4 px-8 pt-6 sm:grid-cols-3 xl:grid-cols-8">
+            <StatCard label="Ventas" value={currency(kpis.revenue)} icon={DollarSign} hint={revenueHint} size="compact" />
+            <StatCard label="Subido a OPS" value={currency(kpis.collected)} icon={Wallet} tone="good" size="compact" />
             <StatCard label="Pendiente" value={currency(kpis.outstanding)} icon={Clock} tone="warn" size="compact" />
             <StatCard label="Pago a empleados" value={currency(kpis.laborCost)} icon={Banknote} size="compact" />
             <StatCard label="Gastos" value={currency(kpis.expenses)} icon={TrendingDown} size="compact" />
+            <StatCard label="Impuestos acumulados" value={currency(kpis.accumulatedTax)} icon={Receipt} size="compact" />
             <StatCard
               label="Ganancia estimada"
               value={currency(kpis.estimatedProfit)}
@@ -268,7 +278,7 @@ export const Dashboard = () => {
                     <XAxis dataKey="month" tick={axisTick} axisLine={false} tickLine={false} />
                     <YAxis tick={axisTick} axisLine={false} tickLine={false} tickFormatter={formatYAxisLabel} />
                     <Tooltip formatter={(value) => currency(Number(value))} contentStyle={chartTooltipStyle} />
-                    <Line type="monotone" dataKey="revenue" name="Ingresos" stroke={COLOR_GOLD} strokeWidth={2} dot={false} />
+                    <Line type="monotone" dataKey="revenue" name="Ventas" stroke={COLOR_GOLD} strokeWidth={2} dot={false} />
                   </LineChart>
                 </ResponsiveContainer>
               </div>
@@ -276,7 +286,7 @@ export const Dashboard = () => {
           </div>
 
           <div className="grid grid-cols-1 gap-4 px-8 pt-4 lg:grid-cols-2">
-            <DashboardPanel title="Ingresos vs. gastos vs. pago a empleados" subtitle="Últimos 12 meses">
+            <DashboardPanel title="Ventas vs. gastos vs. pago a empleados" subtitle="Últimos 12 meses">
               <div className="h-72">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={monthlyFinancials} margin={{ left: -20, right: 10 }}>
@@ -285,7 +295,7 @@ export const Dashboard = () => {
                     <YAxis tick={axisTick} axisLine={false} tickLine={false} tickFormatter={formatYAxisLabel} />
                     <Tooltip formatter={(value) => currency(Number(value))} contentStyle={chartTooltipStyle} />
                     <Legend wrapperStyle={{ fontSize: 12, color: '#94a3b8' }} />
-                    <Bar dataKey="revenue" name="Ingresos" fill={COLOR_BLUE} radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="revenue" name="Ventas" fill={COLOR_BLUE} radius={[4, 4, 0, 0]} />
                     <Bar dataKey="expenses" name="Gastos" fill={COLOR_ORANGE} radius={[4, 4, 0, 0]} />
                     <Bar dataKey="labor" name="Pago a empleados" fill={COLOR_AQUA} radius={[4, 4, 0, 0]} />
                   </BarChart>
@@ -293,7 +303,7 @@ export const Dashboard = () => {
               </div>
             </DashboardPanel>
 
-            <DashboardPanel title="Ingresos por servicio" subtitle="Período seleccionado">
+            <DashboardPanel title="Ventas por servicio" subtitle="Período seleccionado">
               <RankingBars
                 items={revenueByCategory.map((c) => ({ id: c.category ?? c.label, label: c.label, value: c.revenue }))}
                 formatValue={currency}
@@ -305,7 +315,7 @@ export const Dashboard = () => {
           </div>
 
           <div className="grid grid-cols-1 gap-4 px-8 pt-4 lg:grid-cols-2">
-            <DashboardPanel title="Ingresos por propiedad" subtitle="Top propiedades — período seleccionado">
+            <DashboardPanel title="Ventas por propiedad" subtitle="Top propiedades — período seleccionado">
               <RankingBars
                 items={revenueByProperty.map((p) => ({ id: p.propertyId, label: p.name, value: p.revenue }))}
                 formatValue={currency}

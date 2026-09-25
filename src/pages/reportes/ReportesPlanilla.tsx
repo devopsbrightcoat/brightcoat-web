@@ -46,11 +46,16 @@ const pendingColumnHelper = createColumnHelper<PendingPayrollRow>()
 type DetailRow = PayrollEntry & { sales: number; profit: number | null; tax: number | null }
 const detailColumnHelper = createColumnHelper<DetailRow>()
 
-const buildGroupColumns = (nameHeader: string) => [
+// totalPaid es el Cobro (amount) de cada planilla sumado por grupo — no es lo
+// que se le pagó a alguien. Por propiedad es lo que se le cobró a esa
+// propiedad ("Total cobrado"); por empleado es lo que ese empleado generó en
+// trabajos ya cobrados ("Total ventas") — lo que se le pagó a él está en
+// "Pagado a empleados", no aquí.
+const buildGroupColumns = (nameHeader: string, totalHeader: string) => [
   groupColumnHelper.accessor('name', { id: 'name', header: nameHeader }),
   groupColumnHelper.accessor('totalPaid', {
     id: 'totalPaid',
-    header: 'Total pagado',
+    header: totalHeader,
     cell: (info) => <span className="tabular-nums font-semibold text-white">{currency(info.getValue())}</span>,
   }),
   groupColumnHelper.accessor('paidCount', { id: 'paidCount', header: 'Planillas pagadas' }),
@@ -64,8 +69,8 @@ const buildGroupColumns = (nameHeader: string) => [
   }),
 ]
 
-const PROPERTY_COLUMNS = buildGroupColumns('Propiedad')
-const EMPLOYEE_COLUMNS = buildGroupColumns('Empleado')
+const PROPERTY_COLUMNS = buildGroupColumns('Propiedad', 'Total cobrado')
+const EMPLOYEE_COLUMNS = buildGroupColumns('Empleado', 'Total ventas')
 
 const PENDING_COLUMNS = [
   pendingColumnHelper.accessor('date', { id: 'date', header: 'Fecha' }),

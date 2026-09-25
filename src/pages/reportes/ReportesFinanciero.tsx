@@ -118,7 +118,7 @@ export const ReportesFinanciero = () => {
       columnHelper.accessor('name', { id: 'name', header: 'Propiedad' }),
       columnHelper.accessor('revenue', {
         id: 'revenue',
-        header: 'Ingresos',
+        header: 'Ventas',
         cell: (info) => <span className="tabular-nums">{currency(info.getValue())}</span>,
       }),
       columnHelper.accessor((row) => (totalRevenue > 0 ? (row.revenue / totalRevenue) * 100 : 0), {
@@ -194,8 +194,8 @@ export const ReportesFinanciero = () => {
       ) : (
         <>
           <div className="grid grid-cols-2 gap-4 px-8 pt-6 sm:grid-cols-3 xl:grid-cols-7">
-            <StatCard label="Ingresos" value={currency(kpis.revenue)} icon={DollarSign} />
-            <StatCard label="Cobrado" value={currency(kpis.collected)} icon={Wallet} tone="good" />
+            <StatCard label="Ventas" value={currency(kpis.revenue)} icon={DollarSign} />
+            <StatCard label="Subido a OPS" value={currency(kpis.collected)} icon={Wallet} tone="good" />
             <StatCard label="Pendiente" value={currency(kpis.outstanding)} icon={Clock} tone="warn" />
             <StatCard label="Pago a empleados" value={currency(kpis.laborCost)} icon={Banknote} />
             <StatCard label="Gastos" value={currency(kpis.expenses)} icon={TrendingDown} />
@@ -215,7 +215,7 @@ export const ReportesFinanciero = () => {
 
           <div className="px-8 pt-6">
             <DashboardPanel
-              title="Ingresos por período"
+              title="Ventas por período"
               subtitle="Rango de fecha seleccionado arriba"
               action={
                 <select
@@ -241,7 +241,7 @@ export const ReportesFinanciero = () => {
                       <XAxis dataKey="label" tick={axisTick} axisLine={false} tickLine={false} />
                       <YAxis tick={axisTick} axisLine={false} tickLine={false} tickFormatter={formatYAxisLabel} />
                       <Tooltip formatter={(value) => currency(Number(value))} contentStyle={chartTooltipStyle} />
-                      <Line type="monotone" dataKey="revenue" name="Ingresos" stroke={COLOR_GOLD} strokeWidth={2} dot={false} />
+                      <Line type="monotone" dataKey="revenue" name="Ventas" stroke={COLOR_GOLD} strokeWidth={2} dot={false} />
                     </LineChart>
                   </ResponsiveContainer>
                 </div>
@@ -250,7 +250,7 @@ export const ReportesFinanciero = () => {
           </div>
 
           <div className="grid grid-cols-1 gap-4 px-8 pt-6 lg:grid-cols-2">
-            <DashboardPanel title="Ingresos vs. gastos vs. pago a empleados" subtitle="Últimos 12 meses">
+            <DashboardPanel title="Ventas vs. gastos vs. pago a empleados" subtitle="Últimos 12 meses">
               <div className="h-72">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={monthlyFinancials} margin={{ left: -20, right: 10 }}>
@@ -259,7 +259,7 @@ export const ReportesFinanciero = () => {
                     <YAxis tick={axisTick} axisLine={false} tickLine={false} tickFormatter={formatYAxisLabel} />
                     <Tooltip formatter={(value) => currency(Number(value))} contentStyle={chartTooltipStyle} />
                     <Legend wrapperStyle={{ fontSize: 12, color: '#94a3b8' }} />
-                    <Bar dataKey="revenue" name="Ingresos" fill={COLOR_BLUE} radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="revenue" name="Ventas" fill={COLOR_BLUE} radius={[4, 4, 0, 0]} />
                     <Bar dataKey="expenses" name="Gastos" fill={COLOR_ORANGE} radius={[4, 4, 0, 0]} />
                     <Bar dataKey="labor" name="Pago a empleados" fill={COLOR_AQUA} radius={[4, 4, 0, 0]} />
                   </BarChart>
@@ -267,7 +267,7 @@ export const ReportesFinanciero = () => {
               </div>
             </DashboardPanel>
 
-            <DashboardPanel title="Ingresos por categoría de servicio" subtitle="Período seleccionado">
+            <DashboardPanel title="Ventas por categoría de servicio" subtitle="Período seleccionado">
               <RankingBars
                 items={revenueByCategory.map((c) => ({ id: c.category ?? c.label, label: c.label, value: c.revenue }))}
                 formatValue={currency}

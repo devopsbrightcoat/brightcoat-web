@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { CalendarDays, ChevronLeft, Download, Pencil, Plus, Search, Trash2, TrendingUp } from 'lucide-react'
+import { CalendarDays, ChevronLeft, Download, DollarSign, Pencil, Plus, Search, Trash2, TrendingUp } from 'lucide-react'
 import {
   createColumnHelper,
   getCoreRowModel,
@@ -88,6 +88,10 @@ export const Planillas = () => {
       const sales = e.items.reduce((sum, item) => sum + item.amount, 0)
       const current = map.get(e.employeeId) ?? { count: 0, sales: 0, profit: 0, pendingCount: 0 }
       current.count += 1
+      // "Pago" cuenta todas las planillas del período, cobradas o no — es lo
+      // que se le debe/pagó al empleado por el trabajo ya hecho, sin importar
+      // si el cliente ya pagó ese cobro (igual que el costo de mano de obra
+      // del Dashboard). "Ganancia" sí requiere que el cobro ya esté definido.
       current.sales += sales
       if (e.amount == null) current.pendingCount += 1
       else current.profit += e.amount - sales
@@ -127,6 +131,12 @@ export const Planillas = () => {
     return rows
   }, [entries, properties, selectedEmployeeId, searchText])
 
+  // "Cobro" y "Ganancia" solo cuentan planillas ya cobradas (amount != null).
+  // "Pago" cuenta todas las planillas del período, cobradas o no — es lo que
+  // se le debe/pagó al empleado por el trabajo ya hecho, sin importar si el
+  // cliente ya pagó ese cobro (igual que el costo de mano de obra del
+  // Dashboard).
+  const totalCobro = filtered.filter((e) => e.amount != null).reduce((sum, e) => sum + (e.amount as number), 0)
   const totalSales = filtered.reduce((sum, e) => sum + e.sales, 0)
   const totalProfit = filtered.reduce((sum, e) => sum + (e.profit ?? 0), 0)
 
@@ -169,7 +179,7 @@ export const Planillas = () => {
           return value == null ? (
             <span className="text-ink-500">Pendiente</span>
           ) : (
-            <span className="tabular-nums">{currency(value)}</span>
+            <span className="tabular-nums text-blue-400">{currency(value)}</span>
           )
         },
       }),
@@ -418,7 +428,8 @@ export const Planillas = () => {
 
           {exportError && <p className="mx-8 mt-3 text-sm text-red-400">{exportError}</p>}
 
-          <div className="mx-8 mt-4 grid grid-cols-2 gap-3 sm:max-w-sm">
+          <div className="mx-8 mt-4 grid grid-cols-3 gap-3 sm:max-w-xl">
+            <StatCard label="Cobro" value={currency(totalCobro)} icon={DollarSign} tone="info" size="compact" />
             <StatCard label="Pago" value={currency(totalSales)} icon={TrendingUp} tone="good" size="compact" />
             <StatCard label="Ganancia" value={currency(totalProfit)} icon={TrendingUp} size="compact" />
           </div>

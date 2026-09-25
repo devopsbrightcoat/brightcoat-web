@@ -91,7 +91,12 @@ export const ReportesCobros = () => {
       chargeColumnHelper.accessor('status', {
         id: 'status',
         header: 'Estatus',
-        cell: (info) => <StatusPill status={info.getValue()} />,
+        cell: (info) => (
+          <StatusPill
+            status={info.getValue()}
+            label={info.getValue() === 'paid' ? 'Subido a OPS' : undefined}
+          />
+        ),
       }),
       chargeColumnHelper.accessor('amount', {
         id: 'amount',
@@ -189,7 +194,7 @@ export const ReportesCobros = () => {
     <div className="pb-10">
       <PageHeader
         title="Reportes · Cobros"
-        subtitle="Cobrado vs. pendiente, invoices por período y antigüedad de cartera"
+        subtitle="Subido a OPS vs. pendiente, invoices por período y antigüedad de cartera"
       />
 
       <ReportDateRangeBar onGenerate={setAppliedRange} generated={appliedRange !== null} />
@@ -205,7 +210,7 @@ export const ReportesCobros = () => {
       ) : (
         <>
           <div className="grid grid-cols-2 gap-4 px-8 pt-6 sm:grid-cols-4">
-            <StatCard label="Cobrado" value={currency(collected)} icon={DollarSign} tone="good" />
+            <StatCard label="Subido a OPS" value={currency(collected)} icon={DollarSign} tone="good" />
             <StatCard label="Pendiente" value={currency(outstanding)} icon={Clock} tone="warn" />
             <StatCard label="% cobrado" value={collectedPct == null ? '—' : percent(collectedPct)} icon={Receipt} />
             <StatCard label="Cobros en el período" value={String(periodCharges.length)} icon={Receipt} />

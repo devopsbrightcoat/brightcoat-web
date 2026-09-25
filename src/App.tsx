@@ -46,10 +46,8 @@ const App = () => {
           <Route path="cobros" element={<Cobros />} />
           <Route path="gastos" element={<Gastos />} />
           <Route path="impuestos" element={<Impuestos />} />
-          <Route path="proveedores" element={<Proveedores />} />
         </Route>
         <Route path="planillas" element={<Planillas />} />
-        <Route path="empleados" element={<Empleados />} />
         <Route path="reportes">
           <Route index element={<Navigate to="financiero" replace />} />
           <Route path="financiero" element={<ReportesFinanciero />} />
@@ -65,6 +63,8 @@ const App = () => {
           <Route path="servicios" element={<ConfiguracionServicios />} />
           <Route path="gastos-fijos" element={<ConfiguracionGastosFijos />} />
           <Route path="cobros-fijos" element={<ConfiguracionCobrosFijos />} />
+          <Route path="empleados" element={<Empleados />} />
+          <Route path="proveedores" element={<Proveedores />} />
         </Route>
         <Route path="*" element={<NotFound />} />
       </Route>

@@ -10,7 +10,6 @@ import {
   PanelLeftOpen,
   Receipt,
   Settings,
-  Users,
   Wallet,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
@@ -24,7 +23,6 @@ type NavItem = { to: string; label: string; icon: LucideIcon; end?: boolean; chi
 
 const navItems: NavItem[] = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard, end: true },
-  { to: '/propiedades', label: 'Propiedades', icon: Building2 },
   { to: '/horarios', label: 'Horarios', icon: CalendarClock },
   {
     to: '/finanzas',
@@ -34,11 +32,10 @@ const navItems: NavItem[] = [
       { to: '/finanzas/cobros', label: 'Cobros' },
       { to: '/finanzas/gastos', label: 'Gastos' },
       { to: '/finanzas/impuestos', label: 'Impuestos' },
-      { to: '/finanzas/proveedores', label: 'Proveedores' },
     ],
   },
   { to: '/planillas', label: 'Planillas', icon: Receipt },
-  { to: '/empleados', label: 'Empleados', icon: Users },
+  { to: '/propiedades', label: 'Propiedades', icon: Building2 },
   {
     to: '/reportes',
     label: 'Reportes',
@@ -61,6 +58,8 @@ const navItems: NavItem[] = [
       { to: '/configuracion/servicios', label: 'Servicios' },
       { to: '/configuracion/gastos-fijos', label: 'Gastos fijos' },
       { to: '/configuracion/cobros-fijos', label: 'Cobros fijos' },
+      { to: '/configuracion/empleados', label: 'Empleados' },
+      { to: '/configuracion/proveedores', label: 'Proveedores' },
     ],
   },
 ]

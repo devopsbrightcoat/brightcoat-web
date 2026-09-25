@@ -4,7 +4,7 @@ type StatCardProps = {
   label: string
   value: string
   icon: LucideIcon
-  tone?: 'default' | 'good' | 'warn'
+  tone?: 'default' | 'good' | 'warn' | 'info'
   hint?: string
   hintTone?: 'default' | 'warn'
   size?: 'default' | 'compact'
@@ -14,6 +14,7 @@ const toneClasses: Record<NonNullable<StatCardProps['tone']>, string> = {
   default: 'bg-white/5 text-ink-300',
   good: 'bg-emerald-500/10 text-emerald-400',
   warn: 'bg-amber-500/10 text-amber-400',
+  info: 'bg-blue-500/10 text-blue-400',
 }
 
 const hintToneClasses: Record<NonNullable<StatCardProps['hintTone']>, string> = {

@@ -7,9 +7,6 @@ import type { Employee, PayrollEntry, Property } from '../../types'
 const currency = (value: number) =>
   value.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 2 })
 
-const currencyOrPending = (value: number | null) =>
-  value == null ? <span className="text-ink-500">Pendiente</span> : <span className="tabular-nums">{currency(value)}</span>
-
 const Field = ({ label, value }: { label: string; value: React.ReactNode }) => (
   <div>
     <p className="text-xs font-medium uppercase tracking-wide text-ink-500">{label}</p>
@@ -45,7 +42,16 @@ export const PayrollEntryDetailModal = ({ entry, properties, employees, onClose,
           </div>
 
           <div className="grid grid-cols-3 gap-4 rounded-xl border border-white/10 bg-surface p-4">
-            <Field label="Cobro" value={currencyOrPending(entry.amount)} />
+            <Field
+              label="Cobro"
+              value={
+                entry.amount == null ? (
+                  <span className="text-ink-500">Pendiente</span>
+                ) : (
+                  <span className="tabular-nums text-blue-400">{currency(entry.amount)}</span>
+                )
+              }
+            />
             <Field label="Pago" value={<span className="tabular-nums text-emerald-400">{currency(sales)}</span>} />
             <Field
               label="Ganancia"

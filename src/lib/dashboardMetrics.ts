@@ -1,5 +1,6 @@
 import type { Charge, Employee, PayrollEntry, Expense, Property, Schedule, ServiceCategory, ServiceType } from '../types'
 import { addDays, parseISODate, toISODate } from './scheduleDates'
+import { extractTaxFromTotal } from './tax'
 import { getQuincenaRange, type QuincenaKey } from './quincena'
 
 export type DashboardDateRangeKey = 'fifteen_days' | 'this_month' | 'last_6_months' | 'last_12_months'
@@ -31,9 +32,11 @@ const endOfMonth = (year: number, month: number) => new Date(year, month + 1, 0)
 export type DashboardDateRangeSelection =
   | { kind: 'preset'; key: DashboardDateRangeKey }
   | { kind: 'quincena'; quincena: QuincenaKey }
+  | { kind: 'custom'; start: string; end: string }
 
 export const computeDateRange = (selection: DashboardDateRangeSelection): DateRange => {
   if (selection.kind === 'quincena') return getQuincenaRange(selection.quincena)
+  if (selection.kind === 'custom') return { start: selection.start, end: selection.end }
 
   const key = selection.key
   const now = new Date()
@@ -84,6 +87,7 @@ export type DashboardKpis = {
   outstanding: number
   laborCost: number
   expenses: number
+  accumulatedTax: number
   estimatedProfit: number
   profitMargin: number | null
   completedJobs: number
@@ -102,12 +106,31 @@ export const computeKpis = (
   const outstanding = periodCharges.filter((c) => c.status === 'pending').reduce((sum, c) => sum + c.amount, 0)
   const laborCost = filterPayrollByRange(payrollEntries, range).reduce((sum, p) => sum + payrollPago(p), 0)
   const periodExpenses = filterExpensesByRange(expenses, range).reduce((sum, e) => sum + e.amount, 0)
-  const estimatedProfit = revenue - laborCost - periodExpenses
+  // Impuesto de ventas ya incluido en el cobro (charges.tax_included) — no
+  // es ganancia de la empresa, se le debe restar a la ganancia. Mismo
+  // criterio que Impuestos: solo cuenta un cobro marcado como impuesto
+  // incluido, sin importar si el cliente ya lo pagó (igual que "Ventas"
+  // de aquí abajo, que tampoco distingue pagado/pendiente).
+  const accumulatedTax = periodCharges
+    .filter((c) => c.taxIncluded)
+    .reduce((sum, c) => sum + extractTaxFromTotal(c.amount), 0)
+  const estimatedProfit = revenue - laborCost - periodExpenses - accumulatedTax
   const profitMargin = revenue > 0 ? (estimatedProfit / revenue) * 100 : null
   const completedJobs = filterSchedulesByRange(schedules, range).filter((s) => s.status === 'delivered').length
   const revenuePrevious = filterChargesByRange(charges, previousPeriod(range)).reduce((sum, c) => sum + c.amount, 0)
 
-  return { revenue, revenuePrevious, collected, outstanding, laborCost, expenses: periodExpenses, estimatedProfit, profitMargin, completedJobs }
+  return {
+    revenue,
+    revenuePrevious,
+    collected,
+    outstanding,
+    laborCost,
+    expenses: periodExpenses,
+    accumulatedTax,
+    estimatedProfit,
+    profitMargin,
+    completedJobs,
+  }
 }
 
 export type MonthlyFinancials = { key: string; month: string; revenue: number; expenses: number; labor: number }
@@ -288,7 +311,7 @@ export const computeRevenueByCategory = (
 // ganancia — Cobros no lo tiene. La categoría se obtiene siguiendo planilla
 // → horario (scheduleId) → tipo de servicio del horario; una planilla
 // creada a mano sin horario ligado cae en "Sin categoría", igual que ya
-// hace Ingresos por servicio.
+// hace Ventas por servicio.
 export type CategoryProfit = {
   category: ServiceCategory | null
   label: string
@@ -309,18 +332,23 @@ export const computeProfitByCategory = (
     scheduleCategory.set(s.id, serviceTypes.find((t) => t.id === s.serviceTypeId)?.category ?? null)
   }
 
-  const period = filterPayrollByRange(payrollEntries, range).filter((e) => e.amount != null)
+  const period = filterPayrollByRange(payrollEntries, range)
   const totals = new Map<string, { sold: number; paid: number; profit: number; jobCount: number }>()
   for (const e of period) {
     const category = e.scheduleId ? scheduleCategory.get(e.scheduleId) ?? null : null
     const key = category ?? '__none__'
     const itemsSum = e.items.reduce((sum, item) => sum + item.amount, 0)
-    const amount = e.amount as number
     const current = totals.get(key) ?? { sold: 0, paid: 0, profit: 0, jobCount: 0 }
-    current.sold += amount
+    // "Pagado" cuenta la planilla esté o no cobrada todavía — es lo que se le
+    // debe/pagó al empleado por el trabajo ya hecho (igual que laborCost en
+    // computeKpis y "Pago" en Planillas). "Vendido"/"Ganancia" sí requieren
+    // que el cobro ya esté definido (amount != null).
     current.paid += itemsSum
-    current.profit += amount - itemsSum
     current.jobCount += 1
+    if (e.amount != null) {
+      current.sold += e.amount
+      current.profit += e.amount - itemsSum
+    }
     totals.set(key, current)
   }
 
@@ -373,12 +401,14 @@ export const computeEmployeeProductivity = (
     .slice(0, limit)
 }
 
-// Vendido = Cobro (amount, lo que se le cobró al cliente en esos trabajos).
-// Pagado = el desglose del servicio (items), lo que se le pagó al empleado
-// por esos trabajos. Ganancia = Vendido menos Pagado — el mismo cálculo que
-// usa Planillas para la columna "Ganancia". Solo cuenta planillas ya
-// cobradas (amount != null); una pendiente de cobro todavía no tiene
-// ganancia definida.
+// Vendido = Cobro (amount, lo que se le cobró al cliente en esos trabajos) —
+// solo cuenta planillas ya cobradas (amount != null). Pagado = el desglose
+// del servicio (items), lo que se le pagó/debe al empleado por esos
+// trabajos — cuenta TODAS las planillas del período, cobradas o no, igual
+// que "Pago" en Planillas y que laborCost en computeKpis. Ganancia = Vendido
+// menos Pagado de las planillas ya cobradas — el mismo cálculo que usa
+// Planillas para la columna "Ganancia"; una pendiente de cobro todavía no
+// tiene ganancia definida.
 export type EmployeeProfit = {
   employeeId: string
   name: string
@@ -394,16 +424,21 @@ export const computeEmployeeProfit = (
   range: DateRange,
   limit = 8,
 ): EmployeeProfit[] => {
-  const period = filterPayrollByRange(payrollEntries, range).filter((e) => e.amount != null)
+  const period = filterPayrollByRange(payrollEntries, range)
   const totals = new Map<string, { sold: number; paid: number; profit: number; jobCount: number }>()
   for (const e of period) {
     const itemsSum = e.items.reduce((sum, item) => sum + item.amount, 0)
-    const amount = e.amount as number
     const current = totals.get(e.employeeId) ?? { sold: 0, paid: 0, profit: 0, jobCount: 0 }
-    current.sold += amount
+    // "Pagado" cuenta la planilla esté o no cobrada todavía — es lo que se le
+    // debe/pagó al empleado por el trabajo ya hecho (igual que laborCost en
+    // computeKpis y "Pago" en Planillas). "Vendido"/"Ganancia" sí requieren
+    // que el cobro ya esté definido (amount != null).
     current.paid += itemsSum
-    current.profit += amount - itemsSum
     current.jobCount += 1
+    if (e.amount != null) {
+      current.sold += e.amount
+      current.profit += e.amount - itemsSum
+    }
     totals.set(e.employeeId, current)
   }
   return Array.from(totals.entries())

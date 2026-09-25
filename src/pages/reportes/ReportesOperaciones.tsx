@@ -262,7 +262,12 @@ export const ReportesOperaciones = () => {
       chargeColumnHelper.accessor('status', {
         id: 'status',
         header: 'Estatus',
-        cell: (info) => <StatusPill status={info.getValue()} />,
+        cell: (info) => (
+          <StatusPill
+            status={info.getValue()}
+            label={info.getValue() === 'paid' ? 'Subido a OPS' : undefined}
+          />
+        ),
       }),
     ],
     [properties],
@@ -487,8 +492,8 @@ export const ReportesOperaciones = () => {
           </div>
 
           <div className="grid grid-cols-2 gap-4 px-8 pt-6 sm:grid-cols-3">
-            <StatCard label="Ingresos" value={currency(totalRevenue)} icon={TrendingUp} tone="good" />
-            <StatCard label="Cobrado" value={currency(collected)} icon={Wallet} tone="good" />
+            <StatCard label="Ventas" value={currency(totalRevenue)} icon={TrendingUp} tone="good" />
+            <StatCard label="Subido a OPS" value={currency(collected)} icon={Wallet} tone="good" />
             <StatCard label="Pendiente" value={currency(outstanding)} icon={TrendingDown} tone="warn" />
           </div>
 

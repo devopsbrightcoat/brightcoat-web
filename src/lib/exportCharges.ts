@@ -4,7 +4,7 @@ import type { Charge, Property, ServiceType } from '../types'
 
 const STATUS_LABELS: Record<Charge['status'], string> = {
   pending: 'Pendiente',
-  paid: 'Pagado',
+  paid: 'Subido a OPS',
 }
 
 export const exportChargesToExcel = async (
