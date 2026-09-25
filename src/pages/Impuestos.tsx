@@ -52,7 +52,9 @@ export const Impuestos = () => {
   const { properties, loadingProperties } = useReferenceData()
 
   const months = useMemo<MonthGroup[]>(() => {
-    const taxable = (charges ?? []).filter((c) => c.status === 'paid' && c.generatedDate)
+    // Solo cuentan los cobros marcados como "impuesto incluido" — uno sin
+    // esa marca no se le calcula ni se le suma impuesto en esta pantalla.
+    const taxable = (charges ?? []).filter((c) => c.status === 'paid' && c.generatedDate && c.taxIncluded)
     const groups = new Map<string, typeof taxable>()
     for (const charge of taxable) {
       const date = parseISODate(charge.generatedDate!)
@@ -205,7 +207,7 @@ export const Impuestos = () => {
     <div className="h-screen overflow-hidden flex flex-col">
       <PageHeader
         title="Impuestos"
-        subtitle={`Impuesto de ventas (${(SALES_TAX_RATE * 100).toFixed(2)}% fijo) sobre los cobros subidos a OPS — por mes`}
+        subtitle={`Impuesto de ventas (${(SALES_TAX_RATE * 100).toFixed(2)}% fijo) sobre los cobros marcados como "impuesto incluido" — por mes`}
         action={
           <button
             type="button"
