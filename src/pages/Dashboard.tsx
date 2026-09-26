@@ -7,6 +7,7 @@ import {
   CheckCircle2,
   Clock,
   DollarSign,
+  Maximize2,
   Percent,
   Receipt,
   TrendingDown,
@@ -32,12 +33,14 @@ import { DashboardPanel } from '../components/dashboard/DashboardPanel'
 import { DashboardDateRangeSelect } from '../components/dashboard/DashboardDateRangeSelect'
 import { Pagination } from '../components/common/Pagination'
 import { RankingBars } from '../components/dashboard/RankingBars'
+import { EmployeeProfitModal } from '../components/dashboard/EmployeeProfitModal'
 import { ServiceCategoryModal } from '../components/dashboard/ServiceCategoryModal'
 import { useReferenceData } from '../contexts/ReferenceDataContext'
 import { fetchCharges, fetchExpenses, fetchPayrollEntries, fetchSchedules } from '../lib/api'
 import {
   computeAlerts,
   computeDashboardFetchWindowStart,
+  computeUploadToOpsReminder,
   computeDateRange,
   computeEmployeeProductivity,
   computeEmployeeProfit,
@@ -51,6 +54,7 @@ import {
   computeTodaySchedules,
   type DashboardDateRangeSelection,
 } from '../lib/dashboardMetrics'
+import { getQuincenaForDate } from '../lib/quincena'
 import { useSupabaseQuery } from '../lib/useSupabaseQuery'
 
 // Cantidad fija de trabajos pendientes que se muestran por página en el
@@ -119,8 +123,9 @@ const ProfitTooltip = ({
 }
 
 export const Dashboard = () => {
-  const [rangeSelection, setRangeSelection] = useState<DashboardDateRangeSelection>({ kind: 'preset', key: 'this_month' })
+  const [rangeSelection, setRangeSelection] = useState<DashboardDateRangeSelection>({ kind: 'quincena', quincena: getQuincenaForDate() })
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null)
+  const [employeeProfitExpanded, setEmployeeProfitExpanded] = useState(false)
   const [pendingPage, setPendingPage] = useState(1)
 
   // El Dashboard solo necesita datos de los últimos ~14 meses (ver
@@ -194,6 +199,13 @@ export const Dashboard = () => {
     [payrollEntries, employees, range],
   )
 
+  // Lista completa (sin el límite de 8 del chart compacto) para el modal
+  // expandido — ahí sí se quiere ver a todos los empleados con planillas.
+  const allEmployeeProfit = useMemo(
+    () => computeEmployeeProfit(payrollEntries ?? [], employees ?? [], range, Number.MAX_SAFE_INTEGER),
+    [payrollEntries, employees, range],
+  )
+
   const profitByCategory = useMemo(
     () => computeProfitByCategory(payrollEntries ?? [], schedules ?? [], serviceTypes ?? [], range),
     [payrollEntries, schedules, serviceTypes, range],
@@ -221,6 +233,10 @@ export const Dashboard = () => {
     [charges, payrollEntries, expenses, properties, range],
   )
 
+  // Recordatorio "subir a OPS" (día 15 de cada mes) — independiente del
+  // rango de fechas seleccionado, ver computeUploadToOpsReminder.
+  const uploadToOpsReminder = useMemo(() => computeUploadToOpsReminder(charges ?? []), [charges])
+
   const propertyName = (id: string) => properties?.find((p) => p.id === id)?.name ?? '—'
   const serviceTypeName = (id: string) => serviceTypes?.find((s) => s.id === id)?.name ?? '—'
   const employeeName = (id: string) => employees?.find((e) => e.id === id)?.name ?? '—'
@@ -246,6 +262,18 @@ export const Dashboard = () => {
         <p className="mx-8 mt-6 text-sm text-ink-500">Cargando…</p>
       ) : (
         <>
+          {uploadToOpsReminder && (
+            <div className="mx-8 mt-6 flex items-start gap-3 rounded-xl border border-red-500/30 bg-red-500/10 p-4">
+              <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-red-400" />
+              <div>
+                <p className="text-sm font-semibold text-red-300">Recordatorio: subir cobros a OPS</p>
+                <p className="mt-0.5 text-xs text-red-200/80">
+                  Ya pasó el día 15 del mes y quedan {uploadToOpsReminder.count} cobro(s) pendientes de subir a OPS — {currency(uploadToOpsReminder.total)} en total.
+                </p>
+              </div>
+            </div>
+          )}
+
           <div className="grid grid-cols-2 gap-4 px-8 pt-6 sm:grid-cols-3 xl:grid-cols-8">
             <StatCard label="Ventas" value={currency(kpis.revenue)} icon={DollarSign} hint={revenueHint} size="compact" />
             <StatCard label="Subido a OPS" value={currency(kpis.collected)} icon={Wallet} tone="good" size="compact" />
@@ -335,21 +363,43 @@ export const Dashboard = () => {
           </div>
 
           <div className="grid grid-cols-1 gap-4 px-8 pt-4 lg:grid-cols-2">
-            <DashboardPanel title="Vendido, pagado y ganancia por empleado" subtitle="Cobro, pago al empleado y ganancia — período seleccionado">
+            <DashboardPanel
+              title="Vendido, pagado y ganancia por empleado"
+              subtitle="Cobro, pago al empleado y ganancia — período seleccionado"
+              action={
+                employeeProfit.length > 0 ? (
+                  <button
+                    type="button"
+                    onClick={() => setEmployeeProfitExpanded(true)}
+                    aria-label="Ver todos los empleados"
+                    className="rounded-lg p-1 text-ink-500 transition hover:bg-white/10 hover:text-white"
+                  >
+                    <Maximize2 className="h-4 w-4" />
+                  </button>
+                ) : undefined
+              }
+            >
               {employeeProfit.length === 0 ? (
                 <p className="py-6 text-center text-sm text-ink-500">No hay planillas cobradas en este período.</p>
               ) : (
-                <div className="h-72">
+                <div
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => setEmployeeProfitExpanded(true)}
+                  onKeyDown={(e) => e.key === 'Enter' && setEmployeeProfitExpanded(true)}
+                  className="h-72 cursor-pointer"
+                  title="Ver todos los empleados"
+                >
                   <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={employeeProfit} margin={{ left: -20, right: 10 }}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#ffffff1a" />
-                      <XAxis dataKey="name" tick={axisTick} axisLine={false} tickLine={false} />
-                      <YAxis tick={axisTick} axisLine={false} tickLine={false} tickFormatter={formatYAxisLabel} />
+                    <BarChart data={employeeProfit} layout="vertical" margin={{ left: 0, right: 10 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#ffffff1a" horizontal={false} />
+                      <XAxis type="number" tick={axisTick} axisLine={false} tickLine={false} tickFormatter={formatYAxisLabel} />
+                      <YAxis type="category" dataKey="name" tick={axisTick} axisLine={false} tickLine={false} width={80} />
                       <Tooltip content={<ProfitTooltip />} cursor={{ fill: '#ffffff0a' }} />
                       <Legend wrapperStyle={{ fontSize: 12, color: '#94a3b8' }} />
-                      <Bar dataKey="sold" name="Vendido" fill={COLOR_BLUE} radius={[4, 4, 0, 0]} />
-                      <Bar dataKey="paid" name="Pagado" fill={COLOR_AQUA} radius={[4, 4, 0, 0]} />
-                      <Bar dataKey="profit" name="Ganancia" fill={COLOR_GOLD} radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="sold" name="Vendido" fill={COLOR_BLUE} radius={[0, 4, 4, 0]} />
+                      <Bar dataKey="paid" name="Pagado" fill={COLOR_AQUA} radius={[0, 4, 4, 0]} />
+                      <Bar dataKey="profit" name="Ganancia" fill={COLOR_GOLD} radius={[0, 4, 4, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
@@ -468,6 +518,11 @@ export const Dashboard = () => {
       )}
 
       <ServiceCategoryModal category={selectedCategory} onClose={() => setSelectedCategoryId(null)} />
+      <EmployeeProfitModal
+        open={employeeProfitExpanded}
+        data={allEmployeeProfit}
+        onClose={() => setEmployeeProfitExpanded(false)}
+      />
     </div>
   )
 }

@@ -1,4 +1,4 @@
-import { computeDateRange, DASHBOARD_DATE_RANGE_OPTIONS, type DashboardDateRangeKey, type DashboardDateRangeSelection } from '../../lib/dashboardMetrics'
+import { computeDateRange, type DashboardDateRangeSelection } from '../../lib/dashboardMetrics'
 import { getQuincenaForDate } from '../../lib/quincena'
 import { QuincenaPicker } from './QuincenaPicker'
 
@@ -6,9 +6,6 @@ type DashboardDateRangeSelectProps = {
   value: DashboardDateRangeSelection
   onChange: (selection: DashboardDateRangeSelection) => void
 }
-
-const selectClass =
-  'rounded-lg border border-white/10 bg-surface-alt px-3 py-2 text-sm text-ink-200 outline-none focus:border-gold-500'
 
 const modeButtonClass = (active: boolean) =>
   `px-3 py-2 text-sm font-medium transition ${
@@ -22,13 +19,6 @@ export const DashboardDateRangeSelect = ({ value, onChange }: DashboardDateRange
   return (
     <div className="flex flex-wrap items-center gap-3">
       <div className="flex overflow-hidden rounded-lg border border-white/10">
-        <button
-          type="button"
-          onClick={() => value.kind !== 'preset' && onChange({ kind: 'preset', key: 'this_month' })}
-          className={modeButtonClass(value.kind === 'preset')}
-        >
-          Preset
-        </button>
         <button
           type="button"
           onClick={() => value.kind !== 'quincena' && onChange({ kind: 'quincena', quincena: getQuincenaForDate() })}
@@ -45,23 +35,11 @@ export const DashboardDateRangeSelect = ({ value, onChange }: DashboardDateRange
           }}
           className={modeButtonClass(value.kind === 'custom')}
         >
-          Personalizado
+          Fecha
         </button>
       </div>
 
-      {value.kind === 'preset' ? (
-        <select
-          value={value.key}
-          onChange={(e) => onChange({ kind: 'preset', key: e.target.value as DashboardDateRangeKey })}
-          className={selectClass}
-        >
-          {DASHBOARD_DATE_RANGE_OPTIONS.map((opt) => (
-            <option key={opt.value} value={opt.value}>
-              {opt.label}
-            </option>
-          ))}
-        </select>
-      ) : value.kind === 'quincena' ? (
+      {value.kind === 'quincena' ? (
         <QuincenaPicker value={value.quincena} onChange={(quincena) => onChange({ kind: 'quincena', quincena })} />
       ) : (
         <div className="flex items-center gap-2">

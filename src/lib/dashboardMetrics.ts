@@ -3,15 +3,6 @@ import { addDays, parseISODate, toISODate } from './scheduleDates'
 import { extractTaxFromTotal } from './tax'
 import { getQuincenaRange, type QuincenaKey } from './quincena'
 
-export type DashboardDateRangeKey = 'fifteen_days' | 'this_month' | 'last_6_months' | 'last_12_months'
-
-export const DASHBOARD_DATE_RANGE_OPTIONS: { value: DashboardDateRangeKey; label: string }[] = [
-  { value: 'fifteen_days', label: 'Últimos 15 días' },
-  { value: 'this_month', label: 'Mes actual' },
-  { value: 'last_6_months', label: 'Últimos 6 meses' },
-  { value: 'last_12_months', label: 'Últimos 12 meses' },
-]
-
 export type DateRange = { start: string; end: string }
 
 // Ventana que el Dashboard le pide al servidor (en vez de traer todo el
@@ -26,40 +17,13 @@ export const computeDashboardFetchWindowStart = (): string => {
   return toISODate(start)
 }
 
-const startOfMonth = (year: number, month: number) => new Date(year, month, 1)
-const endOfMonth = (year: number, month: number) => new Date(year, month + 1, 0)
-
 export type DashboardDateRangeSelection =
-  | { kind: 'preset'; key: DashboardDateRangeKey }
   | { kind: 'quincena'; quincena: QuincenaKey }
   | { kind: 'custom'; start: string; end: string }
 
 export const computeDateRange = (selection: DashboardDateRangeSelection): DateRange => {
   if (selection.kind === 'quincena') return getQuincenaRange(selection.quincena)
-  if (selection.kind === 'custom') return { start: selection.start, end: selection.end }
-
-  const key = selection.key
-  const now = new Date()
-
-  switch (key) {
-    case 'fifteen_days': {
-      const start = new Date(now)
-      start.setDate(start.getDate() - 14)
-      return { start: toISODate(start), end: toISODate(now) }
-    }
-    case 'this_month':
-      return { start: toISODate(startOfMonth(now.getFullYear(), now.getMonth())), end: toISODate(endOfMonth(now.getFullYear(), now.getMonth())) }
-    case 'last_6_months': {
-      const start = new Date(now)
-      start.setDate(start.getDate() - 179)
-      return { start: toISODate(start), end: toISODate(now) }
-    }
-    case 'last_12_months': {
-      const start = new Date(now)
-      start.setDate(start.getDate() - 364)
-      return { start: toISODate(start), end: toISODate(now) }
-    }
-  }
+  return { start: selection.start, end: selection.end }
 }
 
 export const previousPeriod = (range: DateRange): DateRange => {
@@ -863,4 +827,30 @@ export const computeAlerts = (
   }
 
   return alerts
+}
+
+// Recordatorio "subir a OPS": a partir del día 15 de cada mes, si quedan
+// cobros pendientes de subir a OPS (status === 'pending'), sin importar su
+// antigüedad — a diferencia de "Cobros vencidos" en computeAlerts, que solo
+// mira cobros de más de OVERDUE_CHARGE_DAYS. No depende del rango de
+// fechas seleccionado en el Dashboard: mira TODOS los cobros pendientes,
+// para que se revise que todo esté al día antes de mediados de mes. La
+// mitad automática de este mismo recordatorio (notificación real + push)
+// vive en la migración 20261012000000_add_upload_to_ops_reminder.sql.
+export type UploadToOpsReminder = {
+  count: number
+  total: number
+}
+
+export const computeUploadToOpsReminder = (
+  charges: Charge[],
+  today: Date = new Date(),
+): UploadToOpsReminder | null => {
+  if (today.getDate() < 15) return null
+  const pending = charges.filter((c) => c.status === 'pending')
+  if (pending.length === 0) return null
+  return {
+    count: pending.length,
+    total: pending.reduce((sum, c) => sum + c.amount, 0),
+  }
 }

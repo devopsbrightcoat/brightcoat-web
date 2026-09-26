@@ -1,57 +1,57 @@
 
-import { MONTH_NAMES, toISODate } from './scheduleDates'
+import { addDays, MONTH_NAMES, parseISODate, toISODate } from './scheduleDates'
 import type { DateRange } from './dashboardMetrics'
 
-export type QuincenaHalf = 1 | 2
-export type QuincenaKey = { year: number; month: number; half: QuincenaHalf }
+// La plataforma se empezó a usar el 31 de agosto de 2026 (lunes) — ese día
+// arrancó la primera quincena. Desde ahí cada quincena son exactamente 14
+// días (2 semanas completas de lunes a domingo), una detrás de otra para
+// siempre: el conteo NO se reinicia cada mes. Como los meses no son
+// múltiplos de 14 días, con el tiempo una quincena termina cayendo a
+// caballo entre dos meses calendario — por eso ya no se eligen por
+// "mes + 1ra/2da quincena": se navegan por número (ver QuincenaPicker),
+// mostrando siempre el rango real de fechas.
+const QUINCENA_ANCHOR = '2026-08-31'
 
-export const getQuincenaRange = ({ year, month, half }: QuincenaKey): DateRange => {
-  if (half === 1) {
-    const start = new Date(year, month - 1, 0)
-    const end = new Date(year, month - 1, 14)
-    return { start: toISODate(start), end: toISODate(end) }
-  }
-  const start = new Date(year, month - 1, 15)
-  const lastDayOfMonth = new Date(year, month, 0).getDate()
-  const end = new Date(year, month - 1, Math.min(30, lastDayOfMonth))
+export type QuincenaKey = { index: number }
+
+// Días de calendario entre dos fechas, usando UTC solo para el cálculo (no
+// para las fechas en sí) para que no se corra un día por el cambio de
+// horario de verano.
+const daysBetween = (from: Date, to: Date): number => {
+  const utcFrom = Date.UTC(from.getFullYear(), from.getMonth(), from.getDate())
+  const utcTo = Date.UTC(to.getFullYear(), to.getMonth(), to.getDate())
+  return Math.round((utcTo - utcFrom) / 86400000)
+}
+
+export const getQuincenaRange = ({ index }: QuincenaKey): DateRange => {
+  const anchor = parseISODate(QUINCENA_ANCHOR)
+  const start = addDays(anchor, index * 14)
+  const end = addDays(anchor, index * 14 + 13)
   return { start: toISODate(start), end: toISODate(end) }
 }
 
 export const getQuincenaForDate = (date: Date = new Date()): QuincenaKey => {
-  const day = date.getDate()
-  if (day === 31) {
-    const next = new Date(date.getFullYear(), date.getMonth() + 1, 1)
-    return { year: next.getFullYear(), month: next.getMonth() + 1, half: 1 }
-  }
-  if (day <= 14) {
-    return { year: date.getFullYear(), month: date.getMonth() + 1, half: 1 }
-  }
-  return { year: date.getFullYear(), month: date.getMonth() + 1, half: 2 }
+  const anchor = parseISODate(QUINCENA_ANCHOR)
+  const diffDays = daysBetween(anchor, date)
+  return { index: Math.floor(diffDays / 14) }
 }
 
-const ordinal = (half: QuincenaHalf) => (half === 1 ? '1ra' : '2da')
-
-export const formatQuincenaShortLabel = ({ year, month, half }: QuincenaKey): string => {
-  const name = MONTH_NAMES[month - 1]
-  return `${ordinal(half)} quincena de ${name} ${year}`
-}
+export const formatQuincenaShortLabel = ({ index }: QuincenaKey): string => `Quincena ${index + 1}`
 
 export const formatQuincenaRangeLabel = (key: QuincenaKey): string => {
+  const { label, year } = formatQuincenaRangeParts(key)
+  return `${label} ${year}`
+}
+
+// Separa el rango de fechas del año final para poder resaltar el año con su
+// propio color (dorado) en el picker, sin tocar el resto del texto.
+export const formatQuincenaRangeParts = (key: QuincenaKey): { label: string; year: string } => {
   const { start, end } = getQuincenaRange(key)
   const startDate = new Date(`${start}T00:00:00`)
   const endDate = new Date(`${end}T00:00:00`)
   const shortMonth = (m: number) => MONTH_NAMES[m].slice(0, 3)
   const startLabel = `${startDate.getDate()} ${shortMonth(startDate.getMonth())}`
   const endLabel = `${endDate.getDate()} ${shortMonth(endDate.getMonth())}`
-  return `${startLabel} – ${endLabel}`
-}
-
-export const listRecentMonths = (monthsBack = 24): { year: number; month: number }[] => {
-  const now = new Date()
-  const list: { year: number; month: number }[] = []
-  for (let i = 0; i < monthsBack; i++) {
-    const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
-    list.push({ year: d.getFullYear(), month: d.getMonth() + 1 })
-  }
-  return list
+  const year = String(endDate.getFullYear()).slice(-2)
+  return { label: `${startLabel} - ${endLabel}`, year }
 }
