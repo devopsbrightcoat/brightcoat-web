@@ -49,7 +49,6 @@ const BORDER = [226, 232, 240] as const
 export const exportEstimateToPdf = async (data: EstimateExportData): Promise<void> => {
   const { estimateNumber, date, propertyName, unitLabel, propertyContact, items, note } = data
   const title = data.documentTitle?.trim() || 'Estimate'
-  const displayPropertyName = unitLabel ? `${propertyName} · ${unitLabel}` : propertyName
   const company = await fetchCompanyInfoForPdf()
 
   const doc = new jsPDF({ orientation: 'portrait', format: 'letter' })
@@ -60,7 +59,7 @@ export const exportEstimateToPdf = async (data: EstimateExportData): Promise<voi
 
   // --- Encabezado: título + datos de la empresa a la izquierda, logo a la
   // derecha (mismo layout que los estimates que David ya conoce) ---
-  doc.setFont('helvetica', 'bold')
+  doc.setFont('times', 'bold')
   doc.setFontSize(18)
   doc.setTextColor(...GOLD)
   doc.text(title.toUpperCase(), marginX, 20)
@@ -70,7 +69,7 @@ export const exportEstimateToPdf = async (data: EstimateExportData): Promise<voi
   const nameLines = doc.splitTextToSize(company.companyName, colWidth)
   doc.text(nameLines, marginX, 28)
 
-  doc.setFont('helvetica', 'normal')
+  doc.setFont('times', 'normal')
   doc.setFontSize(9)
   doc.setTextColor(...GREY)
   const addressY = 28 + nameLines.length * 4.6
@@ -86,10 +85,19 @@ export const exportEstimateToPdf = async (data: EstimateExportData): Promise<voi
     const logoWidth = 38
     const logoHeight = logoWidth * LOGO_ASPECT_RATIO
     const logoX = pageWidth - marginX - logoWidth
-    const logoY = 8
+    // El logo queda centrado verticalmente contra el bloque de datos de la
+    // empresa (nombre + dirección a la izquierda, email/teléfono a la
+    // derecha) en vez de una posición fija, usando el alto real de lo que
+    // se dibujó arriba.
+    const infoTop = 28 - 7
+    const addressBottom = addressY + Math.max(addressLines.length - 1, 0) * 4.6 + 3
+    const phoneBottom = 33 + 3
+    const infoBottom = Math.max(addressBottom, phoneBottom)
+    const infoCenterY = (infoTop + infoBottom) / 2
+    const platePadding = 3
+    const logoY = infoCenterY - logoHeight / 2
     // Placa navy detrás del logo para que el texto plateado resalte sobre
     // el fondo blanco del PDF (ver nota en pdfAssets.ts).
-    const platePadding = 3
     doc.setFillColor(...LOGO_PLATE_COLOR)
     doc.roundedRect(
       logoX - platePadding,
@@ -107,19 +115,29 @@ export const exportEstimateToPdf = async (data: EstimateExportData): Promise<voi
 
   // --- Franja con el nombre de la propiedad/proyecto + datos del estimado ---
   const bandY = 50
-  const bandHeight = propertyContact ? 50 : 44
+  let bandHeight = 44
+  if (unitLabel) bandHeight += 7
+  if (propertyContact) bandHeight += 6
   doc.setFillColor(...GOLD_BG)
   doc.roundedRect(marginX, bandY, pageWidth - marginX * 2, bandHeight, 2, 2, 'F')
 
   let cursorY = bandY + 11
-  doc.setFont('helvetica', 'bold')
+  doc.setFont('times', 'bold')
   doc.setFontSize(13)
   doc.setTextColor(...GOLD)
-  doc.text(displayPropertyName, marginX + 6, cursorY)
+  doc.text(propertyName, marginX + 6, cursorY)
+
+  if (unitLabel) {
+    cursorY += 7
+    doc.setFont('times', 'normal')
+    doc.setFontSize(10)
+    doc.setTextColor(...INK)
+    doc.text(`Unit #: ${unitLabel}`, marginX + 6, cursorY)
+  }
 
   if (propertyContact) {
     cursorY += 6
-    doc.setFont('helvetica', 'normal')
+    doc.setFont('times', 'normal')
     doc.setFontSize(9)
     doc.setTextColor(...GREY)
     doc.text(propertyContact, marginX + 6, cursorY)
@@ -132,13 +150,13 @@ export const exportEstimateToPdf = async (data: EstimateExportData): Promise<voi
   doc.setLineDashPattern([], 0)
 
   cursorY += 9
-  doc.setFont('helvetica', 'bold')
+  doc.setFont('times', 'bold')
   doc.setFontSize(10.5)
   doc.setTextColor(...INK)
   doc.text(`${title} details`, marginX + 6, cursorY)
 
   cursorY += 6
-  doc.setFont('helvetica', 'normal')
+  doc.setFont('times', 'normal')
   doc.setFontSize(9.5)
   doc.setTextColor(60, 60, 60)
   doc.text(`${title} no.: ${estimateNumber}`, marginX + 6, cursorY)
@@ -162,7 +180,7 @@ export const exportEstimateToPdf = async (data: EstimateExportData): Promise<voi
     head: [head],
     body,
     theme: 'grid',
-    styles: { fontSize: 9, cellPadding: 3, lineColor: [...BORDER], lineWidth: 0.2, textColor: 30 },
+    styles: { fontSize: 9, cellPadding: 3, lineColor: [...BORDER], lineWidth: 0.2, textColor: 30, font: 'times' },
     headStyles: { fillColor: [...GOLD_BG], textColor: [120, 90, 20], fontStyle: 'bold', lineColor: [...BORDER] },
     columnStyles: {
       0: { cellWidth: 8 },
@@ -178,10 +196,11 @@ export const exportEstimateToPdf = async (data: EstimateExportData): Promise<voi
   const finalY = (doc as unknown as { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY ?? bandY + bandHeight + 10
   const total = items.reduce((sum, item) => sum + item.qty * item.rate, 0)
 
-  const totalY = finalY + 10
+  // Más despegado de la tabla que antes (no pegado contra la última fila).
+  const totalY = finalY + 24
   doc.setDrawColor(...BORDER)
   doc.line(pageWidth - marginX - 70, totalY - 5, pageWidth - marginX, totalY - 5)
-  doc.setFont('helvetica', 'bold')
+  doc.setFont('times', 'bold')
   doc.setFontSize(11)
   doc.setTextColor(...INK)
   doc.text('Total', pageWidth - marginX - 35, totalY, { align: 'right' })
@@ -192,12 +211,12 @@ export const exportEstimateToPdf = async (data: EstimateExportData): Promise<voi
   // QuickBooks) — visible en el PDF, debajo del total ---
   if (note && note.trim()) {
     let noteY = totalY + 12
-    doc.setFont('helvetica', 'bold')
+    doc.setFont('times', 'bold')
     doc.setFontSize(9.5)
     doc.setTextColor(...INK)
     doc.text('Nota para el cliente', marginX, noteY)
     noteY += 5
-    doc.setFont('helvetica', 'normal')
+    doc.setFont('times', 'normal')
     doc.setFontSize(9)
     doc.setTextColor(...GREY)
     const noteLines = doc.splitTextToSize(note.trim(), pageWidth - marginX * 2)
@@ -209,7 +228,7 @@ export const exportEstimateToPdf = async (data: EstimateExportData): Promise<voi
   doc.setDrawColor(...BORDER)
   doc.line(marginX, footerY, marginX + 75, footerY)
   doc.line(marginX + 90, footerY, marginX + 165, footerY)
-  doc.setFont('helvetica', 'normal')
+  doc.setFont('times', 'normal')
   doc.setFontSize(9)
   doc.setTextColor(...GREY)
   doc.text('Accepted date', marginX, footerY + 5)

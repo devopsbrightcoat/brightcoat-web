@@ -133,6 +133,28 @@ export type Schedule = {
   isFixedCharge: boolean
 }
 
+export type EstimateItem = {
+  name: string
+  description: string
+  qty: number
+  rate: number
+}
+
+export type Estimate = {
+  id: string
+  estimateNumber: number
+  documentTitle: string
+  date: string
+  propertyId: string | null
+  propertyName: string
+  unitLabel?: string
+  propertyContact?: string
+  items: EstimateItem[]
+  note?: string
+  total: number
+  createdAt: string
+}
+
 export type NotificationEntityType = 'property' | 'employee' | 'schedule' | 'expense' | 'payroll_entry' | 'charge'
 
 export type AppNotification = {

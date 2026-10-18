@@ -17,10 +17,19 @@ export type PayrollExportOptions = {
   // 'admin' (por defecto) incluye todo, igual que siempre. 'employee' quita
   // Notas, Cobro y Ganancia — lo que no debe ver el empleado.
   audience?: PayrollExportAudience
+  // Rango de fechas ya formateado para mostrar (ej. "14 Oct – 28 Oct") — se
+  // imprime debajo del título en el PDF. Solo afecta el PDF, no el Excel.
+  periodLabel?: string
 }
 
 const currency = (value: number) =>
   value.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 2 })
+
+// Mismos tonos dorados que usa exportEstimate.ts, para la caja que resalta
+// el total pagado.
+const GOLD = [207, 145, 34] as const
+const GOLD_BG = [253, 247, 231] as const
+const GOLD_DARK = [120, 90, 20] as const
 
 // Convierte un nombre a algo seguro para usar como nombre de archivo (sin
 // acentos, espacios ni símbolos) — ej. "José Pérez" -> "jose-perez".
@@ -158,7 +167,7 @@ export const exportPayrollToPdf = async (
   employees: Employee[],
   options: PayrollExportOptions = {},
 ): Promise<void> => {
-  const { employeeName, audience = 'admin' } = options
+  const { employeeName, audience = 'admin', periodLabel } = options
 
   const head =
     audience === 'admin'
@@ -210,33 +219,33 @@ export const exportPayrollToPdf = async (
   // Encabezado con el nombre de la empresa (el mismo que se edita en
   // Configuración > General) y el logo arriba a la derecha — en la planilla
   // no hace falta repetir dirección ni contacto.
+  //
+  // El nombre de la empresa queda centrado verticalmente contra el logo (con
+  // su placa navy) en vez de una posición fija, y la línea separadora se
+  // dibuja después del punto más bajo de esa placa — así el logo nunca
+  // termina encimado sobre la línea, sin importar qué tan grande salga.
   const company = await fetchCompanyInfoForPdf()
-  let headerY = 14
-  doc.setFont('helvetica', 'bold')
-  doc.setFontSize(11)
+  const logoWidth = 26
+  const logoHeight = logoWidth * LOGO_ASPECT_RATIO
+  const platePadding = 2.5
+  const plateTop = 7
+  const plateHeight = logoHeight + platePadding * 2
+  const plateBottom = plateTop + plateHeight
+
+  doc.setFont('times', 'bold')
+  doc.setFontSize(12)
   doc.setTextColor(30, 31, 37)
-  doc.text(company.companyName, marginX, headerY)
-  doc.setFont('helvetica', 'normal')
+  doc.text(company.companyName, marginX, plateTop + plateHeight / 2 + 1.8)
+  doc.setFont('times', 'normal')
 
   try {
     const logoDataUrl = await loadImageAsDataUrl(LOGO_URL)
-    const logoWidth = 26
-    const logoHeight = logoWidth * LOGO_ASPECT_RATIO
     const logoX = pageWidth - marginX - logoWidth
-    const logoY = 6
+    const logoY = plateTop + platePadding
     // Placa navy detrás del logo para que el texto plateado resalte sobre
     // el fondo blanco del PDF (ver nota en pdfAssets.ts).
-    const platePadding = 2.5
     doc.setFillColor(...LOGO_PLATE_COLOR)
-    doc.roundedRect(
-      logoX - platePadding,
-      logoY - platePadding,
-      logoWidth + platePadding * 2,
-      logoHeight + platePadding * 2,
-      1.5,
-      1.5,
-      'F',
-    )
+    doc.roundedRect(logoX - platePadding, plateTop, logoWidth + platePadding * 2, plateHeight, 1.5, 1.5, 'F')
     doc.addImage(logoDataUrl, 'PNG', logoX, logoY, logoWidth, logoHeight)
   } catch {
     // Si el logo no carga (ej. sin conexión al generar el PDF), seguimos sin
@@ -244,22 +253,30 @@ export const exportPayrollToPdf = async (
     // encabezado.
   }
 
-  headerY += 6
+  let headerY = plateBottom + 4
   doc.setDrawColor(226, 232, 240)
   doc.line(marginX, headerY, pageWidth - marginX, headerY)
 
-  headerY += 8
-  doc.setFont('helvetica', 'bold')
-  doc.setFontSize(14)
+  headerY += 9
+  doc.setFont('times', 'bold')
+  doc.setFontSize(16)
   doc.setTextColor(0, 0, 0)
   doc.text(employeeName ? `Planilla — ${employeeName}` : 'Planillas', marginX, headerY)
-  doc.setFont('helvetica', 'normal')
+  doc.setFont('times', 'normal')
+
+  if (periodLabel) {
+    headerY += 6.5
+    doc.setFontSize(10.5)
+    doc.setTextColor(100, 100, 100)
+    doc.text(`Período: ${periodLabel}`, marginX, headerY)
+    doc.setTextColor(0, 0, 0)
+  }
 
   autoTable(doc, {
-    startY: headerY + 5,
+    startY: headerY + 6,
     head: [head],
     body,
-    styles: { fontSize: 8, cellPadding: 2.5 },
+    styles: { fontSize: 9, cellPadding: 2.5, font: 'times' },
     headStyles: { fillColor: [30, 31, 37] },
     columnStyles: { [serviceIdx]: { cellWidth: 55 } },
     didParseCell: (data) => {
@@ -271,21 +288,49 @@ export const exportPayrollToPdf = async (
     },
   })
 
-  let finalY = (doc as unknown as { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY ?? 20
+  const tableFinalY = (doc as unknown as { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY ?? 20
 
   if (employeeOrder.length > 0) {
-    doc.setFontSize(10)
+    const pageHeight = doc.internal.pageSize.getHeight()
+    const boxPaddingX = 5
+    const boxHeight = 14
+    const boxGap = 6
+    const hasGrandTotal = employeeOrder.length > 1
+    // Alto del bloque completo de totales (una caja por empleado + "Total
+    // general" si hay más de uno) — para poder pegarlo contra el final de
+    // la hoja en vez de dejarlo pegado a la tabla.
+    const blockHeight = employeeOrder.length * boxHeight + (employeeOrder.length - 1) * boxGap + (hasGrandTotal ? 10 : 0)
+    const marginBottom = 14
+    const minGapAfterTable = 18
+    // Normalmente queda pegado al final de la hoja; si la tabla es tan
+    // larga que no alcanza ese espacio, cae a un margen fijo debajo de la
+    // tabla en vez de encimarse con ella.
+    let finalY = Math.max(pageHeight - marginBottom - blockHeight, tableFinalY + minGapAfterTable)
+
     for (const employeeId of employeeOrder) {
-      const rowEmployeeName = employees.find((emp) => emp.id === employeeId)?.name ?? '—'
-      finalY += 7
-      doc.text(`Total pagado a ${rowEmployeeName}: ${currency(totalsByEmployee.get(employeeId) ?? 0)}`, 14, finalY)
+      const label = `Total pagado: ${currency(totalsByEmployee.get(employeeId) ?? 0)}`
+      doc.setFont('times', 'bold')
+      doc.setFontSize(13)
+      const boxWidth = doc.getTextWidth(label) + boxPaddingX * 2
+      // Recuadro dorado alrededor del total — para que resalte cuánto se
+      // pagó, en vez de perderse como una línea de texto más.
+      doc.setFillColor(...GOLD_BG)
+      doc.setDrawColor(...GOLD)
+      doc.setLineWidth(0.4)
+      doc.roundedRect(marginX, finalY, boxWidth, boxHeight, 2, 2, 'FD')
+      doc.setTextColor(...GOLD_DARK)
+      doc.text(label, marginX + boxPaddingX, finalY + boxHeight - 5)
+      doc.setTextColor(0, 0, 0)
+      doc.setFont('times', 'normal')
+      finalY += boxHeight + boxGap
     }
 
-    if (employeeOrder.length > 1) {
+    if (hasGrandTotal) {
       const grandTotal = Array.from(totalsByEmployee.values()).reduce((sum, v) => sum + v, 0)
-      finalY += 9
-      doc.setFontSize(11)
-      doc.text(`Total general: ${currency(grandTotal)}`, 14, finalY)
+      doc.setFont('times', 'bold')
+      doc.setFontSize(12)
+      doc.text(`Total general: ${currency(grandTotal)}`, marginX, finalY)
+      doc.setFont('times', 'normal')
     }
   }
 

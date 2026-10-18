@@ -40,7 +40,6 @@ const App = () => {
         }
       >
         <Route index element={<Dashboard />} />
-        <Route path="propiedades" element={<Propiedades />} />
         <Route path="horarios" element={<Horarios />} />
         <Route path="finanzas">
           <Route index element={<Navigate to="cobros" replace />} />
@@ -60,12 +59,16 @@ const App = () => {
         </Route>
         <Route path="catalogos">
           <Route index element={<Navigate to="servicios" replace />} />
+          <Route path="propiedades" element={<Propiedades />} />
           <Route path="servicios" element={<ConfiguracionServicios />} />
           <Route path="gastos-fijos" element={<ConfiguracionGastosFijos />} />
           <Route path="cobros-fijos" element={<ConfiguracionCobrosFijos />} />
           <Route path="empleados" element={<Empleados />} />
           <Route path="proveedores" element={<Proveedores />} />
         </Route>
+        {/* Ruta anterior: ahora vive bajo /catalogos. Se deja como
+            redirección para no romper enlaces o marcadores viejos. */}
+        <Route path="propiedades" element={<Navigate to="/catalogos/propiedades" replace />} />
         <Route path="configuracion">
           <Route index element={<Navigate to="general" replace />} />
           <Route path="general" element={<ConfiguracionGeneral />} />

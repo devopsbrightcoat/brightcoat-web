@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react'
 import {
-  Building2,
   CalendarClock,
   ChevronDown,
   FileText,
@@ -38,7 +37,6 @@ const navItems: NavItem[] = [
   },
   { to: '/planillas', label: 'Planillas', icon: Receipt },
   { to: '/estimados', label: 'Estimados', icon: FileText },
-  { to: '/propiedades', label: 'Propiedades', icon: Building2 },
   {
     to: '/reportes',
     label: 'Reportes',
@@ -56,6 +54,7 @@ const navItems: NavItem[] = [
     label: 'Catálogos',
     icon: LayoutGrid,
     children: [
+      { to: '/catalogos/propiedades', label: 'Propiedades' },
       { to: '/catalogos/servicios', label: 'Servicios' },
       { to: '/catalogos/gastos-fijos', label: 'Gastos fijos' },
       { to: '/catalogos/cobros-fijos', label: 'Cobros fijos' },

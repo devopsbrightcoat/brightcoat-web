@@ -1,12 +1,13 @@
 
 import type { ProfileRole } from '../auth/AuthProvider'
-import type { AppNotification, Charge, ChargeTemplate, CompanySettings, Employee, Expense, ExpenseTemplate, PayrollEntry, Property, Schedule, ServiceType, Vendor } from '../types'
+import type { AppNotification, Charge, ChargeTemplate, CompanySettings, Employee, Estimate, EstimateItem, Expense, ExpenseTemplate, PayrollEntry, Property, Schedule, ServiceType, Vendor } from '../types'
 import { supabase } from './supabase'
 import type {
   ChargeRow,
   ChargeTemplateRow,
   CompanySettingsRow,
   EmployeeRow,
+  EstimateRow,
   ExpenseRow,
   ExpenseTemplateRow,
   NotificationRow,
@@ -1052,11 +1053,63 @@ export const markAllNotificationsRead = async (): Promise<void> => {
   if (error) throw error
 }
 
-// Estimados: no se guardan en la base de datos (solo se arma el PDF al
-// momento), pero sí necesitan numeración consecutiva compartida entre
-// ops-web y ops-mobile — ver migración 20261017000000_add_estimate_counter.
+// Estimados: el número es consecutivo y compartido entre ops-web y
+// ops-mobile — ver migración 20261017000000_add_estimate_counter. El
+// Estimado/Invoice en sí se guarda por separado con createEstimate (abajo),
+// una vez que el PDF ya se generó.
 export const getNextEstimateNumber = async (): Promise<number> => {
   const { data, error } = await supabase.rpc('next_estimate_number')
   if (error) throw error
   return data as number
+}
+
+const mapEstimate = (row: EstimateRow): Estimate => ({
+  id: row.id,
+  estimateNumber: row.estimate_number,
+  documentTitle: row.document_title,
+  date: row.date,
+  propertyId: row.property_id,
+  propertyName: row.property_name,
+  unitLabel: row.unit_label ?? undefined,
+  propertyContact: row.property_contact ?? undefined,
+  items: row.items,
+  note: row.note ?? undefined,
+  total: row.total,
+  createdAt: row.created_at,
+})
+
+export const fetchEstimates = async (): Promise<Estimate[]> => {
+  const { data, error } = await supabase.from('estimates').select('*').order('estimate_number', { ascending: false })
+  if (error) throw error
+  return ((data ?? []) as EstimateRow[]).map(mapEstimate)
+}
+
+// Guarda una copia del Estimado/Invoice ya generado (ver getNextEstimateNumber
+// arriba para el número) — permite listarlo en el historial y volver a
+// descargar el mismo PDF más adelante sin tener que rearmarlo a mano.
+export const createEstimate = async (data: {
+  estimateNumber: number
+  documentTitle: string
+  date: string
+  propertyId: string | null
+  propertyName: string
+  unitLabel?: string
+  propertyContact?: string
+  items: EstimateItem[]
+  note?: string
+  total: number
+}): Promise<void> => {
+  const { error } = await supabase.from('estimates').insert({
+    estimate_number: data.estimateNumber,
+    document_title: data.documentTitle,
+    date: data.date,
+    property_id: data.propertyId,
+    property_name: data.propertyName,
+    unit_label: data.unitLabel ?? null,
+    property_contact: data.propertyContact ?? null,
+    items: data.items,
+    note: data.note ?? null,
+    total: data.total,
+  })
+  if (error) throw error
 }

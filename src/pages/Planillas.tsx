@@ -149,7 +149,7 @@ export const Planillas = () => {
     setExporting(true)
     setExportError(null)
     try {
-      const options = { employeeName: selectedEmployee?.name, audience }
+      const options = { employeeName: selectedEmployee?.name, audience, periodLabel: dateRangeLabel }
       if (format === 'excel') {
         await exportPayrollToExcel(filtered, properties ?? [], employees ?? [], options)
       } else {

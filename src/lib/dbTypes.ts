@@ -8,6 +8,21 @@ export type PropertyRow = {
   status: 'active' | 'inactive'
 }
 
+export type EstimateRow = {
+  id: string
+  estimate_number: number
+  document_title: string
+  date: string
+  property_id: string | null
+  property_name: string
+  unit_label: string | null
+  property_contact: string | null
+  items: { name: string; description: string; qty: number; rate: number }[]
+  note: string | null
+  total: number
+  created_at: string
+}
+
 export type ServiceTypeRow = {
   id: string
   name: string

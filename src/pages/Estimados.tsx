@@ -1,10 +1,21 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { FileDown, Plus, X } from 'lucide-react'
+import {
+  createColumnHelper,
+  getCoreRowModel,
+  getPaginationRowModel,
+  getSortedRowModel,
+  useReactTable,
+  type SortingState,
+} from '@tanstack/react-table'
+import { DataTablePanel } from '../components/common/DataTablePanel'
 import { PageHeader } from '../components/common/PageHeader'
 import { useReferenceData } from '../contexts/ReferenceDataContext'
-import { getNextEstimateNumber } from '../lib/api'
+import { createEstimate, fetchEstimates, getNextEstimateNumber } from '../lib/api'
 import { exportEstimateToPdf, type EstimateLineItem } from '../lib/exportEstimate'
 import { getErrorMessage } from '../lib/errors'
+import { useSupabaseQuery } from '../lib/useSupabaseQuery'
+import type { Estimate } from '../types'
 
 const inputClass =
   'w-full rounded-lg border border-white/10 bg-surface px-3 py-2.5 text-sm text-white outline-none focus:border-gold-500'
@@ -15,18 +26,32 @@ const titleOptionClass = (active: boolean) =>
   `flex-1 rounded-lg border px-3.5 py-2.5 text-sm font-medium transition ${
     active ? 'border-gold-500 bg-gold-500/10 text-gold-400' : 'border-white/10 bg-surface text-ink-300 hover:bg-white/5'
   }`
+const viewTabClass = (active: boolean) =>
+  `rounded-lg px-3.5 py-2 text-sm font-medium transition ${
+    active ? 'bg-gold-500 text-brand-900' : 'border border-white/10 text-ink-300 hover:bg-white/5'
+  }`
 
 type ItemLine = { key: number; name: string; description: string; qty: string; rate: string }
+type View = 'nuevo' | 'historial'
 
 const emptyItem = (key: number): ItemLine => ({ key, name: '', description: '', qty: '1', rate: '' })
 
 const currency = (value: number) =>
   value.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 2 })
 
+const formatDate = (iso: string) => {
+  const [y, m, d] = iso.split('-').map(Number)
+  return `${m}/${d}/${y}`
+}
+
 const todayISO = () => new Date().toISOString().slice(0, 10)
+
+const PAGE_SIZE = 10
+const columnHelper = createColumnHelper<Estimate>()
 
 export const Estimados = () => {
   const { properties, loadingProperties } = useReferenceData()
+  const [view, setView] = useState<View>('nuevo')
 
   const [documentTitle, setDocumentTitle] = useState('Estimate')
   const [propertyId, setPropertyId] = useState('')
@@ -37,6 +62,18 @@ export const Estimados = () => {
   const [generating, setGenerating] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [lastGenerated, setLastGenerated] = useState<number | null>(null)
+
+  const [historyRefreshKey, setHistoryRefreshKey] = useState(0)
+  const [sorting, setSorting] = useState<SortingState>([{ id: 'estimateNumber', desc: true }])
+  const [pageIndex, setPageIndex] = useState(0)
+  const [downloadingId, setDownloadingId] = useState<string | null>(null)
+  const [downloadError, setDownloadError] = useState<string | null>(null)
+
+  const {
+    data: estimates,
+    loading: loadingHistory,
+    error: historyError,
+  } = useSupabaseQuery(fetchEstimates, [historyRefreshKey])
 
   const selectedProperty = (properties ?? []).find((p) => p.id === propertyId) ?? null
 
@@ -91,6 +128,7 @@ export const Estimados = () => {
       // para no saltarse números si el formulario se abandona sin
       // descargar el PDF.
       const estimateNumber = await getNextEstimateNumber()
+      const resolvedTitle = documentTitle.trim() || 'Estimate'
       await exportEstimateToPdf({
         estimateNumber,
         date,
@@ -99,9 +137,30 @@ export const Estimados = () => {
         propertyContact: selectedProperty.managerContact,
         items: parsedItems,
         note: note.trim() || undefined,
-        documentTitle: documentTitle.trim() || 'Estimate',
+        documentTitle: resolvedTitle,
       })
       setLastGenerated(estimateNumber)
+
+      // El historial se guarda después de que el PDF ya se descargó — si
+      // esto falla no queremos quitarle a David el PDF que ya tiene en sus
+      // manos, solo se queda sin aparecer en la lista de abajo.
+      try {
+        await createEstimate({
+          estimateNumber,
+          documentTitle: resolvedTitle,
+          date,
+          propertyId: selectedProperty.id,
+          propertyName: selectedProperty.name,
+          unitLabel: unitLabel.trim() || undefined,
+          propertyContact: selectedProperty.managerContact,
+          items: parsedItems,
+          note: note.trim() || undefined,
+          total,
+        })
+        setHistoryRefreshKey((k) => k + 1)
+      } catch (historyErr) {
+        console.error('No se pudo guardar el estimado en el historial', historyErr)
+      }
     } catch (err) {
       setError(getErrorMessage(err, 'No se pudo generar el estimado.'))
     } finally {
@@ -109,210 +168,326 @@ export const Estimados = () => {
     }
   }
 
+  const handleRedownload = async (estimate: Estimate) => {
+    setDownloadError(null)
+    setDownloadingId(estimate.id)
+    try {
+      await exportEstimateToPdf({
+        estimateNumber: estimate.estimateNumber,
+        date: estimate.date,
+        propertyName: estimate.propertyName,
+        unitLabel: estimate.unitLabel,
+        propertyContact: estimate.propertyContact,
+        items: estimate.items,
+        note: estimate.note,
+        documentTitle: estimate.documentTitle,
+      })
+    } catch (err) {
+      setDownloadError(getErrorMessage(err, 'No se pudo volver a descargar el PDF.'))
+    } finally {
+      setDownloadingId(null)
+    }
+  }
+
+  const columns = useMemo(
+    () => [
+      columnHelper.accessor('estimateNumber', {
+        id: 'estimateNumber',
+        header: 'No.',
+        cell: (info) => (
+          <span className="tabular-nums">
+            {info.row.original.documentTitle} #{info.getValue()}
+          </span>
+        ),
+      }),
+      columnHelper.accessor((row) => (row.unitLabel ? `${row.propertyName} · ${row.unitLabel}` : row.propertyName), {
+        id: 'property',
+        header: 'Propiedad',
+      }),
+      columnHelper.accessor('date', { id: 'date', header: 'Fecha', cell: (info) => formatDate(info.getValue()) }),
+      columnHelper.accessor('total', {
+        id: 'total',
+        header: 'Total',
+        cell: (info) => <span className="tabular-nums">{currency(info.getValue())}</span>,
+      }),
+      columnHelper.display({
+        id: 'actions',
+        header: '',
+        cell: (info) => (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation()
+              void handleRedownload(info.row.original)
+            }}
+            disabled={downloadingId === info.row.original.id}
+            className="flex items-center gap-1.5 rounded-lg border border-white/10 px-2.5 py-1.5 text-xs font-medium text-ink-300 hover:bg-white/5 disabled:opacity-60"
+          >
+            <FileDown className="h-3.5 w-3.5" />
+            {downloadingId === info.row.original.id ? 'Descargando…' : 'Descargar'}
+          </button>
+        ),
+      }),
+    ],
+    [downloadingId],
+  )
+
+  const pageCount = Math.max(1, Math.ceil((estimates ?? []).length / PAGE_SIZE))
+  const currentPageIndex = Math.min(pageIndex, pageCount - 1)
+
+  const table = useReactTable({
+    data: estimates ?? [],
+    columns,
+    state: { sorting, pagination: { pageIndex: currentPageIndex, pageSize: PAGE_SIZE } },
+    onSortingChange: setSorting,
+    onPaginationChange: (updater) => {
+      const current = { pageIndex: currentPageIndex, pageSize: PAGE_SIZE }
+      const next = typeof updater === 'function' ? updater(current) : updater
+      setPageIndex(next.pageIndex)
+    },
+    getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+  })
+
+  const tableState = loadingHistory ? 'loading' : historyError ? 'error' : (estimates ?? []).length === 0 ? 'empty' : 'ready'
+  const tableMessage = loadingHistory
+    ? 'Cargando historial…'
+    : historyError
+      ? `No se pudo cargar el historial: ${historyError}`
+      : 'Todavía no se ha generado ningún estimado o invoice.'
+
   return (
     <div className="h-screen overflow-y-auto pb-10">
       <PageHeader
         title="Estimados"
         subtitle="Arma un estimado para una propiedad y descárgalo en PDF para enviárselo al encargado"
+        action={
+          <div className="flex items-center gap-2">
+            <button type="button" onClick={() => setView('nuevo')} className={viewTabClass(view === 'nuevo')}>
+              Nuevo
+            </button>
+            <button type="button" onClick={() => setView('historial')} className={viewTabClass(view === 'historial')}>
+              Historial
+            </button>
+          </div>
+        }
       />
 
-      <div className={sectionClass}>
-        <p className={sectionTitleClass}>Título del documento</p>
-        <div className="flex gap-2">
-          <button
-            type="button"
-            onClick={() => setDocumentTitle('Estimate')}
-            className={titleOptionClass(documentTitle === 'Estimate')}
-          >
-            Estimate
-          </button>
-          <button
-            type="button"
-            onClick={() => setDocumentTitle('Invoice')}
-            className={titleOptionClass(documentTitle === 'Invoice')}
-          >
-            Invoice
-          </button>
-        </div>
-        <input
-          value={documentTitle}
-          onChange={(e) => setDocumentTitle(e.target.value)}
-          placeholder="Estimate"
-          className={`${inputClass} mt-3`}
-        />
-        <p className="mt-1.5 text-xs text-ink-500">
-          Así aparece arriba del PDF — si no es Estimate ni Invoice, escribí el texto que quieras.
-        </p>
-      </div>
-
-      <div className={sectionClass}>
-        <p className={sectionTitleClass}>Propiedad</p>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div>
-            <label htmlFor="estimate-property" className={labelClass}>
-              Propiedad
-            </label>
-            <select
-              id="estimate-property"
-              value={propertyId}
-              onChange={(e) => setPropertyId(e.target.value)}
-              className={inputClass}
-              disabled={loadingProperties}
-            >
-              <option value="">Selecciona…</option>
-              {(properties ?? []).map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name}
-                </option>
-              ))}
-            </select>
-            {selectedProperty?.managerContact && (
-              <p className="mt-1.5 text-xs text-ink-500">Contacto: {selectedProperty.managerContact}</p>
-            )}
-          </div>
-
-          <div>
-            <label htmlFor="estimate-unit" className={labelClass}>
-              Unidad (opcional)
-            </label>
+      {view === 'historial' ? (
+        <>
+          {downloadError && <p className="mx-8 mt-4 text-sm text-red-400">{downloadError}</p>}
+          <DataTablePanel
+            title="Estimados e invoices generados"
+            table={table}
+            page={currentPageIndex + 1}
+            totalPages={pageCount}
+            onPageChange={(p) => setPageIndex(p - 1)}
+            state={tableState}
+            message={tableMessage}
+          />
+        </>
+      ) : (
+        <>
+          <div className={sectionClass}>
+            <p className={sectionTitleClass}>Título del documento</p>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setDocumentTitle('Estimate')}
+                className={titleOptionClass(documentTitle === 'Estimate')}
+              >
+                Estimate
+              </button>
+              <button
+                type="button"
+                onClick={() => setDocumentTitle('Invoice')}
+                className={titleOptionClass(documentTitle === 'Invoice')}
+              >
+                Invoice
+              </button>
+            </div>
             <input
-              id="estimate-unit"
-              value={unitLabel}
-              onChange={(e) => setUnitLabel(e.target.value)}
-              placeholder="ej. L303"
-              className={inputClass}
+              value={documentTitle}
+              onChange={(e) => setDocumentTitle(e.target.value)}
+              placeholder="Estimate"
+              className={`${inputClass} mt-3`}
             />
+            <p className="mt-1.5 text-xs text-ink-500">
+              Así aparece arriba del PDF — si no es Estimate ni Invoice, escribí el texto que quieras.
+            </p>
           </div>
 
-          <div>
-            <label htmlFor="estimate-date" className={labelClass}>
-              Fecha del estimado
-            </label>
-            <input
-              id="estimate-date"
-              type="date"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-              className={inputClass}
-            />
-          </div>
-        </div>
-      </div>
-
-      <div className={sectionClass}>
-        <div className="mb-2 flex items-center justify-between">
-          <p className={sectionTitleClass}>Productos o servicios</p>
-          <button
-            type="button"
-            onClick={addItem}
-            className="flex items-center gap-1 rounded-lg border border-white/10 px-2.5 py-1.5 text-xs font-medium text-ink-300 hover:bg-white/5"
-          >
-            <Plus className="h-3.5 w-3.5" />
-            Agregar línea
-          </button>
-        </div>
-
-        <div className="space-y-3">
-          {items.map((item) => {
-            const qty = Number(item.qty) || 0
-            const rate = Number(item.rate) || 0
-            return (
-              <div key={item.key} className="rounded-lg border border-white/10 bg-surface p-3.5">
-                <div className="grid gap-2.5 sm:grid-cols-[1fr_6rem_8rem_auto] sm:items-start">
-                  <input
-                    value={item.name}
-                    onChange={(e) => updateItem(item.key, { name: e.target.value })}
-                    placeholder="Producto o servicio (ej. Baseboard Paint)"
-                    className={inputClass}
-                  />
-                  <input
-                    type="number"
-                    min="0"
-                    step="1"
-                    value={item.qty}
-                    onChange={(e) => updateItem(item.key, { qty: e.target.value })}
-                    placeholder="Qty"
-                    className={inputClass}
-                  />
-                  <input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={item.rate}
-                    onChange={(e) => updateItem(item.key, { rate: e.target.value })}
-                    placeholder="Tarifa"
-                    className={inputClass}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => removeItem(item.key)}
-                    disabled={items.length === 1}
-                    className="flex h-[42px] w-[42px] items-center justify-center rounded-lg border border-white/10 text-ink-400 hover:bg-white/5 disabled:cursor-not-allowed disabled:opacity-40"
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
-                </div>
-                <textarea
-                  value={item.description}
-                  onChange={(e) => updateItem(item.key, { description: e.target.value })}
-                  placeholder="Descripción (lo que ve el cliente en el PDF)"
-                  rows={2}
-                  className={`${inputClass} mt-2.5 resize-none`}
-                />
-                {qty > 0 && rate > 0 && (
-                  <p className="mt-1.5 text-right text-xs text-ink-500">Monto: {currency(qty * rate)}</p>
+          <div className={sectionClass}>
+            <p className={sectionTitleClass}>Propiedad</p>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div>
+                <label htmlFor="estimate-property" className={labelClass}>
+                  Propiedad
+                </label>
+                <select
+                  id="estimate-property"
+                  value={propertyId}
+                  onChange={(e) => setPropertyId(e.target.value)}
+                  className={inputClass}
+                  disabled={loadingProperties}
+                >
+                  <option value="">Selecciona…</option>
+                  {(properties ?? []).map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name}
+                    </option>
+                  ))}
+                </select>
+                {selectedProperty?.managerContact && (
+                  <p className="mt-1.5 text-xs text-ink-500">Contacto: {selectedProperty.managerContact}</p>
                 )}
               </div>
-            )
-          })}
-        </div>
 
-        <div className="mt-4 flex items-center justify-end border-t border-white/10 pt-4">
-          <p className="text-sm font-semibold text-white">Total: {currency(total)}</p>
-        </div>
-      </div>
+              <div>
+                <label htmlFor="estimate-unit" className={labelClass}>
+                  Unidad (opcional)
+                </label>
+                <input
+                  id="estimate-unit"
+                  value={unitLabel}
+                  onChange={(e) => setUnitLabel(e.target.value)}
+                  placeholder="ej. L303"
+                  className={inputClass}
+                />
+              </div>
 
-      <div className={sectionClass}>
-        <label htmlFor="estimate-note" className={labelClass}>
-          Nota para el cliente (opcional)
-        </label>
-        <p className="mb-2 text-xs text-ink-500">Aparece impresa en el PDF, debajo del total.</p>
-        <textarea
-          id="estimate-note"
-          value={note}
-          onChange={(e) => setNote(e.target.value)}
-          placeholder="ej. Precio válido por 30 días. Incluye materiales y mano de obra."
-          rows={3}
-          className={`${inputClass} resize-none`}
-        />
-      </div>
+              <div>
+                <label htmlFor="estimate-date" className={labelClass}>
+                  Fecha del estimado
+                </label>
+                <input
+                  id="estimate-date"
+                  type="date"
+                  value={date}
+                  onChange={(e) => setDate(e.target.value)}
+                  className={inputClass}
+                />
+              </div>
+            </div>
+          </div>
 
-      {error && <p className="mx-8 mt-4 max-w-3xl text-sm text-red-400">{error}</p>}
+          <div className={sectionClass}>
+            <div className="mb-2 flex items-center justify-between">
+              <p className={sectionTitleClass}>Productos o servicios</p>
+              <button
+                type="button"
+                onClick={addItem}
+                className="flex items-center gap-1 rounded-lg border border-white/10 px-2.5 py-1.5 text-xs font-medium text-ink-300 hover:bg-white/5"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                Agregar línea
+              </button>
+            </div>
 
-      {lastGenerated && !error && (
-        <p className="mx-8 mt-4 max-w-3xl text-sm text-emerald-400">
-          {documentTitle.trim() || 'Estimate'} #{lastGenerated} descargado correctamente.
-        </p>
+            <div className="space-y-3">
+              {items.map((item) => {
+                const qty = Number(item.qty) || 0
+                const rate = Number(item.rate) || 0
+                return (
+                  <div key={item.key} className="rounded-lg border border-white/10 bg-surface p-3.5">
+                    <div className="grid gap-2.5 sm:grid-cols-[1fr_6rem_8rem_auto] sm:items-start">
+                      <input
+                        value={item.name}
+                        onChange={(e) => updateItem(item.key, { name: e.target.value })}
+                        placeholder="Producto o servicio (ej. Baseboard Paint)"
+                        className={inputClass}
+                      />
+                      <input
+                        type="number"
+                        min="0"
+                        step="1"
+                        value={item.qty}
+                        onChange={(e) => updateItem(item.key, { qty: e.target.value })}
+                        placeholder="Qty"
+                        className={inputClass}
+                      />
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={item.rate}
+                        onChange={(e) => updateItem(item.key, { rate: e.target.value })}
+                        placeholder="Tarifa"
+                        className={inputClass}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => removeItem(item.key)}
+                        disabled={items.length === 1}
+                        className="flex h-[42px] w-[42px] items-center justify-center rounded-lg border border-white/10 text-ink-400 hover:bg-white/5 disabled:cursor-not-allowed disabled:opacity-40"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    </div>
+                    <textarea
+                      value={item.description}
+                      onChange={(e) => updateItem(item.key, { description: e.target.value })}
+                      placeholder="Descripción (lo que ve el cliente en el PDF)"
+                      rows={2}
+                      className={`${inputClass} mt-2.5 resize-none`}
+                    />
+                    {qty > 0 && rate > 0 && (
+                      <p className="mt-1.5 text-right text-xs text-ink-500">Monto: {currency(qty * rate)}</p>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+
+            <div className="mt-4 flex items-center justify-end border-t border-white/10 pt-4">
+              <p className="text-sm font-semibold text-white">Total: {currency(total)}</p>
+            </div>
+          </div>
+
+          <div className={sectionClass}>
+            <label htmlFor="estimate-note" className={labelClass}>
+              Nota para el cliente (opcional)
+            </label>
+            <p className="mb-2 text-xs text-ink-500">Aparece impresa en el PDF, debajo del total.</p>
+            <textarea
+              id="estimate-note"
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              placeholder="ej. Precio válido por 30 días. Incluye materiales y mano de obra."
+              rows={3}
+              className={`${inputClass} resize-none`}
+            />
+          </div>
+
+          {error && <p className="mx-8 mt-4 max-w-3xl text-sm text-red-400">{error}</p>}
+
+          {lastGenerated && !error && (
+            <p className="mx-8 mt-4 max-w-3xl text-sm text-emerald-400">
+              {documentTitle.trim() || 'Estimate'} #{lastGenerated} descargado correctamente.
+            </p>
+          )}
+
+          <div className="mx-8 mt-6 flex max-w-3xl items-center gap-3">
+            <button
+              type="button"
+              onClick={handleGenerate}
+              disabled={generating}
+              className="flex items-center gap-2 rounded-lg bg-gold-500 px-4 py-2.5 text-sm font-semibold text-brand-900 transition hover:bg-gold-400 disabled:opacity-60"
+            >
+              <FileDown className="h-4 w-4" />
+              {generating ? 'Generando…' : 'Generar PDF'}
+            </button>
+            <button
+              type="button"
+              onClick={handleReset}
+              className="rounded-lg border border-white/10 px-4 py-2.5 text-sm font-medium text-ink-300 hover:bg-white/5"
+            >
+              Limpiar formulario
+            </button>
+          </div>
+        </>
       )}
-
-      <div className="mx-8 mt-6 flex max-w-3xl items-center gap-3">
-        <button
-          type="button"
-          onClick={handleGenerate}
-          disabled={generating}
-          className="flex items-center gap-2 rounded-lg bg-gold-500 px-4 py-2.5 text-sm font-semibold text-brand-900 transition hover:bg-gold-400 disabled:opacity-60"
-        >
-          <FileDown className="h-4 w-4" />
-          {generating ? 'Generando…' : 'Generar PDF'}
-        </button>
-        <button
-          type="button"
-          onClick={handleReset}
-          className="rounded-lg border border-white/10 px-4 py-2.5 text-sm font-medium text-ink-300 hover:bg-white/5"
-        >
-          Limpiar formulario
-        </button>
-      </div>
     </div>
   )
 }
