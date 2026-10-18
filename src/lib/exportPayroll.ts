@@ -3,6 +3,8 @@ import ExcelJS from 'exceljs'
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import type { Employee, PayrollEntry, Property } from '../types'
+import { fetchCompanyInfoForPdf } from './companyInfo'
+import { LOGO_ASPECT_RATIO, LOGO_PLATE_COLOR, LOGO_URL, loadImageAsDataUrl } from './pdfAssets'
 
 export type PayrollExportRow = PayrollEntry & { sales: number; profit: number | null }
 
@@ -150,12 +152,12 @@ export const exportPayrollToExcel = async (
   URL.revokeObjectURL(url)
 }
 
-export const exportPayrollToPdf = (
+export const exportPayrollToPdf = async (
   entries: PayrollExportRow[],
   properties: Property[],
   employees: Employee[],
   options: PayrollExportOptions = {},
-): void => {
+): Promise<void> => {
   const { employeeName, audience = 'admin' } = options
 
   const head =
@@ -166,6 +168,9 @@ export const exportPayrollToPdf = (
   const salesIdx = head.indexOf('Pago')
 
   const body: string[][] = []
+  // Marca, por índice de fila, cuáles filas son la entrada principal (día/unidad/
+  // servicio) para que el PDF las resalte en negrita y el desglose se vea normal.
+  const bodyIsMain: boolean[] = []
   for (const e of entries) {
     const propertyName = properties.find((p) => p.id === e.propertyId)?.name ?? '—'
     const rowEmployeeName = employees.find((emp) => emp.id === e.employeeId)?.name ?? '—'
@@ -185,28 +190,90 @@ export const exportPayrollToPdf = (
           ]
         : [e.date || '—', propertyName, e.unitLabel || '—', rowEmployeeName, e.serviceName || '—', currency(e.sales)]
     body.push(row)
+    bodyIsMain.push(true)
 
     for (const item of e.items) {
       const itemRow = new Array(head.length).fill('')
       itemRow[serviceIdx] = `    • ${item.description}`
       itemRow[salesIdx] = currency(item.amount)
       body.push(itemRow)
+      bodyIsMain.push(false)
     }
   }
 
   const { order: employeeOrder, totals: totalsByEmployee } = sumByEmployee(entries)
 
   const doc = new jsPDF({ orientation: 'landscape' })
+  const pageWidth = doc.internal.pageSize.getWidth()
+  const marginX = 14
+
+  // Encabezado con los datos de la empresa (los mismos que se editan en
+  // Configuración > General) y el logo arriba a la derecha.
+  const company = await fetchCompanyInfoForPdf()
+  let headerY = 14
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(11)
+  doc.setTextColor(30, 31, 37)
+  doc.text(company.companyName, marginX, headerY)
+  doc.setFont('helvetica', 'normal')
+  doc.setFontSize(9)
+  doc.setTextColor(100, 100, 100)
+  headerY += 5
+  doc.text(company.address, marginX, headerY)
+  headerY += 5
+  doc.text(`${company.email}   ·   ${company.phone}`, marginX, headerY)
+
+  try {
+    const logoDataUrl = await loadImageAsDataUrl(LOGO_URL)
+    const logoWidth = 26
+    const logoHeight = logoWidth * LOGO_ASPECT_RATIO
+    const logoX = pageWidth - marginX - logoWidth
+    const logoY = 6
+    // Placa navy detrás del logo para que el texto plateado resalte sobre
+    // el fondo blanco del PDF (ver nota en pdfAssets.ts).
+    const platePadding = 2.5
+    doc.setFillColor(...LOGO_PLATE_COLOR)
+    doc.roundedRect(
+      logoX - platePadding,
+      logoY - platePadding,
+      logoWidth + platePadding * 2,
+      logoHeight + platePadding * 2,
+      1.5,
+      1.5,
+      'F',
+    )
+    doc.addImage(logoDataUrl, 'PNG', logoX, logoY, logoWidth, logoHeight)
+  } catch {
+    // Si el logo no carga (ej. sin conexión al generar el PDF), seguimos sin
+    // romper la descarga — el PDF sale sin logo pero con el resto del
+    // encabezado.
+  }
+
+  headerY += 6
+  doc.setDrawColor(226, 232, 240)
+  doc.line(marginX, headerY, pageWidth - marginX, headerY)
+
+  headerY += 8
+  doc.setFont('helvetica', 'bold')
   doc.setFontSize(14)
-  doc.text(employeeName ? `Planilla — ${employeeName}` : 'Planillas', 14, 15)
+  doc.setTextColor(0, 0, 0)
+  doc.text(employeeName ? `Planilla — ${employeeName}` : 'Planillas', marginX, headerY)
+  doc.setFont('helvetica', 'normal')
 
   autoTable(doc, {
-    startY: 20,
+    startY: headerY + 5,
     head: [head],
     body,
     styles: { fontSize: 8, cellPadding: 2.5 },
     headStyles: { fillColor: [30, 31, 37] },
     columnStyles: { [serviceIdx]: { cellWidth: 55 } },
+    didParseCell: (data) => {
+      // Fila principal (día/unidad/servicio) en negrita; desglose normal, para
+      // que no se confundan visualmente.
+      if (data.section === 'body' && bodyIsMain[data.row.index]) {
+        data.cell.styles.fontStyle = 'bold'
+      }
+    },
   })
 
   let finalY = (doc as unknown as { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY ?? 20

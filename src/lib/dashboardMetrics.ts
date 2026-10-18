@@ -472,7 +472,7 @@ export const computeAgingDetail = (charges: Charge[], properties: Property[] = [
     .filter((c) => c.status === 'pending')
     .map((c) => {
       const days = c.generatedDate
-        ? Math.floor((today.getTime() - new Date(c.generatedDate).getTime()) / 86_400_000)
+        ? Math.floor((today.getTime() - parseISODate(c.generatedDate).getTime()) / 86_400_000)
         : 0
       return {
         chargeId: c.id,
@@ -781,7 +781,7 @@ export const computeAlerts = (
 
   const overdueCharges = charges.filter((c) => {
     if (c.status !== 'pending' || !c.generatedDate) return false
-    const days = Math.floor((today.getTime() - new Date(c.generatedDate).getTime()) / 86_400_000)
+    const days = Math.floor((today.getTime() - parseISODate(c.generatedDate).getTime()) / 86_400_000)
     return days > OVERDUE_CHARGE_DAYS
   })
   if (overdueCharges.length > 0) {

@@ -1051,3 +1051,12 @@ export const markAllNotificationsRead = async (): Promise<void> => {
   const { error } = await supabase.from('notifications').delete().not('id', 'is', null)
   if (error) throw error
 }
+
+// Estimados: no se guardan en la base de datos (solo se arma el PDF al
+// momento), pero sí necesitan numeración consecutiva compartida entre
+// ops-web y ops-mobile — ver migración 20261017000000_add_estimate_counter.
+export const getNextEstimateNumber = async (): Promise<number> => {
+  const { data, error } = await supabase.rpc('next_estimate_number')
+  if (error) throw error
+  return data as number
+}

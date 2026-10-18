@@ -10,6 +10,7 @@ import { ConfiguracionGeneral } from './pages/ConfiguracionGeneral'
 import { ConfiguracionServicios } from './pages/ConfiguracionServicios'
 import { Dashboard } from './pages/Dashboard'
 import { Empleados } from './pages/Empleados'
+import { Estimados } from './pages/Estimados'
 import { Gastos } from './pages/Gastos'
 import { Horarios } from './pages/Horarios'
 import { Impuestos } from './pages/Impuestos'
@@ -48,6 +49,7 @@ const App = () => {
           <Route path="impuestos" element={<Impuestos />} />
         </Route>
         <Route path="planillas" element={<Planillas />} />
+        <Route path="estimados" element={<Estimados />} />
         <Route path="reportes">
           <Route index element={<Navigate to="financiero" replace />} />
           <Route path="financiero" element={<ReportesFinanciero />} />
@@ -56,15 +58,25 @@ const App = () => {
           <Route path="planilla" element={<ReportesPlanilla />} />
           <Route path="operaciones" element={<ReportesOperaciones />} />
         </Route>
-        <Route path="configuracion">
-          <Route index element={<Navigate to="general" replace />} />
-          <Route path="general" element={<ConfiguracionGeneral />} />
-          <Route path="alertas" element={<ConfiguracionAlertas />} />
+        <Route path="catalogos">
+          <Route index element={<Navigate to="servicios" replace />} />
           <Route path="servicios" element={<ConfiguracionServicios />} />
           <Route path="gastos-fijos" element={<ConfiguracionGastosFijos />} />
           <Route path="cobros-fijos" element={<ConfiguracionCobrosFijos />} />
           <Route path="empleados" element={<Empleados />} />
           <Route path="proveedores" element={<Proveedores />} />
+        </Route>
+        <Route path="configuracion">
+          <Route index element={<Navigate to="general" replace />} />
+          <Route path="general" element={<ConfiguracionGeneral />} />
+          <Route path="alertas" element={<ConfiguracionAlertas />} />
+          {/* Rutas anteriores: ahora viven bajo /catalogos. Se dejan como
+              redirecciones para no romper enlaces o marcadores viejos. */}
+          <Route path="servicios" element={<Navigate to="/catalogos/servicios" replace />} />
+          <Route path="gastos-fijos" element={<Navigate to="/catalogos/gastos-fijos" replace />} />
+          <Route path="cobros-fijos" element={<Navigate to="/catalogos/cobros-fijos" replace />} />
+          <Route path="empleados" element={<Navigate to="/catalogos/empleados" replace />} />
+          <Route path="proveedores" element={<Navigate to="/catalogos/proveedores" replace />} />
         </Route>
         <Route path="*" element={<NotFound />} />
       </Route>

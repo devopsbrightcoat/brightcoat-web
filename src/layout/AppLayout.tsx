@@ -3,7 +3,9 @@ import {
   Building2,
   CalendarClock,
   ChevronDown,
+  FileText,
   LayoutDashboard,
+  LayoutGrid,
   LineChart,
   LogOut,
   PanelLeftClose,
@@ -35,6 +37,7 @@ const navItems: NavItem[] = [
     ],
   },
   { to: '/planillas', label: 'Planillas', icon: Receipt },
+  { to: '/estimados', label: 'Estimados', icon: FileText },
   { to: '/propiedades', label: 'Propiedades', icon: Building2 },
   {
     to: '/reportes',
@@ -49,17 +52,24 @@ const navItems: NavItem[] = [
     ],
   },
   {
+    to: '/catalogos',
+    label: 'Catálogos',
+    icon: LayoutGrid,
+    children: [
+      { to: '/catalogos/servicios', label: 'Servicios' },
+      { to: '/catalogos/gastos-fijos', label: 'Gastos fijos' },
+      { to: '/catalogos/cobros-fijos', label: 'Cobros fijos' },
+      { to: '/catalogos/empleados', label: 'Empleados' },
+      { to: '/catalogos/proveedores', label: 'Proveedores' },
+    ],
+  },
+  {
     to: '/configuracion',
     label: 'Configuración',
     icon: Settings,
     children: [
       { to: '/configuracion/general', label: 'General' },
       { to: '/configuracion/alertas', label: 'Alertas', hiddenForRoles: ['staff'] },
-      { to: '/configuracion/servicios', label: 'Servicios' },
-      { to: '/configuracion/gastos-fijos', label: 'Gastos fijos' },
-      { to: '/configuracion/cobros-fijos', label: 'Cobros fijos' },
-      { to: '/configuracion/empleados', label: 'Empleados' },
-      { to: '/configuracion/proveedores', label: 'Proveedores' },
     ],
   },
 ]

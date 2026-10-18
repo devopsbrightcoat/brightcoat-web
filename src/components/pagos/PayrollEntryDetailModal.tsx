@@ -43,7 +43,7 @@ export const PayrollEntryDetailModal = ({ entry, properties, employees, onClose,
 
           <div className="grid grid-cols-3 gap-4 rounded-xl border border-white/10 bg-surface p-4">
             <Field
-              label="Cobro"
+              label="Ventas"
               value={
                 entry.amount == null ? (
                   <span className="text-ink-500">Pendiente</span>

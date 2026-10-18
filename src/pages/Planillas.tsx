@@ -135,10 +135,15 @@ export const Planillas = () => {
   // "Pago" cuenta todas las planillas del período, cobradas o no — es lo que
   // se le debe/pagó al empleado por el trabajo ya hecho, sin importar si el
   // cliente ya pagó ese cobro (igual que el costo de mano de obra del
-  // Dashboard).
+  // Dashboard). Por eso Cobro - Pago puede no ser igual a Ganancia cuando hay
+  // planillas pendientes: su "Pago" ya está incluido en el total, pero su
+  // cobro todavía no.
   const totalCobro = filtered.filter((e) => e.amount != null).reduce((sum, e) => sum + (e.amount as number), 0)
   const totalSales = filtered.reduce((sum, e) => sum + e.sales, 0)
   const totalProfit = filtered.reduce((sum, e) => sum + (e.profit ?? 0), 0)
+  const pendingEntries = filtered.filter((e) => e.amount == null)
+  const pendingCount = pendingEntries.length
+  const pendingSales = pendingEntries.reduce((sum, e) => sum + e.sales, 0)
 
   const handleExport = async (audience: PayrollExportAudience, format: PayrollExportFormat) => {
     setExporting(true)
@@ -148,7 +153,7 @@ export const Planillas = () => {
       if (format === 'excel') {
         await exportPayrollToExcel(filtered, properties ?? [], employees ?? [], options)
       } else {
-        exportPayrollToPdf(filtered, properties ?? [], employees ?? [], options)
+        await exportPayrollToPdf(filtered, properties ?? [], employees ?? [], options)
       }
       setExportOpen(false)
     } catch (err) {
@@ -173,7 +178,7 @@ export const Planillas = () => {
       columnHelper.accessor('serviceName', { id: 'service', header: 'Servicio' }),
       columnHelper.accessor('amount', {
         id: 'amount',
-        header: 'Cobro',
+        header: 'Ventas',
         cell: (info) => {
           const value = info.getValue()
           return value == null ? (
@@ -277,7 +282,7 @@ export const Planillas = () => {
         subtitle={
           selectedEmployee
             ? `${selectedEmployee.name} — ${selectedEmployee.role}`
-            : 'Cobro y pago a empleados por servicio, con desglose y ganancia'
+            : 'Ventas y pago a empleados por servicio, con desglose y ganancia'
         }
         action={
           <button
@@ -429,10 +434,18 @@ export const Planillas = () => {
           {exportError && <p className="mx-8 mt-3 text-sm text-red-400">{exportError}</p>}
 
           <div className="mx-8 mt-4 grid grid-cols-3 gap-3 sm:max-w-xl">
-            <StatCard label="Cobro" value={currency(totalCobro)} icon={DollarSign} tone="info" size="compact" />
+            <StatCard label="Ventas" value={currency(totalCobro)} icon={DollarSign} tone="info" size="compact" />
             <StatCard label="Pago" value={currency(totalSales)} icon={TrendingUp} tone="good" size="compact" />
             <StatCard label="Ganancia" value={currency(totalProfit)} icon={TrendingUp} size="compact" />
           </div>
+
+          {pendingCount > 0 && (
+            <p className="mx-8 mt-2 max-w-xl text-xs leading-relaxed text-amber-400">
+              Pago incluye {currency(pendingSales)} de {pendingCount}{' '}
+              {pendingCount === 1 ? 'planilla pendiente de cobro' : 'planillas pendientes de cobro'} — por eso Ventas −
+              Pago no es igual a Ganancia.
+            </p>
+          )}
 
           <DataTablePanel
             title="Planillas"
