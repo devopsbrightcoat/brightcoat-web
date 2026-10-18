@@ -11,6 +11,10 @@ const inputClass =
 const labelClass = 'mb-1.5 block text-sm font-medium text-ink-200'
 const sectionClass = 'mx-8 mt-6 max-w-3xl rounded-xl border border-white/10 bg-surface-alt p-6'
 const sectionTitleClass = 'mb-4 text-sm font-semibold text-white'
+const titleOptionClass = (active: boolean) =>
+  `flex-1 rounded-lg border px-3.5 py-2.5 text-sm font-medium transition ${
+    active ? 'border-gold-500 bg-gold-500/10 text-gold-400' : 'border-white/10 bg-surface text-ink-300 hover:bg-white/5'
+  }`
 
 type ItemLine = { key: number; name: string; description: string; qty: string; rate: string }
 
@@ -24,6 +28,7 @@ const todayISO = () => new Date().toISOString().slice(0, 10)
 export const Estimados = () => {
   const { properties, loadingProperties } = useReferenceData()
 
+  const [documentTitle, setDocumentTitle] = useState('Estimate')
   const [propertyId, setPropertyId] = useState('')
   const [unitLabel, setUnitLabel] = useState('')
   const [date, setDate] = useState(todayISO())
@@ -54,6 +59,7 @@ export const Estimados = () => {
   const total = parsedItems.reduce((sum, item) => sum + item.qty * item.rate, 0)
 
   const handleReset = () => {
+    setDocumentTitle('Estimate')
     setPropertyId('')
     setUnitLabel('')
     setDate(todayISO())
@@ -93,6 +99,7 @@ export const Estimados = () => {
         propertyContact: selectedProperty.managerContact,
         items: parsedItems,
         note: note.trim() || undefined,
+        documentTitle: documentTitle.trim() || 'Estimate',
       })
       setLastGenerated(estimateNumber)
     } catch (err) {
@@ -108,6 +115,35 @@ export const Estimados = () => {
         title="Estimados"
         subtitle="Arma un estimado para una propiedad y descárgalo en PDF para enviárselo al encargado"
       />
+
+      <div className={sectionClass}>
+        <p className={sectionTitleClass}>Título del documento</p>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={() => setDocumentTitle('Estimate')}
+            className={titleOptionClass(documentTitle === 'Estimate')}
+          >
+            Estimate
+          </button>
+          <button
+            type="button"
+            onClick={() => setDocumentTitle('Invoice')}
+            className={titleOptionClass(documentTitle === 'Invoice')}
+          >
+            Invoice
+          </button>
+        </div>
+        <input
+          value={documentTitle}
+          onChange={(e) => setDocumentTitle(e.target.value)}
+          placeholder="Estimate"
+          className={`${inputClass} mt-3`}
+        />
+        <p className="mt-1.5 text-xs text-ink-500">
+          Así aparece arriba del PDF — si no es Estimate ni Invoice, escribí el texto que quieras.
+        </p>
+      </div>
 
       <div className={sectionClass}>
         <p className={sectionTitleClass}>Propiedad</p>
@@ -255,7 +291,7 @@ export const Estimados = () => {
 
       {lastGenerated && !error && (
         <p className="mx-8 mt-4 max-w-3xl text-sm text-emerald-400">
-          Estimado #{lastGenerated} descargado correctamente.
+          {documentTitle.trim() || 'Estimate'} #{lastGenerated} descargado correctamente.
         </p>
       )}
 

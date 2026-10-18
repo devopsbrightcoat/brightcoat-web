@@ -18,6 +18,9 @@ export type EstimateExportData = {
   propertyContact?: string
   items: EstimateLineItem[]
   note?: string
+  // Título que aparece arriba del PDF (ej. "Estimate" o "Invoice") y en las
+  // etiquetas de número/fecha — por defecto "Estimate".
+  documentTitle?: string
 }
 
 const currency = (value: number) =>
@@ -45,6 +48,7 @@ const BORDER = [226, 232, 240] as const
 
 export const exportEstimateToPdf = async (data: EstimateExportData): Promise<void> => {
   const { estimateNumber, date, propertyName, unitLabel, propertyContact, items, note } = data
+  const title = data.documentTitle?.trim() || 'Estimate'
   const displayPropertyName = unitLabel ? `${propertyName} · ${unitLabel}` : propertyName
   const company = await fetchCompanyInfoForPdf()
 
@@ -59,7 +63,7 @@ export const exportEstimateToPdf = async (data: EstimateExportData): Promise<voi
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(18)
   doc.setTextColor(...GOLD)
-  doc.text('ESTIMATE', marginX, 20)
+  doc.text(title.toUpperCase(), marginX, 20)
 
   doc.setFontSize(10)
   doc.setTextColor(...INK)
@@ -131,15 +135,15 @@ export const exportEstimateToPdf = async (data: EstimateExportData): Promise<voi
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(10.5)
   doc.setTextColor(...INK)
-  doc.text('Estimate details', marginX + 6, cursorY)
+  doc.text(`${title} details`, marginX + 6, cursorY)
 
   cursorY += 6
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(9.5)
   doc.setTextColor(60, 60, 60)
-  doc.text(`Estimate no.: ${estimateNumber}`, marginX + 6, cursorY)
+  doc.text(`${title} no.: ${estimateNumber}`, marginX + 6, cursorY)
   cursorY += 5.5
-  doc.text(`Estimate date: ${formatUsDate(date)}`, marginX + 6, cursorY)
+  doc.text(`${title} date: ${formatUsDate(date)}`, marginX + 6, cursorY)
 
   // --- Tabla de productos/servicios ---
   const head = ['#', 'Date', 'Product or service', 'Description', 'Qty', 'Rate', 'Amount']
@@ -216,5 +220,5 @@ export const exportEstimateToPdf = async (data: EstimateExportData): Promise<voi
   doc.text('1/1', pageWidth - marginX, pageHeight - 12, { align: 'right' })
 
   const dateSuffix = new Date().toISOString().slice(0, 10)
-  doc.save(`estimado-${estimateNumber}-${slugify(propertyName)}-${dateSuffix}.pdf`)
+  doc.save(`${slugify(title)}-${estimateNumber}-${slugify(propertyName)}-${dateSuffix}.pdf`)
 }

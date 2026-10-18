@@ -207,8 +207,9 @@ export const exportPayrollToPdf = async (
   const pageWidth = doc.internal.pageSize.getWidth()
   const marginX = 14
 
-  // Encabezado con los datos de la empresa (los mismos que se editan en
-  // Configuración > General) y el logo arriba a la derecha.
+  // Encabezado con el nombre de la empresa (el mismo que se edita en
+  // Configuración > General) y el logo arriba a la derecha — en la planilla
+  // no hace falta repetir dirección ni contacto.
   const company = await fetchCompanyInfoForPdf()
   let headerY = 14
   doc.setFont('helvetica', 'bold')
@@ -216,12 +217,6 @@ export const exportPayrollToPdf = async (
   doc.setTextColor(30, 31, 37)
   doc.text(company.companyName, marginX, headerY)
   doc.setFont('helvetica', 'normal')
-  doc.setFontSize(9)
-  doc.setTextColor(100, 100, 100)
-  headerY += 5
-  doc.text(company.address, marginX, headerY)
-  headerY += 5
-  doc.text(`${company.email}   ·   ${company.phone}`, marginX, headerY)
 
   try {
     const logoDataUrl = await loadImageAsDataUrl(LOGO_URL)
