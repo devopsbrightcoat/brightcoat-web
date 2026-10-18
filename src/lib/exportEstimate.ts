@@ -177,6 +177,8 @@ export const exportEstimateToPdf = async (data: EstimateExportData): Promise<voi
 
   autoTable(doc, {
     startY: bandY + bandHeight + 10,
+    // Mismo ancho que la franja de la propiedad (marginX a cada lado).
+    margin: { left: marginX, right: marginX },
     head: [head],
     body,
     theme: 'grid',
@@ -214,7 +216,7 @@ export const exportEstimateToPdf = async (data: EstimateExportData): Promise<voi
     doc.setFont('times', 'bold')
     doc.setFontSize(9.5)
     doc.setTextColor(...INK)
-    doc.text('Nota para el cliente', marginX, noteY)
+    doc.text('Note to customer', marginX, noteY)
     noteY += 5
     doc.setFont('times', 'normal')
     doc.setFontSize(9)

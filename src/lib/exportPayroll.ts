@@ -274,6 +274,8 @@ export const exportPayrollToPdf = async (
 
   autoTable(doc, {
     startY: headerY + 6,
+    // Mismo ancho que la línea separadora del encabezado (marginX a cada lado).
+    margin: { left: marginX, right: marginX },
     head: [head],
     body,
     styles: { fontSize: 9, cellPadding: 2.5, font: 'times' },
