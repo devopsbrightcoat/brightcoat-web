@@ -4,6 +4,7 @@ import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import type { Employee, PayrollEntry, Property } from '../types'
 import { fetchCompanyInfoForPdf } from './companyInfo'
+import { FIXED_CHARGE_LABEL } from './payrollStatus'
 import { LOGO_ASPECT_RATIO, LOGO_PLATE_COLOR, LOGO_URL, loadImageAsDataUrl } from './pdfAssets'
 
 export type PayrollExportRow = PayrollEntry & { sales: number; profit: number | null }
@@ -108,9 +109,9 @@ export const exportPayrollToExcel = async (
       employee: rowEmployeeName ?? '—',
       service: e.serviceName || '—',
       notes: e.notes || '—',
-      amount: e.amount ?? 'Pendiente',
+      amount: e.isFixedCharge ? FIXED_CHARGE_LABEL : (e.amount ?? 'Pendiente'),
       sales: e.sales,
-      profit: e.profit ?? 'Pendiente',
+      profit: e.isFixedCharge ? '—' : (e.profit ?? 'Pendiente'),
     })
     mainRow.eachCell({ includeEmpty: true }, (cell) => {
       cell.border = TOP_DIVIDER
@@ -193,9 +194,9 @@ export const exportPayrollToPdf = async (
             rowEmployeeName,
             e.serviceName || '—',
             e.notes || '—',
-            e.amount == null ? 'Pendiente' : currency(e.amount),
+            e.isFixedCharge ? FIXED_CHARGE_LABEL : e.amount == null ? 'Pendiente' : currency(e.amount),
             currency(e.sales),
-            e.profit == null ? 'Pendiente' : currency(e.profit),
+            e.isFixedCharge ? '—' : e.profit == null ? 'Pendiente' : currency(e.profit),
           ]
         : [e.date || '—', propertyName, e.unitLabel || '—', rowEmployeeName, e.serviceName || '—', currency(e.sales)]
     body.push(row)

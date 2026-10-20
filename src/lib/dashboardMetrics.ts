@@ -1,3 +1,4 @@
+import { isPayrollCobroPending } from './payrollStatus'
 import type { Charge, Employee, PayrollEntry, Expense, Property, Schedule, ServiceCategory, ServiceType } from '../types'
 import { addDays, parseISODate, toISODate } from './scheduleDates'
 import { extractTaxFromTotal } from './tax'
@@ -517,9 +518,9 @@ const summarizePayrollBy = (
   for (const e of entries) {
     const id = keyOf(e)
     const existing = groups.get(id) ?? { id, name: nameOf(id), totalPaid: 0, paidCount: 0, pendingCount: 0 }
-    if (e.amount == null) {
+    if (isPayrollCobroPending(e)) {
       existing.pendingCount += 1
-    } else {
+    } else if (e.amount != null) {
       existing.totalPaid += e.amount
       existing.paidCount += 1
     }
@@ -568,7 +569,7 @@ export const computePendingPayroll = (
   employees: Employee[],
 ): PendingPayrollRow[] =>
   payrollEntries
-    .filter((e) => e.amount == null)
+    .filter(isPayrollCobroPending)
     .map((e) => ({
       id: e.id,
       propertyId: e.propertyId,
@@ -793,7 +794,9 @@ export const computeAlerts = (
     })
   }
 
-  const pendingPayroll = payrollEntries.filter((p) => p.amount == null)
+  // Las de cobro fijo (ej. limpieza de oficina) no cuentan: se cobran una vez
+  // al mes en Cobros y nunca van a tener un cobro propio.
+  const pendingPayroll = payrollEntries.filter(isPayrollCobroPending)
   if (pendingPayroll.length > 0) {
     alerts.push({
       key: 'payroll_pending',

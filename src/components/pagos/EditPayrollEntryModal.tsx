@@ -6,6 +6,7 @@ import { useSupabaseQuery } from '../../lib/useSupabaseQuery'
 import { SALES_TAX_RATE } from '../../lib/tax'
 import type { Employee, PayrollEntry, Property } from '../../types'
 import { getErrorMessage } from '../../lib/errors'
+import { FixedChargeCheckbox } from './FixedChargeCheckbox'
 
 const inputClass =
   'w-full rounded-lg border border-white/10 bg-surface px-3 py-2.5 text-sm text-white outline-none focus:border-gold-500'
@@ -34,6 +35,7 @@ export const EditPayrollEntryModal = ({ entry, properties, employees, onClose, o
   const [serviceName, setServiceName] = useState('')
   const [amount, setAmount] = useState('')
   const [taxable, setTaxable] = useState(false)
+  const [isFixedCharge, setIsFixedCharge] = useState(false)
   const [date, setDate] = useState('')
   const [notes, setNotes] = useState('')
   const [items, setItems] = useState<ItemLine[]>([emptyItem(0)])
@@ -48,6 +50,7 @@ export const EditPayrollEntryModal = ({ entry, properties, employees, onClose, o
     setServiceName(entry.serviceName)
     setAmount(entry.amount == null ? '' : String(entry.amount))
     setTaxable(entry.taxable)
+    setIsFixedCharge(entry.isFixedCharge)
     setDate(entry.date)
     setNotes(entry.notes ?? '')
     setItems(
@@ -85,7 +88,7 @@ export const EditPayrollEntryModal = ({ entry, properties, employees, onClose, o
       return
     }
     let amountValue: number | null = null
-    if (amount.trim()) {
+    if (!isFixedCharge && amount.trim()) {
       amountValue = Number(amount)
       if (Number.isNaN(amountValue) || amountValue < 0) {
         setError('El cobro no es un número válido.')
@@ -122,7 +125,8 @@ export const EditPayrollEntryModal = ({ entry, properties, employees, onClose, o
         amount: amountValue,
         date,
         notes: notes.trim(),
-        taxable,
+        taxable: isFixedCharge ? false : taxable,
+        isFixedCharge,
         items: parsedItems,
       })
       onSaved()
@@ -220,31 +224,35 @@ export const EditPayrollEntryModal = ({ entry, properties, employees, onClose, o
           />
         </div>
 
-        <div>
-          <label htmlFor="pe-edit-amount" className={labelClass}>
-            Cobro total del trabajo <span className="font-normal normal-case text-ink-500">(opcional — se puede completar después)</span>
-          </label>
-          <input
-            id="pe-edit-amount"
-            type="number"
-            min="0"
-            step="0.01"
-            placeholder="Se define después si aún no se sabe"
-            value={amount}
-            onChange={(e) => setAmount(e.target.value)}
-            className={inputClass}
-          />
-          <label htmlFor="pe-edit-taxable" className="mt-2 flex cursor-pointer items-center gap-2 text-sm text-ink-300">
+        <FixedChargeCheckbox id="pe-edit-fixed" checked={isFixedCharge} onChange={setIsFixedCharge} />
+
+        {!isFixedCharge && (
+          <div>
+            <label htmlFor="pe-edit-amount" className={labelClass}>
+              Cobro total del trabajo <span className="font-normal normal-case text-ink-500">(opcional — se puede completar después)</span>
+            </label>
             <input
-              id="pe-edit-taxable"
-              type="checkbox"
-              checked={taxable}
-              onChange={(e) => setTaxable(e.target.checked)}
-              className="h-4 w-4 rounded border-white/20 bg-surface-alt accent-gold-500"
+              id="pe-edit-amount"
+              type="number"
+              min="0"
+              step="0.01"
+              placeholder="Se define después si aún no se sabe"
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              className={inputClass}
             />
-            Este servicio lleva impuesto de ventas ({(SALES_TAX_RATE * 100).toFixed(2)}%)
-          </label>
-        </div>
+            <label htmlFor="pe-edit-taxable" className="mt-2 flex cursor-pointer items-center gap-2 text-sm text-ink-300">
+              <input
+                id="pe-edit-taxable"
+                type="checkbox"
+                checked={taxable}
+                onChange={(e) => setTaxable(e.target.checked)}
+                className="h-4 w-4 rounded border-white/20 bg-surface-alt accent-gold-500"
+              />
+              Este servicio lleva impuesto de ventas ({(SALES_TAX_RATE * 100).toFixed(2)}%)
+            </label>
+          </div>
+        )}
 
         <div>
           <label htmlFor="pe-edit-notes" className={labelClass}>

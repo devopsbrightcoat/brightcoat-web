@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { ChevronDown, ChevronUp, Plus, X } from 'lucide-react'
 import { Modal } from '../common/Modal'
 import { createPayrollEntry, fetchChargeForSchedule, fetchSchedulesForEmployee, fetchServiceTypes } from '../../lib/api'
+import { FixedChargeCheckbox } from './FixedChargeCheckbox'
 import { useSupabaseQuery } from '../../lib/useSupabaseQuery'
 import { formatFullDate } from '../../lib/scheduleDates'
 import { SALES_TAX_RATE } from '../../lib/tax'
@@ -43,6 +44,7 @@ export const AddPayrollEntryModal = ({ open, properties, employees, onClose, onS
   const [serviceName, setServiceName] = useState('')
   const [amount, setAmount] = useState('')
   const [taxable, setTaxable] = useState(false)
+  const [isFixedCharge, setIsFixedCharge] = useState(false)
   const [date, setDate] = useState('')
   const [notes, setNotes] = useState('')
   const [items, setItems] = useState<ItemLine[]>([emptyItem(0)])
@@ -73,6 +75,7 @@ export const AddPayrollEntryModal = ({ open, properties, employees, onClose, onS
     setServiceName('')
     setAmount('')
     setTaxable(false)
+    setIsFixedCharge(false)
     setDate('')
     setNotes('')
     setItems([emptyItem(0)])
@@ -112,6 +115,15 @@ export const AddPayrollEntryModal = ({ open, properties, employees, onClose, onS
     const serviceType = (serviceTypes ?? []).find((st) => st.id === schedule.serviceTypeId)
     if (serviceType) setServiceName(serviceType.name)
 
+    // Horario de cobro fijo: nunca tiene un cobro individual en Cobros (se
+    // cobra una vez al mes), así que la planilla se marca sola como de cobro
+    // fijo en vez de buscar un cobro que no existe.
+    setIsFixedCharge(schedule.isFixedCharge)
+    if (schedule.isFixedCharge) {
+      setAmount('')
+      return
+    }
+
     try {
       const charge = await fetchChargeForSchedule(
         schedule.propertyId,
@@ -145,6 +157,7 @@ export const AddPayrollEntryModal = ({ open, properties, employees, onClose, onS
           notes: string
           scheduleId?: string
           taxable: boolean
+          isFixedCharge: boolean
           items: { description: string; amount: number }[]
         }
       } => {
@@ -153,7 +166,7 @@ export const AddPayrollEntryModal = ({ open, properties, employees, onClose, onS
     if (!employeeId) return { error: 'Selecciona un empleado.' }
     if (!serviceName.trim()) return { error: 'El nombre del servicio es obligatorio.' }
     let amountValue: number | null = null
-    if (amount.trim()) {
+    if (!isFixedCharge && amount.trim()) {
       amountValue = Number(amount)
       if (Number.isNaN(amountValue) || amountValue < 0) return { error: 'El cobro no es un número válido.' }
     }
@@ -179,7 +192,8 @@ export const AddPayrollEntryModal = ({ open, properties, employees, onClose, onS
         date,
         notes: notes.trim(),
         scheduleId: selectedScheduleId || undefined,
-        taxable,
+        taxable: isFixedCharge ? false : taxable,
+        isFixedCharge,
         items: parsedItems,
       },
     }
@@ -194,6 +208,7 @@ export const AddPayrollEntryModal = ({ open, properties, employees, onClose, onS
     setServiceName('')
     setAmount('')
     setTaxable(false)
+    setIsFixedCharge(false)
     setNotes('')
     setItems([emptyItem(0)])
   }
@@ -418,31 +433,35 @@ export const AddPayrollEntryModal = ({ open, properties, employees, onClose, onS
         <div className="space-y-3 border-t border-white/10 pt-4">
           <p className={sectionLabelClass}>Cobro</p>
 
-          <div>
-            <label htmlFor="pe-amount" className={labelClass}>
-              Cobro total del trabajo <span className="font-normal normal-case text-ink-500">(opcional — se puede completar después)</span>
-            </label>
-            <input
-              id="pe-amount"
-              type="number"
-              min="0"
-              step="0.01"
-              placeholder="Se define después si aún no se sabe"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-              className={inputClass}
-            />
-            <label htmlFor="pe-taxable" className="mt-2 flex cursor-pointer items-center gap-2 text-sm text-ink-300">
+          <FixedChargeCheckbox id="pe-fixed" checked={isFixedCharge} onChange={setIsFixedCharge} />
+
+          {!isFixedCharge && (
+            <div>
+              <label htmlFor="pe-amount" className={labelClass}>
+                Cobro total del trabajo <span className="font-normal normal-case text-ink-500">(opcional — se puede completar después)</span>
+              </label>
               <input
-                id="pe-taxable"
-                type="checkbox"
-                checked={taxable}
-                onChange={(e) => setTaxable(e.target.checked)}
-                className="h-4 w-4 rounded border-white/20 bg-surface-alt accent-gold-500"
+                id="pe-amount"
+                type="number"
+                min="0"
+                step="0.01"
+                placeholder="Se define después si aún no se sabe"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+                className={inputClass}
               />
-              Este servicio lleva impuesto de ventas ({(SALES_TAX_RATE * 100).toFixed(2)}%)
-            </label>
-          </div>
+              <label htmlFor="pe-taxable" className="mt-2 flex cursor-pointer items-center gap-2 text-sm text-ink-300">
+                <input
+                  id="pe-taxable"
+                  type="checkbox"
+                  checked={taxable}
+                  onChange={(e) => setTaxable(e.target.checked)}
+                  className="h-4 w-4 rounded border-white/20 bg-surface-alt accent-gold-500"
+                />
+                Este servicio lleva impuesto de ventas ({(SALES_TAX_RATE * 100).toFixed(2)}%)
+              </label>
+            </div>
+          )}
 
           <div>
             <label htmlFor="pe-notes" className={labelClass}>

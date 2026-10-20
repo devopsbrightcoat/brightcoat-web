@@ -83,6 +83,7 @@ export type PayrollEntryRow = {
   notes: string | null
   schedule_id: string | null
   taxable: boolean
+  is_fixed_charge: boolean
   payroll_entry_items?: PayrollEntryItemRow[]
 }
 

@@ -44,6 +44,7 @@ export const payrollEntries: PayrollEntry[] = [
     amount: 620,
     date: '2026-08-06',
     taxable: true,
+    isFixedCharge: false,
     items: [
       { id: 'pei1', description: '2 recámaras + pasillo', amount: 420 },
       { id: 'pei2', description: 'Baño', amount: 260 },

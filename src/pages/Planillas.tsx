@@ -26,6 +26,7 @@ import { formatFullDate, MONTH_NAMES } from '../lib/scheduleDates'
 import { exportPayrollToExcel, exportPayrollToPdf, type PayrollExportAudience } from '../lib/exportPayroll'
 import { getErrorMessage } from '../lib/errors'
 import { taxOnAmount, SALES_TAX_RATE } from '../lib/tax'
+import { FIXED_CHARGE_LABEL, isPayrollCobroPending } from '../lib/payrollStatus'
 import type { PayrollEntry } from '../types'
 
 const currency = (value: number) =>
@@ -93,8 +94,8 @@ export const Planillas = () => {
       // si el cliente ya pagó ese cobro (igual que el costo de mano de obra
       // del Dashboard). "Ganancia" sí requiere que el cobro ya esté definido.
       current.sales += sales
-      if (e.amount == null) current.pendingCount += 1
-      else current.profit += e.amount - sales
+      if (isPayrollCobroPending(e)) current.pendingCount += 1
+      else if (e.amount != null) current.profit += e.amount - sales
       map.set(e.employeeId, current)
     }
     return map
@@ -141,7 +142,8 @@ export const Planillas = () => {
   const totalCobro = filtered.filter((e) => e.amount != null).reduce((sum, e) => sum + (e.amount as number), 0)
   const totalSales = filtered.reduce((sum, e) => sum + e.sales, 0)
   const totalProfit = filtered.reduce((sum, e) => sum + (e.profit ?? 0), 0)
-  const pendingEntries = filtered.filter((e) => e.amount == null)
+  // Las de cobro fijo no cuentan: nunca van a tener un Cobro propio.
+  const pendingEntries = filtered.filter(isPayrollCobroPending)
   const pendingCount = pendingEntries.length
   const pendingSales = pendingEntries.reduce((sum, e) => sum + e.sales, 0)
 
@@ -181,6 +183,7 @@ export const Planillas = () => {
         header: 'Ventas',
         cell: (info) => {
           const value = info.getValue()
+          if (info.row.original.isFixedCharge) return <span className="text-sky-300">{FIXED_CHARGE_LABEL}</span>
           return value == null ? (
             <span className="text-ink-500">Pendiente</span>
           ) : (
@@ -192,7 +195,7 @@ export const Planillas = () => {
         id: 'tax',
         header: `Impuesto (${(SALES_TAX_RATE * 100).toFixed(2)}%)`,
         cell: (info) => {
-          if (!info.row.original.taxable) return <span className="text-ink-500">—</span>
+          if (!info.row.original.taxable || info.row.original.isFixedCharge) return <span className="text-ink-500">—</span>
           const value = info.getValue()
           return value == null ? (
             <span className="text-ink-500">Pendiente</span>
@@ -211,6 +214,7 @@ export const Planillas = () => {
         header: 'Ganancia',
         cell: (info) => {
           const value = info.getValue()
+          if (info.row.original.isFixedCharge) return <span className="text-ink-500">—</span>
           if (value == null) return <span className="text-ink-500">Pendiente</span>
           return <span className={`tabular-nums ${value < 0 ? 'text-red-400' : 'text-gold-400'}`}>{currency(value)}</span>
         },
@@ -484,6 +488,10 @@ export const Planillas = () => {
         onDelete={() => {
           setDeletingEntry(detailEntry)
           setDetailEntry(null)
+        }}
+        onChanged={(updated) => {
+          setDetailEntry(updated)
+          setRefreshKey((k) => k + 1)
         }}
       />
 

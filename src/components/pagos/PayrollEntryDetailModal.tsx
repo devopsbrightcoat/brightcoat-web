@@ -1,5 +1,9 @@
-import { Trash2 } from 'lucide-react'
+import { useState } from 'react'
+import { CheckCircle2, RotateCcw, Trash2 } from 'lucide-react'
 import { Modal } from '../common/Modal'
+import { setPayrollEntryFixedCharge } from '../../lib/api'
+import { getErrorMessage } from '../../lib/errors'
+import { FIXED_CHARGE_LABEL } from '../../lib/payrollStatus'
 import { formatFullDate } from '../../lib/scheduleDates'
 import { taxOnAmount, SALES_TAX_RATE } from '../../lib/tax'
 import type { Employee, PayrollEntry, Property } from '../../types'
@@ -20,9 +24,37 @@ type PayrollEntryDetailModalProps = {
   employees: Employee[]
   onClose: () => void
   onDelete: () => void
+  // Se llama después de marcar/desmarcar la planilla como cobro fijo, con
+  // la planilla ya actualizada.
+  onChanged: (entry: PayrollEntry) => void
 }
 
-export const PayrollEntryDetailModal = ({ entry, properties, employees, onClose, onDelete }: PayrollEntryDetailModalProps) => {
+export const PayrollEntryDetailModal = ({
+  entry,
+  properties,
+  employees,
+  onClose,
+  onDelete,
+  onChanged,
+}: PayrollEntryDetailModalProps) => {
+  const [togglingFixed, setTogglingFixed] = useState(false)
+  const [toggleError, setToggleError] = useState<string | null>(null)
+
+  const handleToggleFixed = async () => {
+    if (!entry) return
+    const next = !entry.isFixedCharge
+    setTogglingFixed(true)
+    setToggleError(null)
+    try {
+      await setPayrollEntryFixedCharge(entry.id, next)
+      onChanged({ ...entry, isFixedCharge: next, amount: next ? null : entry.amount })
+    } catch (err) {
+      setToggleError(getErrorMessage(err, 'No se pudo actualizar la planilla.'))
+    } finally {
+      setTogglingFixed(false)
+    }
+  }
+
   const propertyName = properties.find((p) => p.id === entry?.propertyId)?.name
   const employeeName = employees.find((e) => e.id === entry?.employeeId)?.name
   const sales = entry ? entry.items.reduce((sum, item) => sum + item.amount, 0) : 0
@@ -45,7 +77,9 @@ export const PayrollEntryDetailModal = ({ entry, properties, employees, onClose,
             <Field
               label="Ventas"
               value={
-                entry.amount == null ? (
+                entry.isFixedCharge ? (
+                  <span className="text-sky-300">{FIXED_CHARGE_LABEL}</span>
+                ) : entry.amount == null ? (
                   <span className="text-ink-500">Pendiente</span>
                 ) : (
                   <span className="tabular-nums text-blue-400">{currency(entry.amount)}</span>
@@ -56,7 +90,9 @@ export const PayrollEntryDetailModal = ({ entry, properties, employees, onClose,
             <Field
               label="Ganancia"
               value={
-                profit == null ? (
+                entry.isFixedCharge ? (
+                  <span className="text-ink-500">—</span>
+                ) : profit == null ? (
                   <span className="text-ink-500">Pendiente</span>
                 ) : (
                   <span className={`tabular-nums ${profit < 0 ? 'text-red-400' : 'text-gold-400'}`}>
@@ -65,7 +101,7 @@ export const PayrollEntryDetailModal = ({ entry, properties, employees, onClose,
                 )
               }
             />
-            {entry.taxable && (
+            {entry.taxable && !entry.isFixedCharge && (
               <Field
                 label={`Impuesto (${(SALES_TAX_RATE * 100).toFixed(2)}%)`}
                 value={
@@ -99,7 +135,9 @@ export const PayrollEntryDetailModal = ({ entry, properties, employees, onClose,
             )}
           </div>
 
-          <div className="flex justify-start border-t border-white/10 pt-4">
+          {toggleError && <p className="text-sm text-red-400">{toggleError}</p>}
+
+          <div className="flex flex-wrap items-center justify-between gap-2 border-t border-white/10 pt-4">
             <button
               type="button"
               onClick={onDelete}
@@ -108,6 +146,27 @@ export const PayrollEntryDetailModal = ({ entry, properties, employees, onClose,
               <Trash2 className="h-4 w-4" />
               Eliminar planilla
             </button>
+            {/* Solo para planillas sin Cobro: las de cobro fijo (ej. limpieza
+                de oficina) nunca van a tener un cobro propio. */}
+            {(entry.isFixedCharge || entry.amount == null) && (
+              <button
+                type="button"
+                onClick={handleToggleFixed}
+                disabled={togglingFixed}
+                className={
+                  entry.isFixedCharge
+                    ? 'flex items-center gap-1.5 rounded-lg border border-white/10 px-3 py-2 text-sm font-medium text-ink-300 hover:bg-white/5 disabled:opacity-60'
+                    : 'flex items-center gap-1.5 rounded-lg bg-gold-500 px-3 py-2 text-sm font-semibold text-brand-900 hover:bg-gold-400 disabled:opacity-60'
+                }
+              >
+                {entry.isFixedCharge ? <RotateCcw className="h-4 w-4" /> : <CheckCircle2 className="h-4 w-4" />}
+                {togglingFixed
+                  ? 'Guardando…'
+                  : entry.isFixedCharge
+                    ? 'Quitar cobro fijo'
+                    : 'Marcar como cobro fijo (finalizada)'}
+              </button>
+            )}
           </div>
         </div>
       )}

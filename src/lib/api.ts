@@ -234,6 +234,7 @@ const mapPayrollEntry = (row: PayrollEntryRow): PayrollEntry => ({
   notes: row.notes ?? undefined,
   scheduleId: row.schedule_id ?? undefined,
   taxable: row.taxable,
+  isFixedCharge: row.is_fixed_charge ?? false,
   items: (row.payroll_entry_items ?? []).map((item) => ({
     id: item.id,
     description: item.description,
@@ -263,6 +264,9 @@ type PayrollEntryInput = {
   notes?: string
   scheduleId?: string
   taxable: boolean
+  // Opcional para no romper la importación desde Excel — si no viene, al
+  // crear queda en false y al editar no se toca.
+  isFixedCharge?: boolean
   items: { description: string; amount: number }[]
 }
 
@@ -292,6 +296,7 @@ export const createPayrollEntry = async (data: PayrollEntryInput): Promise<void>
       notes: data.notes || null,
       schedule_id: data.scheduleId || null,
       taxable: data.taxable,
+      is_fixed_charge: data.isFixedCharge ?? false,
     })
     .select('id')
     .single()
@@ -312,6 +317,7 @@ export const updatePayrollEntry = async (id: string, data: PayrollEntryInput): P
       date: data.date,
       notes: data.notes || null,
       taxable: data.taxable,
+      ...(data.isFixedCharge === undefined ? {} : { is_fixed_charge: data.isFixedCharge }),
     })
     .eq('id', id)
   if (error) throw error
@@ -320,6 +326,17 @@ export const updatePayrollEntry = async (id: string, data: PayrollEntryInput): P
   if (deleteError) throw deleteError
 
   await insertPayrollEntryItems(id, data.items)
+}
+
+// Marca (o desmarca) una planilla como de cobro fijo desde el detalle, sin
+// abrir el formulario completo. Al marcarla se limpia el Cobro: el servicio
+// ya se cobra en el cobro fijo mensual.
+export const setPayrollEntryFixedCharge = async (id: string, isFixedCharge: boolean): Promise<void> => {
+  const { error } = await supabase
+    .from('payroll_entries')
+    .update(isFixedCharge ? { is_fixed_charge: true, amount: null } : { is_fixed_charge: false })
+    .eq('id', id)
+  if (error) throw error
 }
 
 export const deletePayrollEntry = async (id: string): Promise<void> => {

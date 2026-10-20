@@ -30,6 +30,7 @@ import { formatFullDate } from '../../lib/scheduleDates'
 import { taxOnAmount, SALES_TAX_RATE } from '../../lib/tax'
 import { useSupabaseQuery } from '../../lib/useSupabaseQuery'
 import type { PayrollEntry } from '../../types'
+import { FIXED_CHARGE_LABEL, isPayrollCobroPending } from '../../lib/payrollStatus'
 
 const currency = (value: number) =>
   value.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 2 })
@@ -118,7 +119,7 @@ export const ReportesPlanilla = () => {
     [periodEntries],
   )
   const paidCount = useMemo(() => periodEntries.filter((e) => e.amount != null).length, [periodEntries])
-  const pendingCountPeriod = useMemo(() => periodEntries.filter((e) => e.amount == null).length, [periodEntries])
+  const pendingCountPeriod = useMemo(() => periodEntries.filter(isPayrollCobroPending).length, [periodEntries])
 
   const byProperty = useMemo(
     () => computePayrollByProperty(employeeFilteredEntries, properties ?? [], range),
@@ -157,7 +158,7 @@ export const ReportesPlanilla = () => {
   )
   const gananciaTotal = useMemo(() => detailRows.reduce((sum, r) => sum + (r.profit ?? 0), 0), [detailRows])
   const pagoPendienteCobro = useMemo(
-    () => detailRows.filter((r) => r.amount == null).reduce((sum, r) => sum + r.sales, 0),
+    () => detailRows.filter(isPayrollCobroPending).reduce((sum, r) => sum + r.sales, 0),
     [detailRows],
   )
 
@@ -176,6 +177,7 @@ export const ReportesPlanilla = () => {
         header: 'Cobro',
         cell: (info) => {
           const value = info.getValue()
+          if (info.row.original.isFixedCharge) return <span className="text-sky-300">{FIXED_CHARGE_LABEL}</span>
           return value == null ? (
             <span className="text-ink-500">Pendiente</span>
           ) : (
@@ -187,7 +189,7 @@ export const ReportesPlanilla = () => {
         id: 'tax',
         header: `Impuesto (${(SALES_TAX_RATE * 100).toFixed(2)}%)`,
         cell: (info) => {
-          if (!info.row.original.taxable) return <span className="text-ink-500">—</span>
+          if (!info.row.original.taxable || info.row.original.isFixedCharge) return <span className="text-ink-500">—</span>
           const value = info.getValue()
           return value == null ? (
             <span className="text-ink-500">Pendiente</span>
@@ -206,6 +208,7 @@ export const ReportesPlanilla = () => {
         header: 'Ganancia',
         cell: (info) => {
           const value = info.getValue()
+          if (info.row.original.isFixedCharge) return <span className="text-ink-500">—</span>
           if (value == null) return <span className="text-ink-500">Pendiente</span>
           return <span className={`tabular-nums ${value < 0 ? 'text-red-400' : 'text-gold-400'}`}>{currency(value)}</span>
         },

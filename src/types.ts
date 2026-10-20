@@ -67,6 +67,9 @@ export type PayrollEntry = {
   notes?: string
   scheduleId?: string
   taxable: boolean
+  // Servicio de cobro fijo (se cobra una vez al mes en Cobros): no lleva
+  // Cobro propio y no cuenta como pendiente de cobro.
+  isFixedCharge: boolean
 }
 
 export type W2Status = 'approved' | 'pending'
