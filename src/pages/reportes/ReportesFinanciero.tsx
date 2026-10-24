@@ -10,6 +10,8 @@ import {
   type SortingState,
 } from '@tanstack/react-table'
 import { PageHeader } from '../../components/common/PageHeader'
+import { ReportExportActions } from '../../components/common/ReportExportActions'
+import { buildFinancieroReport } from '../../lib/reportExports'
 import { StatCard } from '../../components/common/StatCard'
 import { DataTablePanel } from '../../components/common/DataTablePanel'
 import { DashboardPanel } from '../../components/dashboard/DashboardPanel'
@@ -131,6 +133,11 @@ export const ReportesFinanciero = () => {
         header: 'Costo laboral',
         cell: (info) => <span className="tabular-nums">{currency(info.getValue())}</span>,
       }),
+      columnHelper.accessor('salesTax', {
+        id: 'salesTax',
+        header: 'Impuesto incluido',
+        cell: (info) => <span className="tabular-nums">{currency(info.getValue())}</span>,
+      }),
       columnHelper.accessor('estimatedProfit', {
         id: 'estimatedProfit',
         header: 'Ganancia estimada',
@@ -179,7 +186,26 @@ export const ReportesFinanciero = () => {
 
   return (
     <div className="pb-10">
-      <PageHeader title="Reportes · Financiero" subtitle="Resumen financiero, ingresos y rentabilidad por propiedad" />
+      <PageHeader
+        title="Reportes · Financiero"
+        subtitle="Resumen financiero, ingresos y rentabilidad por propiedad"
+        action={
+          <ReportExportActions
+            disabled={!appliedRange || loading || !!error}
+            buildReport={() =>
+              buildFinancieroReport({
+                range,
+                granularity: periodGranularity,
+                kpis,
+                revenueByPeriod,
+                monthlyFinancials,
+                revenueByCategory,
+                profitability,
+              })
+            }
+          />
+        }
+      />
 
       <ReportDateRangeBar onGenerate={setAppliedRange} generated={appliedRange !== null} />
 
@@ -279,8 +305,9 @@ export const ReportesFinanciero = () => {
           </div>
 
           <p className="mx-8 mt-6 text-xs text-ink-500">
-            Ganancia estimada = ingresos de la propiedad − su costo de planilla. No reparte los gastos generales del
-            negocio, que no están asociados a una propiedad específica en el modelo actual.
+            Ganancia estimada = ingresos de la propiedad − su costo de planilla − impuesto de ventas incluido en sus
+            cobros. No reparte los gastos generales del negocio, que no están asociados a una propiedad específica en
+            el modelo actual.
           </p>
 
           <DataTablePanel

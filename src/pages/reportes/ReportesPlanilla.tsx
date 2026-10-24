@@ -14,12 +14,14 @@ import { StatCard } from '../../components/common/StatCard'
 import { DataTablePanel } from '../../components/common/DataTablePanel'
 import { ReportDateRangeBar } from '../../components/dashboard/ReportDateRangeBar'
 import { useReferenceData } from '../../contexts/ReferenceDataContext'
-import { fetchPayrollEntries } from '../../lib/api'
+import { fetchPayrollEntries, fetchSchedules } from '../../lib/api'
 import { getErrorMessage } from '../../lib/errors'
 import { exportPayrollToExcel } from '../../lib/exportPayroll'
 import {
+  computeEmployeeProfit,
   computePayrollByEmployee,
   computePayrollByProperty,
+  computeProfitByCategory,
   computePendingPayroll,
   filterPayrollByRange,
   type DateRange,
@@ -73,6 +75,43 @@ const buildGroupColumns = (nameHeader: string, totalHeader: string) => [
 const PROPERTY_COLUMNS = buildGroupColumns('Propiedad', 'Total cobrado')
 const EMPLOYEE_COLUMNS = buildGroupColumns('Empleado', 'Total ventas')
 
+type ProfitRow = { id: string; name: string; jobCount: number; sold: number; paid: number; profit: number }
+const profitColumnHelper = createColumnHelper<ProfitRow>()
+
+const buildProfitColumns = (nameHeader: string) => [
+  profitColumnHelper.accessor('name', { id: 'name', header: nameHeader }),
+  profitColumnHelper.accessor('jobCount', { id: 'jobCount', header: 'Trabajos' }),
+  profitColumnHelper.accessor('sold', {
+    id: 'sold',
+    header: 'Vendido',
+    cell: (info) => <span className="tabular-nums">{currency(info.getValue())}</span>,
+  }),
+  profitColumnHelper.accessor('paid', {
+    id: 'paid',
+    header: 'Pagado',
+    cell: (info) => <span className="tabular-nums text-emerald-400">{currency(info.getValue())}</span>,
+  }),
+  profitColumnHelper.accessor('profit', {
+    id: 'profit',
+    header: 'Ganancia',
+    cell: (info) => {
+      const value = info.getValue()
+      return <span className={`tabular-nums font-semibold ${value < 0 ? 'text-red-400' : 'text-gold-400'}`}>{currency(value)}</span>
+    },
+  }),
+  profitColumnHelper.accessor((row) => (row.sold > 0 ? (row.profit / row.sold) * 100 : -Infinity), {
+    id: 'margin',
+    header: 'Margen',
+    cell: (info) => {
+      const value = info.getValue()
+      return <span className="tabular-nums">{Number.isFinite(value) ? `${value.toFixed(1)}%` : '—'}</span>
+    },
+  }),
+]
+
+const EMPLOYEE_PROFIT_COLUMNS = buildProfitColumns('Empleado')
+const CATEGORY_PROFIT_COLUMNS = buildProfitColumns('Categoría')
+
 const PENDING_COLUMNS = [
   pendingColumnHelper.accessor('date', { id: 'date', header: 'Fecha' }),
   pendingColumnHelper.accessor('propertyName', { id: 'property', header: 'Propiedad' }),
@@ -97,14 +136,29 @@ export const ReportesPlanilla = () => {
   const [pendingPageIndex, setPendingPageIndex] = useState(0)
   const [detailSorting, setDetailSorting] = useState<SortingState>([{ id: 'date', desc: true }])
   const [detailPageIndex, setDetailPageIndex] = useState(0)
+  const [employeeProfitSorting, setEmployeeProfitSorting] = useState<SortingState>([{ id: 'profit', desc: true }])
+  const [employeeProfitPageIndex, setEmployeeProfitPageIndex] = useState(0)
+  const [categoryProfitSorting, setCategoryProfitSorting] = useState<SortingState>([{ id: 'profit', desc: true }])
+  const [categoryProfitPageIndex, setCategoryProfitPageIndex] = useState(0)
   const [exporting, setExporting] = useState(false)
   const [exportError, setExportError] = useState<string | null>(null)
 
   const { data: entries, loading: loadingEntries, error: errorEntries } = useSupabaseQuery(fetchPayrollEntries, [])
-  const { properties, loadingProperties, errorProperties, employees, loadingEmployees, errorEmployees } = useReferenceData()
+  const { data: schedules, loading: loadingSchedules, error: errorSchedules } = useSupabaseQuery(fetchSchedules, [])
+  const {
+    properties,
+    loadingProperties,
+    errorProperties,
+    employees,
+    loadingEmployees,
+    errorEmployees,
+    serviceTypes,
+    loadingServiceTypes,
+    errorServiceTypes,
+  } = useReferenceData()
 
-  const loading = loadingEntries || loadingProperties || loadingEmployees
-  const error = errorEntries ?? errorProperties ?? errorEmployees
+  const loading = loadingEntries || loadingSchedules || loadingProperties || loadingEmployees || loadingServiceTypes
+  const error = errorEntries ?? errorSchedules ?? errorProperties ?? errorEmployees ?? errorServiceTypes
 
   const range = appliedRange ?? { start: '', end: '' }
 
@@ -132,6 +186,30 @@ export const ReportesPlanilla = () => {
   const pendingAll = useMemo(
     () => computePendingPayroll(employeeFilteredEntries, properties ?? [], employees ?? []),
     [employeeFilteredEntries, properties, employees],
+  )
+  const employeeProfit = useMemo<ProfitRow[]>(
+    () =>
+      computeEmployeeProfit(employeeFilteredEntries, employees ?? [], range, Number.MAX_SAFE_INTEGER).map((row) => ({
+        id: row.employeeId,
+        name: row.name,
+        jobCount: row.jobCount,
+        sold: row.sold,
+        paid: row.paid,
+        profit: row.profit,
+      })),
+    [employeeFilteredEntries, employees, range],
+  )
+  const categoryProfit = useMemo<ProfitRow[]>(
+    () =>
+      computeProfitByCategory(employeeFilteredEntries, schedules ?? [], serviceTypes ?? [], range).map((row) => ({
+        id: row.category ?? 'none',
+        name: row.label,
+        jobCount: row.jobCount,
+        sold: row.sold,
+        paid: row.paid,
+        profit: row.profit,
+      })),
+    [employeeFilteredEntries, schedules, serviceTypes, range],
   )
 
   const detailRows = useMemo<DetailRow[]>(
@@ -251,6 +329,46 @@ export const ReportesPlanilla = () => {
     getPaginationRowModel: getPaginationRowModel(),
   })
 
+  const employeeProfitPageCount = Math.max(1, Math.ceil(employeeProfit.length / PAGE_SIZE))
+  const employeeProfitCurrentPageIndex = Math.min(employeeProfitPageIndex, employeeProfitPageCount - 1)
+  const employeeProfitTable = useReactTable({
+    data: employeeProfit,
+    columns: EMPLOYEE_PROFIT_COLUMNS,
+    state: {
+      sorting: employeeProfitSorting,
+      pagination: { pageIndex: employeeProfitCurrentPageIndex, pageSize: PAGE_SIZE },
+    },
+    onSortingChange: setEmployeeProfitSorting,
+    onPaginationChange: (updater) => {
+      const current = { pageIndex: employeeProfitCurrentPageIndex, pageSize: PAGE_SIZE }
+      const next = typeof updater === 'function' ? updater(current) : updater
+      setEmployeeProfitPageIndex(next.pageIndex)
+    },
+    getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+  })
+
+  const categoryProfitPageCount = Math.max(1, Math.ceil(categoryProfit.length / PAGE_SIZE))
+  const categoryProfitCurrentPageIndex = Math.min(categoryProfitPageIndex, categoryProfitPageCount - 1)
+  const categoryProfitTable = useReactTable({
+    data: categoryProfit,
+    columns: CATEGORY_PROFIT_COLUMNS,
+    state: {
+      sorting: categoryProfitSorting,
+      pagination: { pageIndex: categoryProfitCurrentPageIndex, pageSize: PAGE_SIZE },
+    },
+    onSortingChange: setCategoryProfitSorting,
+    onPaginationChange: (updater) => {
+      const current = { pageIndex: categoryProfitCurrentPageIndex, pageSize: PAGE_SIZE }
+      const next = typeof updater === 'function' ? updater(current) : updater
+      setCategoryProfitPageIndex(next.pageIndex)
+    },
+    getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+  })
+
   const pendingPageCount = Math.max(1, Math.ceil(pendingAll.length / PAGE_SIZE))
   const pendingCurrentPageIndex = Math.min(pendingPageIndex, pendingPageCount - 1)
   const pendingTable = useReactTable({
@@ -299,6 +417,8 @@ export const ReportesPlanilla = () => {
 
   const propertyState = loading ? 'loading' : error ? 'error' : byProperty.length === 0 ? 'empty' : 'ready'
   const employeeState = loading ? 'loading' : error ? 'error' : byEmployee.length === 0 ? 'empty' : 'ready'
+  const employeeProfitState = loading ? 'loading' : error ? 'error' : employeeProfit.length === 0 ? 'empty' : 'ready'
+  const categoryProfitState = loading ? 'loading' : error ? 'error' : categoryProfit.length === 0 ? 'empty' : 'ready'
   const pendingState = loading ? 'loading' : error ? 'error' : pendingAll.length === 0 ? 'empty' : 'ready'
   const detailState = loading ? 'loading' : error ? 'error' : detailRows.length === 0 ? 'empty' : 'ready'
   const baseMessage = loading ? 'Cargando…' : error ? `No se pudieron cargar las planillas: ${error}` : null
@@ -396,6 +516,34 @@ export const ReportesPlanilla = () => {
             totalPages={employeePageCount}
             onPageChange={(p) => setEmployeePageIndex(p - 1)}
             state={employeeState}
+            message={baseMessage ?? 'No hay planillas en este período.'}
+          />
+
+          <p className="mx-8 mt-6 text-sm text-ink-400">
+            Ganancia por empleado — vendido (cobro de sus planillas), pagado y ganancia en el período seleccionado
+            arriba. Vendido y Ganancia solo cuentan planillas con cobro definido.
+          </p>
+          <DataTablePanel
+            title="Ganancia por empleado"
+            table={employeeProfitTable}
+            page={employeeProfitCurrentPageIndex + 1}
+            totalPages={employeeProfitPageCount}
+            onPageChange={(p) => setEmployeeProfitPageIndex(p - 1)}
+            state={employeeProfitState}
+            message={baseMessage ?? 'No hay planillas en este período.'}
+          />
+
+          <p className="mx-8 mt-6 text-sm text-ink-400">
+            Ganancia por categoría de servicio — según el servicio del horario ligado a cada planilla, en el período
+            seleccionado arriba.
+          </p>
+          <DataTablePanel
+            title="Ganancia por categoría"
+            table={categoryProfitTable}
+            page={categoryProfitCurrentPageIndex + 1}
+            totalPages={categoryProfitPageCount}
+            onPageChange={(p) => setCategoryProfitPageIndex(p - 1)}
+            state={categoryProfitState}
             message={baseMessage ?? 'No hay planillas en este período.'}
           />
 

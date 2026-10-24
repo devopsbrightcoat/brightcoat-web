@@ -1,5 +1,5 @@
 import { isPayrollCobroPending } from './payrollStatus'
-import type { Charge, Employee, PayrollEntry, Expense, Property, Schedule, ServiceCategory, ServiceType } from '../types'
+import type { Charge, Employee, PayrollEntry, Expense, Property, Schedule, ServiceCategory, ServiceType, Vendor } from '../types'
 import { addDays, parseISODate, toISODate } from './scheduleDates'
 import { extractTaxFromTotal } from './tax'
 import { getQuincenaRange, type QuincenaKey } from './quincena'
@@ -199,6 +199,25 @@ export const computeExpensesByPeriod = (
 ): ExpensesByPeriod[] => {
   const items = filterExpensesByRange(expenses, range).map((e) => ({ date: e.date, amount: e.amount }))
   return bucketByPeriod(items, granularity)
+}
+
+export type VendorExpenses = { vendorId: string | null; name: string; total: number; count: number }
+
+export const computeExpensesByVendor = (expenses: Expense[], vendors: Vendor[], range: DateRange): VendorExpenses[] => {
+  const totals = new Map<string | null, { total: number; count: number }>()
+  for (const e of filterExpensesByRange(expenses, range)) {
+    const key = e.vendorId ?? null
+    const current = totals.get(key) ?? { total: 0, count: 0 }
+    totals.set(key, { total: current.total + e.amount, count: current.count + 1 })
+  }
+  return Array.from(totals.entries())
+    .map(([vendorId, v]) => ({
+      vendorId,
+      name: vendorId == null ? 'Sin proveedor' : vendors.find((x) => x.id === vendorId)?.name ?? 'Proveedor eliminado',
+      total: v.total,
+      count: v.count,
+    }))
+    .sort((a, b) => b.total - a.total)
 }
 
 export type ServiceRevenue = { serviceTypeId: string | null; label: string; revenue: number }
@@ -442,7 +461,7 @@ export const computePendingSchedules = (schedules: Schedule[]): Schedule[] =>
 
 export type AgingBucket = { label: string; amount: number; count: number }
 
-const AGING_BUCKET_LABELS = ['0–30 días', '31–60 días', '61–90 días', '+90 días'] as const
+export const AGING_BUCKET_LABELS = ['0–30 días', '31–60 días', '61–90 días', '+90 días'] as const
 
 const agingBucketLabel = (days: number): string =>
   days <= 30
@@ -488,6 +507,35 @@ export const computeAgingDetail = (charges: Charge[], properties: Property[] = [
       }
     })
     .sort((a, b) => b.days - a.days)
+}
+
+export type PropertyAging = {
+  propertyId: string
+  name: string
+  count: number
+  total: number
+  oldestDays: number
+  buckets: Record<string, number>
+}
+
+export const computeAgingByProperty = (charges: Charge[], properties: Property[]): PropertyAging[] => {
+  const groups = new Map<string, PropertyAging>()
+  for (const row of computeAgingDetail(charges, properties)) {
+    const current = groups.get(row.propertyId) ?? {
+      propertyId: row.propertyId,
+      name: row.propertyName,
+      count: 0,
+      total: 0,
+      oldestDays: 0,
+      buckets: Object.fromEntries(AGING_BUCKET_LABELS.map((label) => [label, 0])),
+    }
+    current.count += 1
+    current.total += row.amount
+    current.oldestDays = Math.max(current.oldestDays, row.days)
+    current.buckets[row.bucket] = (current.buckets[row.bucket] ?? 0) + row.amount
+    groups.set(row.propertyId, current)
+  }
+  return Array.from(groups.values()).sort((a, b) => b.total - a.total)
 }
 
 export const computeOutstandingAging = (charges: Charge[]): AgingBucket[] => {
@@ -718,6 +766,7 @@ export type PropertyProfitability = {
   name: string
   revenue: number
   laborCost: number
+  salesTax: number
   estimatedProfit: number
   margin: number | null
 }
@@ -734,6 +783,12 @@ export const computePropertyProfitability = (
   const revenueByProperty = new Map<string, number>()
   for (const c of periodCharges) revenueByProperty.set(c.propertyId, (revenueByProperty.get(c.propertyId) ?? 0) + c.amount)
 
+  const taxByProperty = new Map<string, number>()
+  for (const c of periodCharges) {
+    if (!c.taxIncluded) continue
+    taxByProperty.set(c.propertyId, (taxByProperty.get(c.propertyId) ?? 0) + extractTaxFromTotal(c.amount))
+  }
+
   const laborByProperty = new Map<string, number>()
   for (const p of periodPayroll) laborByProperty.set(p.propertyId, (laborByProperty.get(p.propertyId) ?? 0) + payrollPago(p))
 
@@ -742,13 +797,15 @@ export const computePropertyProfitability = (
   for (const propertyId of propertyIds) {
     const revenue = revenueByProperty.get(propertyId) ?? 0
     const laborCost = laborByProperty.get(propertyId) ?? 0
-    const estimatedProfit = revenue - laborCost
+    const salesTax = taxByProperty.get(propertyId) ?? 0
+    const estimatedProfit = revenue - laborCost - salesTax
     const margin = revenue > 0 ? (estimatedProfit / revenue) * 100 : null
     result.push({
       propertyId,
       name: properties.find((p) => p.id === propertyId)?.name ?? '—',
       revenue,
       laborCost,
+      salesTax,
       estimatedProfit,
       margin,
     })

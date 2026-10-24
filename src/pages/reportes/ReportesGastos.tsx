@@ -3,12 +3,16 @@ import { DollarSign, Percent, TrendingDown, TrendingUp } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { Bar, BarChart, CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { PageHeader } from '../../components/common/PageHeader'
+import { ReportExportActions } from '../../components/common/ReportExportActions'
+import { buildGastosReport } from '../../lib/reportExports'
 import { StatCard } from '../../components/common/StatCard'
 import { DashboardPanel } from '../../components/dashboard/DashboardPanel'
+import { RankingBars } from '../../components/dashboard/RankingBars'
 import { ReportDateRangeBar } from '../../components/dashboard/ReportDateRangeBar'
-import { fetchExpenses } from '../../lib/api'
+import { fetchExpenses, fetchVendors } from '../../lib/api'
 import {
   computeExpensesByPeriod,
+  computeExpensesByVendor,
   computeMonthlyFinancials,
   filterExpensesByRange,
   previousPeriod,
@@ -47,7 +51,11 @@ export const ReportesGastos = () => {
   const [appliedRange, setAppliedRange] = useState<DateRange | null>(null)
   const [granularity, setGranularity] = useState<RevenuePeriodGranularity>('day')
 
-  const { data: expenses, loading, error } = useSupabaseQuery(fetchExpenses, [])
+  const { data: expenses, loading: loadingExpenses, error: errorExpenses } = useSupabaseQuery(fetchExpenses, [])
+  const { data: vendors, loading: loadingVendors, error: errorVendors } = useSupabaseQuery(fetchVendors, [])
+
+  const loading = loadingExpenses || loadingVendors
+  const error = errorExpenses ?? errorVendors
 
   const range = appliedRange ?? { start: '', end: '' }
 
@@ -71,9 +79,37 @@ export const ReportesGastos = () => {
     [expenses, range, granularity],
   )
 
+  const expensesByVendor = useMemo(
+    () => computeExpensesByVendor(expenses ?? [], vendors ?? [], range),
+    [expenses, vendors, range],
+  )
+
   return (
     <div className="pb-10">
-      <PageHeader title="Reportes · Gastos" subtitle="Evolución del gasto del negocio y comparación mensual" />
+      <PageHeader
+        title="Reportes · Gastos"
+        subtitle="Evolución del gasto del negocio y comparación mensual"
+        action={
+          <ReportExportActions
+            disabled={!appliedRange || loading || !!error}
+            buildReport={() =>
+              buildGastosReport({
+                range,
+                granularity,
+                total,
+                previousTotal,
+                changePct,
+                monthlyAverage,
+                expensesByPeriod,
+                expensesByVendor,
+                monthlyTrend,
+                periodExpenses,
+                vendors: vendors ?? [],
+              })
+            }
+          />
+        }
+      />
 
       <ReportDateRangeBar onGenerate={setAppliedRange} generated={appliedRange !== null} />
 
@@ -132,6 +168,21 @@ export const ReportesGastos = () => {
                   </ResponsiveContainer>
                 </div>
               )}
+            </DashboardPanel>
+          </div>
+
+          <div className="px-8 pt-6">
+            <DashboardPanel title="Gastos por proveedor" subtitle="Rango de fecha seleccionado arriba">
+              <RankingBars
+                items={expensesByVendor.map((v) => ({
+                  id: v.vendorId ?? 'none',
+                  label: `${v.name} · ${v.count} gasto${v.count === 1 ? '' : 's'}`,
+                  value: v.total,
+                }))}
+                formatValue={currency}
+                color={COLOR_ORANGE}
+                emptyText="No hay gastos en este período."
+              />
             </DashboardPanel>
           </div>
 
